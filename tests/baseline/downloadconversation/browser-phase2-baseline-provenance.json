@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "baseline_path": "tests/baseline/downloadconversation/browser-phase2-baseline-results.json",
+  "source_repository": "Ma-XX-oN/DownloadConversation",
+  "source_commit": "1b6ff84474cbf120e1b6dd9e1b396c22a63641d0",
+  "source_path": "chatgpt-conversation-markdown-export.user.js",
+  "source_blob_sha": "ac14c3cc3ea6b30e6563609a7bf2641a193a7d6f",
+  "source_version": "0.6.132",
+  "baseline_generated_at": "2026-08-26T21:56:11.609Z",
+  "execution_method": "static exact production source with startup side effects replaced by Phase 2 runner; no eval/Function",
+  "provenance_method": "repository reconstruction",
+  "provenance_evidence": [
+    "The static runner was built from the connected DownloadConversation default-branch production userscript during the Phase 2 browser-baseline session.",
+    "The latest DownloadConversation commit before and throughout the browser run was 1b6ff84474cbf120e1b6dd9e1b396c22a63641d0; the commit timestamp is 2026-08-26T05:37:36Z and the browser result timestamp is 2026-08-26T21:56:11.609Z.",
+    "At that commit the userscript reports @version 0.6.132 and has Git blob SHA ac14c3cc3ea6b30e6563609a7bf2641a193a7d6f.",
+    "No DownloadConversation commit occurred between that source commit and the recorded browser execution."
+  ],
+  "limitation": "The browser result itself recorded production_version as phase2-static rather than embedding the source commit/version. This companion provenance file repairs that harness metadata omission from repository evidence; it does not alter the observed baseline output."
+}
