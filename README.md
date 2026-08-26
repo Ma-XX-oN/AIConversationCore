@@ -90,6 +90,7 @@ The repository is the source of truth for project intent and state. Do not rely 
 chat history or assistant memory to reconstruct decisions.
 
 - [`DESIGN.md`](DESIGN.md) — architecture, canonical model, invariants, boundaries
+- [`EXISTING_IMPLEMENTATIONS.md`](EXISTING_IMPLEMENTATIONS.md) — reviewed codebase baselines, commonalities, differences, ownership boundaries, and migration risks
 - [`TESTING.md`](TESTING.md) — mandatory regression/parity/integration test contract
 - [`ROADMAP.md`](ROADMAP.md) — migration phases and current work state
 - [`DECISIONS.md`](DECISIONS.md) — durable architectural decisions and reversals
