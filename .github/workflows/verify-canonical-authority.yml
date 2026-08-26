@@ -1,0 +1,23 @@
+name: Verify canonical authority contract
+on: push
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify documentation contract
+        run: |
+          grep -q 'ChatGPT citation rendering uses verified `DownloadConversation` behaviour' DECISIONS.md
+          grep -q 'Present the competing' DESIGN.md
+          grep -q 'New cross-implementation differences require explicit user choice' ROADMAP.md
+      - name: Re-run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/verify-canonical-authority.yml
+          git commit -m "chore: remove temporary canonical authority verifier"
+          git push
