@@ -21,19 +21,28 @@ export function deriveTurns(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
 
   const turns = [];
+  const turnsWithMessage = new Set();
   for (const event of events) {
     if (!isVisibleTurnEvent(event)) continue;
 
-    if (event.kind === 'commentary') {
-      const current = turns.at(-1);
-      if (current?.role === 'assistant') {
-        current.event_ids.push(event.id);
-        current.source.record_ids.push(event.source_record_id);
-        continue;
-      }
+    const current = turns.at(-1);
+    if (event.kind === 'commentary' && current?.role === 'assistant') {
+      current.event_ids.push(event.id);
+      current.source.record_ids.push(event.source_record_id);
+      continue;
     }
 
-    turns.push(newTurn(event, turns.length));
+    if (event.kind === 'message' && event.role === 'assistant' &&
+        current?.role === 'assistant' && !turnsWithMessage.has(current.id)) {
+      current.event_ids.push(event.id);
+      current.source.record_ids.push(event.source_record_id);
+      turnsWithMessage.add(current.id);
+      continue;
+    }
+
+    const turn = newTurn(event, turns.length);
+    turns.push(turn);
+    if (event.kind === 'message') turnsWithMessage.add(turn.id);
   }
   return turns;
 }
