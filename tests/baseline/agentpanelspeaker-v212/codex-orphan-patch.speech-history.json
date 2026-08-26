@@ -1,0 +1,37 @@
+{
+  "fixture": "codex-orphan-patch.jsonl",
+  "source": "Codex",
+  "start_mode": "LiveEnd",
+  "fragments": [
+    {
+      "NodeId": 1,
+      "category": "User",
+      "kind": "Prose",
+      "Text": "Fix the corners order.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:01+00:00",
+      "StartsUserTurn": true
+    },
+    {
+      "NodeId": 2,
+      "category": "Reasoning",
+      "kind": "Prose",
+      "Text": "I found the ordering bug in corners().",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:02+00:00",
+      "StartsUserTurn": false
+    }
+  ],
+  "completions": [
+    "2026-01-01T00:00:04+00:00"
+  ],
+  "background_work_events": []
+}
