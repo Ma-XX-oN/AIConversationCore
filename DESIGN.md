@@ -15,13 +15,38 @@ The core is not only an export/rendering library. Canonical data must also suppo
 interactive consumers that read, navigate, speak, highlight, or otherwise operate
 on individual turns and content ranges.
 
+## Migration behaviour authority
+
+During migration, the current `AI-General-Memory/scripts/AI-transcript.py`
+implementation is the canonical behavioural/rendering reference for every provider
+it recognizes, currently ChatGPT, Claude, and Codex. This defines the behaviour to
+extract and preserve; it does not make the Python implementation, CLI structure,
+or provider-specific storage code the target architecture.
+
+Provider behaviour must be decomposed into provider adapters, canonical events and
+blocks, derived turns/relationships, and shared renderers/projections. Adding a new
+provider should therefore require a new adapter plus any genuinely new canonical
+semantics, not a new independent renderer.
+
+A separately verified defect or capability gap may supersede the current Python
+behaviour for a specific semantic. Such changes require their own evidence, issue,
+tests, and migration decision rather than being folded into unrelated extraction.
+
+ChatGPT image handling is currently the known area requiring that separate
+verification. The Python renderer's source-position and missing/unavailable
+semantics are useful behavioural evidence, but actual image-resource resolution
+must be verified against `DownloadConversation`. `DownloadConversation` remains an
+API-driven transcript renderer; its image capability must be treated as API/resource
+resolution, not as DOM transcript rendering or a DOM content fallback.
+
 ## Architectural layers
 
 ### 1. Provider adapters
 
 Each provider/model adapter translates raw provider records into canonical events.
-Initial priority is ChatGPT because both `DownloadConversation` and
-`AI-transcript.py` already process ChatGPT conversation records.
+ChatGPT is the first migration priority, but the architecture is explicitly
+multi-provider because the canonical behavioural source already recognizes
+ChatGPT, Claude, and Codex.
 
 Expected adapter structure:
 
@@ -29,6 +54,7 @@ Expected adapter structure:
 src/
   adapters/
     chatgpt.js
+    claude.js
     codex.js
     ...
 ```
@@ -160,9 +186,11 @@ speech, highlighting, or interactive turn traversal belongs to only one consumer
 
 Owns browser-specific acquisition and recorder behaviour:
 
-- ChatGPT page/API capture
+- ChatGPT Conversation API capture
 - authentication/request-context capture
 - pagination/recovery
+- API/resource resolution for ChatGPT attachments/images where browser credentials
+  or browser-accessible resource context are required
 - Tampermonkey UI
 - File System Access API operations
 - recorder state/resume
@@ -183,7 +211,12 @@ extension can be built later without changing core semantics.
 
 ### AI-transcript.py
 
-Owns:
+During migration, current `AI-transcript.py` behaviour is the canonical reference
+for all providers it recognizes. After each behaviour slice has been extracted and
+verified, Python should delegate that shared semantic/rendering behaviour to the
+JavaScript core rather than maintain a second implementation.
+
+Python continues to own:
 
 - CLI
 - file/source discovery
@@ -191,9 +224,8 @@ Owns:
 - grep/filter/session commands
 - output routing
 
-It should not maintain an independent ChatGPT renderer once migration is complete.
-Python should invoke the shared JavaScript implementation, initially through a
-persistent Node.js worker or equivalent single-process bridge.
+The eventual bridge should use a persistent Node.js worker or equivalent
+single-process mechanism rather than spawning one JavaScript process per record.
 
 ### AgentPanelSpeaker
 
@@ -227,7 +259,8 @@ them separate.
 5. **One canonical renderer per output format.** Consumers must not maintain
    subtly different Markdown implementations.
 6. **No browser/application APIs in the core.** Platform-specific acquisition,
-   storage, UI, and playback stay in consumers.
+   storage, UI, playback, and credential-bound resource resolution stay in
+   consumers.
 7. **Unknown data is explicit.** Unsupported/unknown records remain representable
    and diagnosable rather than silently disappearing.
 8. **Stable provenance.** Canonical events/blocks should retain enough source
@@ -239,13 +272,18 @@ them separate.
     same speech/display/highlight/turn-reading interpretation, implement that
     semantic projection once in the core and keep platform-specific playback/UI in
     the consumer.
+11. **AI-transcript.py is the migration behaviour authority across supported
+    providers.** Deviations require separately verified evidence; the final shared
+    implementation remains JavaScript.
 
 ## Migration principle
 
 Do not rewrite functioning systems around an unproven new abstraction in one
-step. Extract one vertical slice at a time, make both old consumers use it, verify
-parity, then continue.
+step. Extract one vertical slice at a time, verify it against the canonical
+`AI-transcript.py` behaviour and relevant consumer evidence, then continue.
 
-The initial ChatGPT implementation should be mechanically extracted from proven
-behaviour wherever possible. Architectural cleanup must not be bundled with
-unrelated behaviour changes.
+ChatGPT is the first provider being extracted, but its adapter must not define the
+core in a way that prevents Claude, Codex, or future providers from using the same
+canonical event/block/turn and renderer architecture.
+
+Architectural cleanup must not be bundled with unrelated behaviour changes.
