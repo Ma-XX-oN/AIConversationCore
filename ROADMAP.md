@@ -14,6 +14,23 @@ The source-level comparison of the three existing implementations is recorded in
 - current `AI-General-Memory/master/scripts/AI-transcript.py`; and
 - user-supplied `AgentPanelSpeaker-v212.zip`.
 
+**Migration authority:** current `AI-General-Memory/scripts/AI-transcript.py` is
+the canonical behavioural/rendering reference for every provider it recognizes,
+currently ChatGPT, Claude, and Codex. `AIConversationCore` is not intended to copy
+the Python architecture; it is intended to decompose that proven behaviour into
+provider adapters, one canonical event/block/turn model, and shared renderers and
+projections.
+
+ChatGPT is only the first extraction target. The core must remain provider-agnostic
+so Claude, Codex, and future providers can plug into the same canonical model and
+renderers rather than acquiring parallel output implementations.
+
+ChatGPT image handling is the currently identified area that still requires
+separate behavioural verification. `AI-transcript.py` supplies source-position and
+missing/unavailable semantics, while `DownloadConversation` can provide additional
+API/resource resolution in its authenticated browser environment. This is an
+API/resource capability distinction, not a DOM transcript-rendering fallback.
+
 **Phase 2 is complete.** The repository now contains a shared fixture corpus for
 ChatGPT, Claude, and Codex; machine-readable known differences; production
 baselines for all three consumers; source provenance for those baselines; and
@@ -51,16 +68,18 @@ while extraction/speech omit it. The Codex orphan-patch fixture likewise differs
 from the current AI-transcript rendering. These are baseline facts to preserve and
 classify during migration, not reasons to rewrite unrelated association logic.
 
-**Phase 3 is now unblocked.** It should begin with mechanical ChatGPT adapter
-extraction against the Phase 2 fixtures and golden outputs. No speculative change
-to chronological ordering or User/Assistant association is justified by the Phase
-2 evidence.
+**Phase 3 is in progress.** ChatGPT is being extracted first, mechanically, from
+the canonical `AI-transcript.py` behaviour. No speculative change to chronological
+ordering or User/Assistant association is justified by the Phase 2 evidence.
 
 ## Working principles
 
 - Work is staged; do not perform a wholesale rewrite.
 - Preserve previously-correct behaviour unless there is concrete evidence that it
   is wrong.
+- Treat current `AI-transcript.py` behaviour as the migration authority for every
+  provider it recognizes unless a separately tracked, evidence-backed correction
+  supersedes a specific behaviour.
 - Unrelated defects or improvements are separate issues and separate commits.
 - Testing is mandatory for each migration step. See `TESTING.md`.
 - Architecture and invariants live in `DESIGN.md`.
@@ -126,20 +145,30 @@ test pass.
 
 ## Phase 3 — ChatGPT adapter
 
-Mechanically extract proven ChatGPT record interpretation into the shared
-JavaScript core where practical.
+Mechanically extract proven ChatGPT record interpretation from the canonical
+`AI-transcript.py` behaviour into the shared JavaScript core.
 
 Do not combine extraction with speculative changes to ordering, grouping, or
 association logic. In particular, do not replace working chronological behaviour
 without real evidence that it fails.
 
-Every migration slice must run against the Phase 2 ChatGPT fixtures and preserve
-baseline behaviour unless a separately tracked, evidence-backed defect is being
-fixed.
+Every migration slice must preserve the applicable `AI-transcript.py` behaviour
+and run against the relevant fixtures/baselines. Consumer differences are used as
+additional evidence; they do not silently redefine the canonical behaviour.
+
+ChatGPT images remain a separate verification item because the authenticated
+browser environment may resolve API image resources that a standalone Python
+process cannot. The canonical model must preserve enough image source identity,
+position, availability state, and resolved resource data for either environment to
+supply what it knows without changing shared rendering semantics.
 
 ## Phase 4 — Canonical Markdown renderer
 
-Create one shared Markdown renderer covering at least:
+Create one shared Markdown renderer whose migration target is the current
+`AI-transcript.py` output contract across all providers it recognizes, except for
+separately verified corrections/capability extensions.
+
+It must cover at least:
 
 - escaping
 - code-fence language mapping
@@ -151,16 +180,17 @@ Create one shared Markdown renderer covering at least:
 - provider file-pointer handling such as `sediment://`
 - canonical whitespace/newline rules
 
-`DownloadConversation` and `AI-transcript.py` must converge on the same canonical
-transcript body except for explicitly documented consumer-specific outer metadata.
+`DownloadConversation`, `AI-transcript.py`, and later consumers must converge on
+that shared canonical transcript body except for explicitly documented
+consumer-specific outer metadata or host-only resource-resolution inputs.
 
 ## Phase 5 — DownloadConversation integration
 
 Keep the current Tampermonkey implementation during the migration.
 
 Move provider interpretation and shared rendering/projection semantics into
-`AIConversationCore` while leaving browser acquisition, recovery, storage, UI,
-and other platform concerns in `DownloadConversation`.
+`AIConversationCore` while leaving browser acquisition, authenticated API/resource
+resolution, storage, UI, and other platform concerns in `DownloadConversation`.
 
 DownloadConversation is expected to gain individual-turn reading/navigation
 functionality. Core design and APIs must therefore support interactive turn access,
@@ -172,7 +202,9 @@ that is intentionally not part of the initial core migration.
 
 ## Phase 6 — AI-transcript.py integration
 
-Remove the independent ChatGPT rendering implementation once parity is proven.
+As each canonical behaviour slice is proven in JavaScript, remove the corresponding
+independent Python normalization/rendering implementation. This applies across all
+providers recognized by `AI-transcript.py`, not only ChatGPT.
 
 Python should invoke the canonical JavaScript implementation, initially through a
 persistent Node.js worker or another single-process bridge that does not spawn one
@@ -219,10 +251,14 @@ core.
 
 ## Phase 9 — Additional providers/models
 
-Add provider adapters independently after the ChatGPT path is stable and tested.
+After the existing `AI-transcript.py` providers have been migrated and stabilized,
+add new providers by implementing independent adapters into the same canonical
+model and renderers.
 
 Normalize equivalent concepts while preserving real differences. Do not flatten
-provider-specific semantics merely to make the schema appear uniform.
+provider-specific semantics merely to make the schema appear uniform, and do not
+create a provider-specific renderer when a canonical rendering semantic already
+exists.
 
 ## Current project-management approach
 
