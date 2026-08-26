@@ -35,11 +35,10 @@ tests, and migration decision rather than being folded into unrelated extraction
 Two ChatGPT-specific exceptions are currently established:
 
 1. **Citations.** Canonical ChatGPT citation rendering is taken from verified
-   `DownloadConversation` behaviour. Existing browser/screenshot verification
-   showed that the Python renderer's citation presentation was not correct enough,
-   while `DownloadConversation` matched the intended transcript presentation
-   better. This exception applies only to ChatGPT citation semantics/rendering; it
-   does not make `DownloadConversation` authoritative for unrelated behaviour.
+   `DownloadConversation` behaviour. Existing browser/screenshot evidence showed
+   that the Python renderer's citation presentation was not correct enough. This
+   exception applies only to ChatGPT citation semantics/rendering; it does not make
+   `DownloadConversation` authoritative for unrelated behaviour.
 2. **Images/resource resolution.** The Python renderer's source-position and
    missing/unavailable semantics remain useful behavioural evidence, but actual
    image-resource resolution must be verified against `DownloadConversation`.
