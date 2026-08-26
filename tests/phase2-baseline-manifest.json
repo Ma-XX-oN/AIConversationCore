@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "phase": 2,
-  "status": "baseline-corpus-established-runners-pending",
+  "status": "complete",
   "fixtures": [
     {
       "path": "tests/fixtures/chatgpt/chatgpt-metadata-sandbox.jsonl",
@@ -41,17 +41,107 @@
   ],
   "baselines": [
     {
+      "path": "tests/baseline/agentpanelspeaker-v212/baseline-metadata.json",
+      "producer": "AgentPanelSpeaker v212 C# production paths",
+      "execution": "executed on user Windows/.NET environment",
+      "notes": "Metadata pins the production paths used by the returned display, extraction, and speech-history baselines."
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-adaptive-fence.display.md",
+      "producer": "AgentPanelSpeaker-v212/TranscriptMarkdownFormatter.Format",
+      "fixture": "tests/fixtures/claude/adaptive-fence.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-adaptive-fence.extraction.json",
+      "producer": "AgentPanelSpeaker-v212/JsonlRecordExtractor.Extract",
+      "fixture": "tests/fixtures/claude/adaptive-fence.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-adaptive-fence.speech-history.json",
+      "producer": "AgentPanelSpeaker-v212/JsonlSessionMonitor.LoadHistoryPreview",
+      "fixture": "tests/fixtures/claude/adaptive-fence.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-subagent.display.md",
+      "producer": "AgentPanelSpeaker-v212/TranscriptMarkdownFormatter.Format",
+      "fixture": "tests/fixtures/claude/claude-subagent.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-subagent.extraction.json",
+      "producer": "AgentPanelSpeaker-v212/JsonlRecordExtractor.Extract",
+      "fixture": "tests/fixtures/claude/claude-subagent.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-subagent.speech-history.json",
+      "producer": "AgentPanelSpeaker-v212/JsonlSessionMonitor.LoadHistoryPreview",
+      "fixture": "tests/fixtures/claude/claude-subagent.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/codex-orphan-patch.display.md",
+      "producer": "AgentPanelSpeaker-v212/TranscriptMarkdownFormatter.Format",
+      "fixture": "tests/fixtures/codex/codex-orphan-patch.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/codex-orphan-patch.extraction.json",
+      "producer": "AgentPanelSpeaker-v212/JsonlRecordExtractor.Extract",
+      "fixture": "tests/fixtures/codex/codex-orphan-patch.jsonl"
+    },
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/codex-orphan-patch.speech-history.json",
+      "producer": "AgentPanelSpeaker-v212/JsonlSessionMonitor.LoadHistoryPreview",
+      "fixture": "tests/fixtures/codex/codex-orphan-patch.jsonl"
+    },
+    {
       "path": "tests/baseline/agentpanelspeaker-v212/claude-subagent.reference-formatter.md",
       "producer": "AgentPanelSpeaker-v212/tools/AI-transcript.py",
       "fixture": "tests/fixtures/claude/claude-subagent.jsonl",
-      "execution": "executed in Phase 2 environment",
-      "notes": "Reference formatter baseline only; C# display/speech production paths require issue #2."
+      "notes": "Older bundled reference formatter; retained as a drift baseline, not a production C# projection."
+    },
+    {
+      "path": "tests/baseline/ai-transcript-current/metadata.json",
+      "producer": "AI-General-Memory/master/scripts/AI-transcript.py",
+      "execution": "GitHub Actions in source repository",
+      "notes": "Pins source commit abcc2f33783e3690b9e1335161c73e7dabaed757 and script blob 69115508946fad15e03fa3f9074645ec0e9131db; all four recorded commands exited 0."
+    },
+    {
+      "path": "tests/baseline/ai-transcript-current/chatgpt-metadata-sandbox.md",
+      "producer": "current AI-General-Memory/scripts/AI-transcript.py",
+      "fixture": "tests/fixtures/chatgpt/chatgpt-metadata-sandbox.jsonl"
+    },
+    {
+      "path": "tests/baseline/ai-transcript-current/chatgpt-chronological-duplicate-identity.md",
+      "producer": "current AI-General-Memory/scripts/AI-transcript.py",
+      "fixture": "tests/fixtures/chatgpt/chatgpt-chronological-duplicate-identity.jsonl"
+    },
+    {
+      "path": "tests/baseline/ai-transcript-current/codex-orphan-patch.md",
+      "producer": "current AI-General-Memory/scripts/AI-transcript.py",
+      "fixture": "tests/fixtures/codex/codex-orphan-patch.jsonl"
+    },
+    {
+      "path": "tests/baseline/ai-transcript-current/claude-adaptive-fence.md",
+      "producer": "current AI-General-Memory/scripts/AI-transcript.py",
+      "fixture": "tests/fixtures/claude/adaptive-fence.jsonl"
+    },
+    {
+      "path": "tests/baseline/downloadconversation/browser-phase2-baseline-results.json",
+      "producer": "DownloadConversation browser production renderer",
+      "execution": "user browser/Tampermonkey context",
+      "notes": "Observed output is preserved with live conversation identifiers scrubbed."
+    },
+    {
+      "path": "tests/baseline/downloadconversation/browser-phase2-baseline-provenance.json",
+      "producer": "Phase 2 provenance reconstruction",
+      "notes": "Pins the browser baseline to DownloadConversation v0.6.132, commit 1b6ff84474cbf120e1b6dd9e1b396c22a63641d0, userscript blob ac14c3cc3ea6b30e6563609a7bf2641a193a7d6f."
     }
   ],
   "required_runners": [
-    {"issue": 2, "consumer": "AgentPanelSpeaker v212 C# production parser/projections", "status": "pending"},
-    {"issue": 3, "consumer": "current AI-General-Memory/scripts/AI-transcript.py", "status": "pending"},
-    {"issue": 4, "consumer": "DownloadConversation browser production renderer", "status": "pending"}
+    {"issue": 2, "consumer": "AgentPanelSpeaker v212 C# production parser/projections", "status": "complete"},
+    {"issue": 3, "consumer": "current AI-General-Memory/scripts/AI-transcript.py", "status": "complete"},
+    {"issue": 4, "consumer": "DownloadConversation browser production renderer", "status": "complete"}
   ],
-  "known_differences_file": "tests/known-differences.json"
+  "known_differences_file": "tests/known-differences.json",
+  "non_blocking_followups": [
+    {"issue": 8, "description": "Fix the observed DownloadConversation sandbox Markdown rewrite defect for filenames containing parentheses."}
+  ]
 }
