@@ -8,6 +8,11 @@ function eventVisibility(record) {
   return record?.metadata?.is_visually_hidden_from_conversation ? 'hidden' : 'visible';
 }
 
+function eventKind(record) {
+  if (record?.author?.role === 'assistant' && record?.channel === 'commentary') return 'commentary';
+  return 'message';
+}
+
 export function adaptChatGPTRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('ChatGPT records must be an array.');
 
@@ -35,7 +40,7 @@ export function adaptChatGPTRecords(records) {
       provider: 'chatgpt',
       source_record_id: sourceRecordId,
       source_index: sourceIndex,
-      kind: 'message',
+      kind: eventKind(record),
       role,
       channel,
       visibility: eventVisibility(record),
