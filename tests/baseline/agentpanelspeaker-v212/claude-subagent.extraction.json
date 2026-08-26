@@ -1,0 +1,87 @@
+{
+  "fixture": "claude-subagent.jsonl",
+  "source": "Claude",
+  "records": [
+    {
+      "record_number": 1,
+      "RecordType": "user",
+      "PayloadType": "",
+      "Decision": "accepted 1 claude conversational block(s)",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "claude.user_text",
+          "category": "User",
+          "Text": "Delegate this.",
+          "Timestamp": "2026-01-01T00:00:01.000Z",
+          "StartsUserTurn": true
+        }
+      ],
+      "background_work_events": []
+    },
+    {
+      "record_number": 2,
+      "RecordType": "assistant",
+      "PayloadType": "",
+      "Decision": "accepted 1 claude conversational block(s)",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "claude.subagent.started",
+          "category": "SubagentAssistant",
+          "Text": "Starting subagent: Review files.",
+          "Timestamp": "2026-01-01T00:00:02.000Z",
+          "StartsUserTurn": false
+        }
+      ],
+      "background_work_events": [
+        {
+          "Id": "toolu_123",
+          "Description": "Review files",
+          "StartUtc": "2026-01-01T00:00:02+00:00",
+          "EndUtc": null
+        }
+      ]
+    },
+    {
+      "record_number": 3,
+      "RecordType": "user",
+      "PayloadType": "",
+      "Decision": "claude record contained no conversational text",
+      "CompletionTimestamp": null,
+      "nodes": [],
+      "background_work_events": []
+    },
+    {
+      "record_number": 4,
+      "RecordType": "queue-operation",
+      "PayloadType": "",
+      "Decision": "accepted claude completed subagent notification",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "claude.subagent.finished",
+          "category": "Assistant",
+          "Text": "Subagent finished: Inspect child output. Took 1 second to complete.",
+          "Timestamp": "2026-01-01T00:00:04.000Z",
+          "StartsUserTurn": false
+        },
+        {
+          "Kind": "claude.subagent.result",
+          "category": "SubagentAssistant",
+          "Text": "Child review complete.",
+          "Timestamp": "2026-01-01T00:00:04.000Z",
+          "StartsUserTurn": false
+        }
+      ],
+      "background_work_events": [
+        {
+          "Id": "child-opaque-9@2026-01-01T00:00:04.0000000\u002B00:00",
+          "Description": "Inspect child output",
+          "StartUtc": "2026-01-01T00:00:03.25+00:00",
+          "EndUtc": "2026-01-01T00:00:04+00:00"
+        }
+      ]
+    }
+  ]
+}
