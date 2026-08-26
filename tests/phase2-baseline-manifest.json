@@ -30,6 +30,13 @@
       "provenance": "AgentPanelSpeaker-v212/tools/fixtures/claude-subagent.jsonl",
       "upstream_sha": null,
       "covers": ["top-level Agent tool", "tool result metadata", "child task notification", "subagent identity/lifecycle"]
+    },
+    {
+      "path": "tests/fixtures/claude/adaptive-fence.jsonl",
+      "provider": "claude",
+      "provenance": "AI-General-Memory/scripts/fixtures/adaptive-fence.jsonl",
+      "upstream_sha": "ee0515ed5103136530a60f3f77f2b1f36a0d9629",
+      "covers": ["Bash tool call/result", "adaptive Markdown fence", "assistant final text"]
     }
   ],
   "baselines": [
