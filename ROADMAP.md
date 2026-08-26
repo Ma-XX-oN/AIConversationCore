@@ -15,21 +15,30 @@ The source-level comparison of the three existing implementations is recorded in
 - user-supplied `AgentPanelSpeaker-v212.zip`.
 
 **Migration authority:** current `AI-General-Memory/scripts/AI-transcript.py` is
-the canonical behavioural/rendering reference for every provider it recognizes,
-currently ChatGPT, Claude, and Codex. `AIConversationCore` is not intended to copy
-the Python architecture; it is intended to decompose that proven behaviour into
-provider adapters, one canonical event/block/turn model, and shared renderers and
-projections.
+the default canonical behavioural/rendering reference for every provider it
+recognizes, currently ChatGPT, Claude, and Codex. `AIConversationCore` is not
+intended to copy the Python architecture; it is intended to decompose that proven
+behaviour into provider adapters, one canonical event/block/turn model, and shared
+renderers and projections.
+
+ChatGPT has two established exceptions:
+
+- **Citations:** verified `DownloadConversation` behaviour is canonical for ChatGPT
+  citation rendering because browser/screenshot evidence showed the Python
+  citation presentation was not correct enough.
+- **Images/resource resolution:** preserve the verified source-position and
+  missing/unavailable semantics while using `DownloadConversation` API/resource
+  evidence where its authenticated browser context provides capabilities the
+  standalone Python process cannot.
+
+For any other difference between implementations, do not choose automatically.
+Present the exact alternatives and evidence to the user and record the user's
+choice before incorporating the behaviour into a canonical golden or migration
+slice.
 
 ChatGPT is only the first extraction target. The core must remain provider-agnostic
 so Claude, Codex, and future providers can plug into the same canonical model and
 renderers rather than acquiring parallel output implementations.
-
-ChatGPT image handling is the currently identified area that still requires
-separate behavioural verification. `AI-transcript.py` supplies source-position and
-missing/unavailable semantics, while `DownloadConversation` can provide additional
-API/resource resolution in its authenticated browser environment. This is an
-API/resource capability distinction, not a DOM transcript-rendering fallback.
 
 **Phase 2 is complete.** The repository now contains a shared fixture corpus for
 ChatGPT, Claude, and Codex; machine-readable known differences; production
@@ -69,17 +78,25 @@ from the current AI-transcript rendering. These are baseline facts to preserve a
 classify during migration, not reasons to rewrite unrelated association logic.
 
 **Phase 3 is in progress.** ChatGPT is being extracted first, mechanically, from
-the canonical `AI-transcript.py` behaviour. No speculative change to chronological
+the applicable canonical behaviour sources. No speculative change to chronological
 ordering or User/Assistant association is justified by the Phase 2 evidence.
+
+Before further reasoning/tool/citation/image adapter extraction, issue #13 must
+establish one canonical rich ChatGPT golden from `chatgpt-direct.jsonl`. That
+golden must be based on a complete Python-vs-DownloadConversation comparison. Any
+unresolved difference not already explicitly decided by the user must be presented
+to the user before a canonical choice is made.
 
 ## Working principles
 
 - Work is staged; do not perform a wholesale rewrite.
 - Preserve previously-correct behaviour unless there is concrete evidence that it
   is wrong.
-- Treat current `AI-transcript.py` behaviour as the migration authority for every
-  provider it recognizes unless a separately tracked, evidence-backed correction
-  supersedes a specific behaviour.
+- Treat current `AI-transcript.py` behaviour as the default migration authority for
+  every provider it recognizes, subject to explicit evidence-backed exceptions.
+- ChatGPT citations use verified DownloadConversation behaviour as canonical.
+- New cross-implementation differences require explicit user choice before they
+  alter canonical behaviour.
 - Unrelated defects or improvements are separate issues and separate commits.
 - Testing is mandatory for each migration step. See `TESTING.md`.
 - Architecture and invariants live in `DESIGN.md`.
@@ -145,28 +162,30 @@ test pass.
 
 ## Phase 3 — ChatGPT adapter
 
-Mechanically extract proven ChatGPT record interpretation from the canonical
-`AI-transcript.py` behaviour into the shared JavaScript core.
+Mechanically extract proven ChatGPT record interpretation from the applicable
+canonical behaviour sources into the shared JavaScript core.
 
 Do not combine extraction with speculative changes to ordering, grouping, or
 association logic. In particular, do not replace working chronological behaviour
 without real evidence that it fails.
 
-Every migration slice must preserve the applicable `AI-transcript.py` behaviour
-and run against the relevant fixtures/baselines. Consumer differences are used as
-additional evidence; they do not silently redefine the canonical behaviour.
+Every migration slice must preserve the applicable decided behaviour and run
+against the relevant fixtures/baselines. Consumer differences are evidence; they
+do not silently redefine canonical behaviour.
 
-ChatGPT images remain a separate verification item because the authenticated
-browser environment may resolve API image resources that a standalone Python
-process cannot. The canonical model must preserve enough image source identity,
-position, availability state, and resolved resource data for either environment to
-supply what it knows without changing shared rendering semantics.
+ChatGPT citations use verified `DownloadConversation` behaviour. ChatGPT images
+remain a separate verification item because the authenticated browser environment
+may resolve API image resources that a standalone Python process cannot. The
+canonical model must preserve enough image source identity, position, availability
+state, and resolved resource data for either environment to supply what it knows
+without changing shared rendering semantics.
 
 ## Phase 4 — Canonical Markdown renderer
 
-Create one shared Markdown renderer whose migration target is the current
-`AI-transcript.py` output contract across all providers it recognizes, except for
-separately verified corrections/capability extensions.
+Create one shared Markdown renderer whose migration target is the decided canonical
+behaviour across all supported providers: current `AI-transcript.py` by default,
+plus explicitly recorded evidence-backed exceptions such as ChatGPT citations and
+image/resource semantics.
 
 It must cover at least:
 
