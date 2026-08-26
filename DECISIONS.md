@@ -145,3 +145,35 @@ decisions/reversals in this file.
 GitHub Projects management. Project state still needs to survive across
 conversations, so it must be baked into repository documentation rather than left
 in chat history.
+
+## D011 — AI-transcript.py is the canonical multi-provider migration behaviour source
+
+**Status:** Accepted
+
+**Decision:** During migration, the current
+`AI-General-Memory/scripts/AI-transcript.py` behaviour is the canonical
+behavioural/rendering reference for every provider it recognizes, currently
+ChatGPT, Claude, and Codex.
+
+This does not supersede D001. The final shared implementation remains JavaScript.
+The Python script is the behavioural source to extract from, not the architecture
+to copy wholesale.
+
+**Reason:** `AI-transcript.py` already contains the broadest unified interpretation
+and rendering behaviour across the recognized providers. Treating separate
+consumer renderers as equal authorities would leave the migration without a stable
+target and would preserve existing drift instead of eliminating it.
+
+Provider-specific interpretation must therefore be decomposed behind independent
+adapters into one canonical event/block/turn model and shared renderers. Future
+providers should enter through the same adapter boundary rather than gaining their
+own renderer.
+
+A specific `AI-transcript.py` behaviour may be superseded only when separately
+tracked evidence proves a defect or a host has a verified capability the standalone
+Python process cannot supply. ChatGPT images are the current known area requiring
+that additional verification. `AI-transcript.py` provides useful source-position
+and missing/unavailable semantics; `DownloadConversation` may additionally resolve
+image resources using its authenticated API/browser resource context. That is an
+API/resource-resolution input to canonical image semantics, not DOM transcript
+rendering or DOM content extraction.
