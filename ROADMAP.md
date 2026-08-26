@@ -14,8 +14,27 @@ completed and recorded in `EXISTING_IMPLEMENTATIONS.md` using these baselines:
 - current `AI-General-Memory/master/scripts/AI-transcript.py`; and
 - user-supplied `AgentPanelSpeaker-v212.zip`.
 
-That comparison is a required input to the canonical model. It identified existing
-semantic duplication and drift risks, especially:
+Phase 2 baseline work is now tracked by issue #1. The repository contains a shared
+fixture corpus for ChatGPT, Claude, and Codex, a machine-readable known-difference
+manifest, an executed AgentPanelSpeaker-v212 reference-formatter baseline, and
+`tests/validate-phase2-baseline.py` to enforce fixture/baseline integrity.
+
+The Phase 2 completion gate intentionally remains **INCOMPLETE** until the actual
+production implementations can be executed against the shared fixtures:
+
+- issue #2 — AgentPanelSpeaker v212 C# `JsonlRecordExtractor` /
+  `TranscriptMarkdownFormatter` display/speech projections;
+- issue #3 — current `AI-General-Memory/scripts/AI-transcript.py`; and
+- issue #4 — DownloadConversation's browser production renderer.
+
+The current execution environment has no .NET runtime and cannot clone GitHub
+repositories directly, while DownloadConversation's production renderer requires a
+browser/ChatGPT context for some behaviours. These limitations are documented
+rather than hidden by substituting reimplementations. Phase 3 must not begin until
+the Phase 2 validator reports the production baseline gate complete.
+
+The comparison identified existing semantic duplication and drift risks,
+especially:
 
 - independent ChatGPT rendering/interpretation in `DownloadConversation` and
   `AI-transcript.py`;
@@ -24,8 +43,8 @@ semantic duplication and drift risks, especially:
 - AgentPanelSpeaker's bundled older `tools/AI-transcript.py` reference copy.
 
 No shared-core implementation should begin by blindly moving code. The next work
-must use the comparison to define the canonical model and strengthen regression
-fixtures/golden outputs before existing provider logic is replaced.
+must finish the executable Phase 2 baselines, then use those baselines to define
+and test the canonical model before existing provider logic is replaced.
 
 ## Working principles
 
@@ -76,7 +95,17 @@ Before extraction, inventory the current behaviour of:
 The initial codebase inventory/comparison is recorded in
 `EXISTING_IMPLEMENTATIONS.md`. Phase 2 is **not complete** until representative
 regression fixtures and golden outputs exist for the behaviours that will be
-migrated.
+migrated and all required production baseline runners have passed.
+
+Current Phase 2 artifacts:
+
+- `tests/phase2-baseline-manifest.json` — fixture/baseline inventory and runner
+  gate;
+- `tests/known-differences.json` — explicit cross-implementation differences and
+  migration rules;
+- `tests/fixtures/` — raw provider fixtures with provenance;
+- `tests/baseline/` — captured current-behaviour baselines; and
+- `tests/validate-phase2-baseline.py` — integrity/completion validator.
 
 Create representative real-world fixtures and golden outputs that capture
 previously-correct behaviour. Include known provider/model variations and problem
