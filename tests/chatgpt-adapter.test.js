@@ -5,6 +5,7 @@ import test from 'node:test';
 import { adaptChatGPTRecords } from '../src/adapters/chatgpt.js';
 
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-chronological-duplicate-identity.jsonl', import.meta.url);
+const baselineUrl = new URL('./baseline/ai-transcript-current/chatgpt-chronological-duplicate-identity.md', import.meta.url);
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
@@ -30,6 +31,21 @@ test('preserves source chronology despite duplicate exchange identities', async 
   assert.deepEqual(events.map(event => event.relationships.working_turn_id), [
     'same-working', 'same-working', 'same-working', 'same-working'
   ]);
+});
+
+test('matches the Phase 2 golden transcript chronology', async () => {
+  const records = await loadJsonl(fixtureUrl);
+  const events = adaptChatGPTRecords(records);
+  const baseline = await readFile(baselineUrl, 'utf8');
+
+  const expectedTexts = events.map(event => event.blocks[0]?.text);
+  let previousIndex = -1;
+  for (const text of expectedTexts) {
+    const index = baseline.indexOf(text);
+    assert.notEqual(index, -1, `Phase 2 baseline is missing ${JSON.stringify(text)}.`);
+    assert.ok(index > previousIndex, `Phase 2 baseline order differs at ${JSON.stringify(text)}.`);
+    previousIndex = index;
+  }
 });
 
 test('maps ordinary visible User and final Assistant records to canonical message events', async () => {
