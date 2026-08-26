@@ -1,0 +1,103 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-26T21:56:11.609Z",
+  "page": "<chatgpt-conversation-page>",
+  "live_conversation_id": "<live-conversation-id>",
+  "production_version": "phase2-static",
+  "execution_method": "static exact production source with startup side effects replaced by Phase 2 runner; no eval/Function",
+  "fixtures": {
+    "chronological_duplicate_identity": {
+      "record_order": [
+        {
+          "ordinal": 0,
+          "message_id": "u1",
+          "role": "user"
+        },
+        {
+          "ordinal": 1,
+          "message_id": "a1",
+          "role": "assistant"
+        },
+        {
+          "ordinal": 2,
+          "message_id": "u2",
+          "role": "user"
+        },
+        {
+          "ordinal": 3,
+          "message_id": "a2",
+          "role": "assistant"
+        }
+      ],
+      "uap_anchors": [
+        {
+          "ordinal": 0,
+          "user_message_id": "u1",
+          "user_record_ordinal": 0,
+          "turn_exchange_id": "same-exchange",
+          "working_turn_id": "same-working"
+        },
+        {
+          "ordinal": 1,
+          "user_message_id": "u2",
+          "user_record_ordinal": 2,
+          "turn_exchange_id": "same-exchange",
+          "working_turn_id": "same-working"
+        }
+      ],
+      "rendered_markdown": "## User <!-- turn_id=u1 -->\n\n> First question\n\n## ChatGPT <!-- turn_id=a1 -->\n\n> First answer\n\n## User <!-- turn_id=u2 -->\n\n> Second question\n\n## ChatGPT <!-- turn_id=a2 -->\n\n> Second answer\n",
+      "jump_resolution": [
+        {
+          "identifier": "0",
+          "result": {
+            "uap_index": 0,
+            "role": "user",
+            "message_id": "u1"
+          }
+        },
+        {
+          "identifier": "1",
+          "result": {
+            "uap_index": 1,
+            "role": "user",
+            "message_id": "u2"
+          }
+        },
+        {
+          "identifier": "-1",
+          "result": {
+            "uap_index": 1,
+            "role": "user",
+            "message_id": "u2"
+          }
+        },
+        {
+          "identifier": "u2",
+          "result": {
+            "uap_index": 1,
+            "role": "user",
+            "message_id": "u2"
+          }
+        },
+        {
+          "identifier": "a2",
+          "result": {
+            "uap_index": 1,
+            "role": "assistant",
+            "message_id": "a2"
+          }
+        }
+      ]
+    },
+    "sandbox_parentheses": {
+      "source_link": "[Download fixture](sandbox:/mnt/data/work/fixture(phase2).txt)",
+      "rewritten_link": "[Download fixture](https://chatgpt.com/backend-api/conversation/<live-conversation-id>/interpreter/download?message_id=fixture-assistant-1&sandbox_path=%2Fmnt%2Fdata%2Fwork%2Ffixture(phase2&download_intent=true).txt)",
+      "direct_url": "https://chatgpt.com/backend-api/conversation/<live-conversation-id>/interpreter/download?message_id=fixture-assistant-1&sandbox_path=%2Fmnt%2Fdata%2Fwork%2Ffixture(phase2).txt&download_intent=true",
+      "rendered_markdown": "## User <!-- turn_id=fixture-user-1 -->\n\n> Please provide the generated file.\n\n## ChatGPT <!-- turn_id=fixture-assistant-1 -->\n\n> [Download fixture](https://chatgpt.com/backend-api/conversation/<live-conversation-id>/interpreter/download?message_id=fixture-assistant-1&sandbox_path=%2Fmnt%2Fdata%2Fwork%2Ffixture(phase2&download_intent=true).txt)\n",
+      "jsonl": "{\"record_type\":\"chatgpt_conversation_metadata\",\"schema_version\":1,\"conversation_id\":\"<live-conversation-id>\"}\n{\"id\":\"fixture-user-1\",\"author\":{\"role\":\"user\",\"name\":null,\"metadata\":{}},\"create_time\":null,\"update_time\":null,\"content\":{\"content_type\":\"text\",\"parts\":[\"Please provide the generated file.\"]},\"status\":\"finished_successfully\",\"end_turn\":null,\"weight\":1,\"metadata\":{\"is_visually_hidden_from_conversation\":false},\"recipient\":\"all\",\"channel\":null}\n{\"id\":\"fixture-assistant-1\",\"author\":{\"role\":\"assistant\",\"name\":null,\"metadata\":{}},\"create_time\":null,\"update_time\":null,\"content\":{\"content_type\":\"text\",\"parts\":[\"[Download fixture](sandbox:/mnt/data/work/fixture(phase2).txt)\"]},\"status\":\"finished_successfully\",\"end_turn\":true,\"weight\":1,\"metadata\":{\"is_visually_hidden_from_conversation\":false},\"recipient\":\"all\",\"channel\":\"final\"}\n"
+    },
+    "renderer_features": {
+      "rendered_markdown": "## User <!-- turn_id=u1 -->\n\n> Question\n\n## ChatGPT <!-- turn_id=a1 -->\n\n<details>\n<summary>Thoughts</summary>\n\n<details>\n<summary>tether_browsing_display output</summary>\n\n```\nWaiting for sources.\n\nBrowser is searching.\n```\n\n</details>\n\n</details>\n\n> File \\ue200filecite\\ue202turn7file2\\ue202L1-L2\\ue201\\n\\nWeb **(cite: <a href=\"https://example.com/web\" title=\"Example source\" style=\"display:inline-block;white-space:nowrap;\"><img alt=\"\" src=\"https://www.google.com/s2/favicons?domain=https://example.com&amp;sz=32\" width=\"15\" height=\"15\" title=\"Example source\" style=\"width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;\">Example</a>)**\\n\\nMemory \\ue200memcite\\ue201\n"
+    }
+  }
+}
