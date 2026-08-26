@@ -19,9 +19,9 @@ on individual turns and content ranges.
 
 During migration, the current `AI-General-Memory/scripts/AI-transcript.py`
 implementation is the canonical behavioural/rendering reference for every provider
-it recognizes, currently ChatGPT, Claude, and Codex. This defines the behaviour to
-extract and preserve; it does not make the Python implementation, CLI structure,
-or provider-specific storage code the target architecture.
+it recognizes, currently ChatGPT, Claude, and Codex. This defines the default
+behaviour to extract and preserve; it does not make the Python implementation, CLI
+structure, or provider-specific storage code the target architecture.
 
 Provider behaviour must be decomposed into provider adapters, canonical events and
 blocks, derived turns/relationships, and shared renderers/projections. Adding a new
@@ -32,12 +32,25 @@ A separately verified defect or capability gap may supersede the current Python
 behaviour for a specific semantic. Such changes require their own evidence, issue,
 tests, and migration decision rather than being folded into unrelated extraction.
 
-ChatGPT image handling is currently the known area requiring that separate
-verification. The Python renderer's source-position and missing/unavailable
-semantics are useful behavioural evidence, but actual image-resource resolution
-must be verified against `DownloadConversation`. `DownloadConversation` remains an
-API-driven transcript renderer; its image capability must be treated as API/resource
-resolution, not as DOM transcript rendering or a DOM content fallback.
+Two ChatGPT-specific exceptions are currently established:
+
+1. **Citations.** Canonical ChatGPT citation rendering is taken from verified
+   `DownloadConversation` behaviour. Existing browser/screenshot verification
+   showed that the Python renderer's citation presentation was not correct enough,
+   while `DownloadConversation` matched the intended transcript presentation
+   better. This exception applies only to ChatGPT citation semantics/rendering; it
+   does not make `DownloadConversation` authoritative for unrelated behaviour.
+2. **Images/resource resolution.** The Python renderer's source-position and
+   missing/unavailable semantics remain useful behavioural evidence, but actual
+   image-resource resolution must be verified against `DownloadConversation`.
+   `DownloadConversation` remains an API-driven transcript renderer; its image
+   capability is API/resource resolution, not DOM transcript rendering or a DOM
+   content fallback.
+
+For any other difference between `AI-transcript.py` and another verified consumer,
+the project must not choose an implementation automatically. Present the competing
+behaviours and evidence to the user and record the user's decision before using
+that difference in a canonical golden or migration implementation.
 
 ## Architectural layers
 
@@ -197,7 +210,9 @@ Owns browser-specific acquisition and recorder behaviour:
 - browser-side playback/reading UI when implemented
 
 It should delegate provider interpretation and shared rendering/projection logic
-to `AIConversationCore`.
+to `AIConversationCore` once the relevant canonical behaviour has been extracted.
+Its verified ChatGPT citation behaviour and image/resource-resolution capability
+remain migration evidence as described above.
 
 `DownloadConversation` is expected to gain the ability to read/navigate individual
 turns in the near future, with functionality conceptually similar to parts of
@@ -211,10 +226,11 @@ extension can be built later without changing core semantics.
 
 ### AI-transcript.py
 
-During migration, current `AI-transcript.py` behaviour is the canonical reference
-for all providers it recognizes. After each behaviour slice has been extracted and
-verified, Python should delegate that shared semantic/rendering behaviour to the
-JavaScript core rather than maintain a second implementation.
+During migration, current `AI-transcript.py` behaviour is the default canonical
+reference for all providers it recognizes, subject to the explicitly documented,
+evidence-backed exceptions above. After each behaviour slice has been extracted
+and verified, Python should delegate that shared semantic/rendering behaviour to
+the JavaScript core rather than maintain a second implementation.
 
 Python continues to own:
 
@@ -272,15 +288,18 @@ them separate.
     same speech/display/highlight/turn-reading interpretation, implement that
     semantic projection once in the core and keep platform-specific playback/UI in
     the consumer.
-11. **AI-transcript.py is the migration behaviour authority across supported
-    providers.** Deviations require separately verified evidence; the final shared
-    implementation remains JavaScript.
+11. **AI-transcript.py is the default migration behaviour authority across
+    supported providers, with explicit evidence-backed exceptions.** Current
+    ChatGPT exceptions are citations and image/resource resolution. Any new
+    difference requires user review and an explicit recorded decision before it
+    can alter canonical behaviour. The final shared implementation remains
+    JavaScript.
 
 ## Migration principle
 
 Do not rewrite functioning systems around an unproven new abstraction in one
-step. Extract one vertical slice at a time, verify it against the canonical
-`AI-transcript.py` behaviour and relevant consumer evidence, then continue.
+step. Extract one vertical slice at a time, verify it against the applicable
+canonical behaviour source and relevant consumer evidence, then continue.
 
 ChatGPT is the first provider being extracted, but its adapter must not define the
 core in a way that prevents Claude, Codex, or future providers from using the same
