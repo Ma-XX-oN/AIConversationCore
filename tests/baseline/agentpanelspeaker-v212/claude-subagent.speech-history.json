@@ -1,0 +1,87 @@
+{
+  "fixture": "claude-subagent.jsonl",
+  "source": "Claude",
+  "start_mode": "LiveEnd",
+  "fragments": [
+    {
+      "NodeId": 1,
+      "category": "User",
+      "kind": "Prose",
+      "Text": "Delegate this.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:01+00:00",
+      "StartsUserTurn": true
+    },
+    {
+      "NodeId": 2,
+      "category": "SubagentAssistant",
+      "kind": "Prose",
+      "Text": "Starting subagent: Review files.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:02+00:00",
+      "StartsUserTurn": false
+    },
+    {
+      "NodeId": 3,
+      "category": "Assistant",
+      "kind": "Prose",
+      "Text": "Subagent finished: Inspect child output.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": false,
+      "NodeTimestampUtc": "2026-01-01T00:00:04+00:00",
+      "StartsUserTurn": false
+    },
+    {
+      "NodeId": 3,
+      "category": "Assistant",
+      "kind": "Prose",
+      "Text": "Took 1 second to complete.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:04+00:00",
+      "StartsUserTurn": false
+    },
+    {
+      "NodeId": 4,
+      "category": "SubagentAssistant",
+      "kind": "Prose",
+      "Text": "Child review complete.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:04+00:00",
+      "StartsUserTurn": false
+    }
+  ],
+  "completions": [],
+  "background_work_events": [
+    {
+      "Id": "toolu_123",
+      "Description": "Review files",
+      "StartUtc": "2026-01-01T00:00:02+00:00",
+      "EndUtc": null
+    },
+    {
+      "Id": "child-opaque-9@2026-01-01T00:00:04.0000000\u002B00:00",
+      "Description": "Inspect child output",
+      "StartUtc": "2026-01-01T00:00:03.25+00:00",
+      "EndUtc": "2026-01-01T00:00:04+00:00"
+    }
+  ]
+}
