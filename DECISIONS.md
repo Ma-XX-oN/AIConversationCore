@@ -181,9 +181,9 @@ Python process cannot supply.
 `AI-transcript.py` authority:
 
 1. ChatGPT citation rendering uses verified `DownloadConversation` behaviour as
-   canonical. Browser/screenshot evidence showed the Python citation presentation
-   was not correct enough, while DownloadConversation matched the intended
-   transcript presentation better.
+   canonical. Existing browser/screenshot evidence showed the Python citation
+   presentation was not correct enough, while DownloadConversation matched the
+   intended transcript presentation better.
 2. ChatGPT image semantics preserve verified source-position and
    missing/unavailable behaviour while allowing DownloadConversation's
    authenticated API/resource-resolution evidence to supply capabilities the
