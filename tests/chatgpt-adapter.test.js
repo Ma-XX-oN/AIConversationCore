@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { adaptChatGPTRecords } from '../src/adapters/chatgpt.js';
+import { deriveTurns } from '../src/derive/turns.js';
 
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-chronological-duplicate-identity.jsonl', import.meta.url);
 const baselineUrl = new URL('./baseline/ai-transcript-current/chatgpt-chronological-duplicate-identity.md', import.meta.url);
@@ -12,18 +13,12 @@ async function loadJsonl(url) {
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
 }
 
-test('preserves source chronology despite duplicate exchange identities', async () => {
+test('preserves canonical event order despite duplicate exchange identities', async () => {
   const records = await loadJsonl(fixtureUrl);
   const events = adaptChatGPTRecords(records);
 
   assert.deepEqual(events.map(event => event.source_record_id), ['u1', 'a1', 'u2', 'a2']);
   assert.deepEqual(events.map(event => event.source_index), [0, 1, 2, 3]);
-  assert.deepEqual(events.map(event => event.blocks[0]?.text), [
-    'First question',
-    'First answer',
-    'Second question',
-    'Second answer'
-  ]);
 
   assert.deepEqual(events.map(event => event.relationships.turn_exchange_id), [
     'same-exchange', 'same-exchange', 'same-exchange', 'same-exchange'
@@ -33,17 +28,28 @@ test('preserves source chronology despite duplicate exchange identities', async 
   ]);
 });
 
-test('matches the Phase 2 golden transcript chronology', async () => {
+test('derives four distinct turns without collapsing duplicate exchange identities', async () => {
+  const records = await loadJsonl(fixtureUrl);
+  const events = adaptChatGPTRecords(records);
+  const turns = deriveTurns(events);
+
+  assert.deepEqual(turns.map(turn => turn.source.record_ids[0]), ['u1', 'a1', 'u2', 'a2']);
+  assert.deepEqual(turns.map(turn => turn.role), ['user', 'assistant', 'user', 'assistant']);
+  assert.deepEqual(turns.map(turn => turn.index), [0, 1, 2, 3]);
+  assert.equal(new Set(turns.map(turn => turn.id)).size, 4);
+});
+
+test('Phase 2 golden output preserves the same source-record chronology', async () => {
   const records = await loadJsonl(fixtureUrl);
   const events = adaptChatGPTRecords(records);
   const baseline = await readFile(baselineUrl, 'utf8');
 
-  const expectedTexts = events.map(event => event.blocks[0]?.text);
   let previousIndex = -1;
-  for (const text of expectedTexts) {
+  for (const event of events) {
+    const text = event.blocks[0]?.text;
     const index = baseline.indexOf(text);
     assert.notEqual(index, -1, `Phase 2 baseline is missing ${JSON.stringify(text)}.`);
-    assert.ok(index > previousIndex, `Phase 2 baseline order differs at ${JSON.stringify(text)}.`);
+    assert.ok(index > previousIndex, `Phase 2 baseline order differs at source record ${event.source_record_id}.`);
     previousIndex = index;
   }
 });
