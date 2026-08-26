@@ -6,6 +6,7 @@ import { adaptChatGPTRecords } from '../src/adapters/chatgpt.js';
 import { deriveTurns } from '../src/derive/turns.js';
 
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-chronological-duplicate-identity.jsonl', import.meta.url);
+const directFixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', import.meta.url);
 const baselineUrl = new URL('./baseline/ai-transcript-current/chatgpt-chronological-duplicate-identity.md', import.meta.url);
 
 async function loadJsonl(url) {
@@ -77,6 +78,43 @@ test('maps ordinary visible User and final Assistant records to canonical messag
     assert.equal(event.blocks[0].source.record_index, index);
     assert.equal(event.blocks[0].source.part_index, 0);
   }
+});
+
+test('maps Assistant commentary as commentary without flattening it into a message', async () => {
+  const records = await loadJsonl(directFixtureUrl);
+  const events = adaptChatGPTRecords(records);
+  const commentary = events.find(event => event.source_record_id === 'commentary-1');
+
+  assert.ok(commentary);
+  assert.equal(commentary.kind, 'commentary');
+  assert.equal(commentary.role, 'assistant');
+  assert.equal(commentary.channel, 'commentary');
+  assert.equal(commentary.visibility, 'visible');
+  assert.equal(commentary.content_type, 'text');
+  assert.equal(commentary.source_index, 3);
+  assert.deepEqual(commentary.blocks.map(block => block.text), [
+    'I am checking a tiny python snippet before the final answer.'
+  ]);
+  assert.equal(commentary.blocks[0].source.record_id, 'commentary-1');
+  assert.equal(commentary.blocks[0].source.record_index, 3);
+  assert.equal(commentary.blocks[0].source.part_index, 0);
+});
+
+test('commentary starts an Assistant turn that the later final message completes', async () => {
+  const records = await loadJsonl(directFixtureUrl);
+  const events = adaptChatGPTRecords(records);
+  const selected = events.filter(event =>
+    event.source_record_id === 'user-1' ||
+    event.source_record_id === 'commentary-1' ||
+    event.source_record_id === 'final-1'
+  );
+  const turns = deriveTurns(selected);
+
+  assert.equal(turns.length, 2);
+  assert.deepEqual(turns.map(turn => turn.role), ['user', 'assistant']);
+  assert.deepEqual(turns[0].event_ids, ['chatgpt:user-1']);
+  assert.deepEqual(turns[1].event_ids, ['chatgpt:commentary-1', 'chatgpt:final-1']);
+  assert.deepEqual(turns[1].source.record_ids, ['commentary-1', 'final-1']);
 });
 
 test('rejects a source record without a stable id rather than inventing identity', () => {
