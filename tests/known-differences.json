@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "differences": [
+    {
+      "id": "chatgpt-code-language-container-exec",
+      "area": "markdown code fence language",
+      "downloadconversation": "historically emitted unknown/empty for many container.exec blocks",
+      "ai_transcript": "infers bash from tool/command context",
+      "classification": "ai-transcript-correct",
+      "evidence": "real parity comparison and tool recipient semantics",
+      "migration_rule": "do not regress to unknown when shell context is known"
+    },
+    {
+      "id": "chatgpt-sandbox-parentheses-encoding",
+      "area": "generated artifact URL",
+      "downloadconversation": "historically malformed some filenames containing parentheses",
+      "ai_transcript": "encodes the full sandbox path",
+      "classification": "ai-transcript-correct",
+      "evidence": "observed malformed vs valid backend interpreter/download URL",
+      "migration_rule": "URL-encode the full sandbox_path value"
+    },
+    {
+      "id": "chatgpt-sediment-resolution",
+      "area": "provider file/image pointers",
+      "downloadconversation": "some raw sediment:// references remained",
+      "ai_transcript": "resolves supported pointers to user-facing backend URLs while preserving source provenance",
+      "classification": "ai-transcript-correct-for-observed-cases",
+      "evidence": "real output comparison",
+      "migration_rule": "preserve unresolved raw pointer only when no proven resolver exists"
+    },
+    {
+      "id": "chatgpt-html-attribute-apostrophe",
+      "area": "HTML escaping",
+      "downloadconversation": "literal apostrophe in HTML attributes",
+      "ai_transcript": "HTML-escapes quoted attribute content",
+      "classification": "ai-transcript-correct",
+      "evidence": "standard HTML attribute escaping and parity comparison",
+      "migration_rule": "canonical HTML attribute renderer owns escaping"
+    },
+    {
+      "id": "chatgpt-file-citation-favicon",
+      "area": "citation presentation",
+      "downloadconversation": "historically retained favicon markup for file citations",
+      "ai_transcript": "file citations render without decorative favicon",
+      "classification": "canonical-policy-required",
+      "evidence": "outputs differ but both can represent the citation target",
+      "migration_rule": "do not silently choose during extraction; canonical renderer decision must be documented"
+    },
+    {
+      "id": "chatgpt-trailing-newline",
+      "area": "tool/code serialization",
+      "downloadconversation": "more aggressive trimming",
+      "ai_transcript": "preserves some final newlines before closing fence",
+      "classification": "canonical-policy-required",
+      "evidence": "real output comparison",
+      "migration_rule": "golden output change requires explicit renderer policy decision"
+    },
+    {
+      "id": "agentpanelspeaker-dual-parser",
+      "area": "semantic interpretation",
+      "agentpanelspeaker_display": "TranscriptMarkdownFormatter independently interprets provider records",
+      "agentpanelspeaker_speech": "JsonlRecordExtractor independently interprets provider records",
+      "classification": "architectural-defect-to-eliminate",
+      "evidence": "v212 source inspection and historical queued-command divergence",
+      "migration_rule": "normalize once in core; display and speech are projections of the same canonical events"
+    },
+    {
+      "id": "agentpanelspeaker-bundled-ai-transcript-drift",
+      "area": "reference formatter versioning",
+      "agentpanelspeaker": "bundles an older tools/AI-transcript.py",
+      "ai_general_memory": "current script has additional provider support and fixes",
+      "classification": "drift-point",
+      "evidence": "v212 archive vs current repository source sizes/features",
+      "migration_rule": "do not create or preserve another independent semantic implementation"
+    }
+  ]
+}
