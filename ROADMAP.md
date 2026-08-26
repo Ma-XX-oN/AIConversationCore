@@ -7,34 +7,37 @@ GitHub Issues.
 
 ## Current status
 
-The initial source-level comparison of the three existing implementations has been
-completed and recorded in `EXISTING_IMPLEMENTATIONS.md` using these baselines:
+The source-level comparison of the three existing implementations is recorded in
+`EXISTING_IMPLEMENTATIONS.md` using these baselines:
 
 - `DownloadConversation` `main`, userscript version `0.6.132`;
 - current `AI-General-Memory/master/scripts/AI-transcript.py`; and
 - user-supplied `AgentPanelSpeaker-v212.zip`.
 
-Phase 2 baseline work is now tracked by issue #1. The repository contains a shared
-fixture corpus for ChatGPT, Claude, and Codex, a machine-readable known-difference
-manifest, an executed AgentPanelSpeaker-v212 reference-formatter baseline, and
-`tests/validate-phase2-baseline.py` to enforce fixture/baseline integrity.
+**Phase 2 is complete.** The repository now contains a shared fixture corpus for
+ChatGPT, Claude, and Codex; machine-readable known differences; production
+baselines for all three consumers; source provenance for those baselines; and
+`tests/validate-phase2-baseline.py` as the completion gate.
 
-The Phase 2 completion gate intentionally remains **INCOMPLETE** until the actual
-production implementations can be executed against the shared fixtures:
+The three executable production gates are satisfied:
 
-- issue #2 — AgentPanelSpeaker v212 C# `JsonlRecordExtractor` /
-  `TranscriptMarkdownFormatter` display/speech projections;
+- issue #2 — AgentPanelSpeaker v212 C# production display/extraction/speech paths;
 - issue #3 — current `AI-General-Memory/scripts/AI-transcript.py`; and
 - issue #4 — DownloadConversation's browser production renderer.
 
-The current execution environment has no .NET runtime and cannot clone GitHub
-repositories directly, while DownloadConversation's production renderer requires a
-browser/ChatGPT context for some behaviours. These limitations are documented
-rather than hidden by substituting reimplementations. Phase 3 must not begin until
-the Phase 2 validator reports the production baseline gate complete.
+The DownloadConversation browser baseline is pinned to userscript version
+`0.6.132`, commit `1b6ff84474cbf120e1b6dd9e1b396c22a63641d0`, blob
+`ac14c3cc3ea6b30e6563609a7bf2641a193a7d6f`. The current AI-transcript baseline
+is pinned to source commit `abcc2f33783e3690b9e1335161c73e7dabaed757` and
+script blob `69115508946fad15e03fa3f9074645ec0e9131db`. AgentPanelSpeaker's
+baseline metadata records the actual C# production paths exercised on Windows/.NET.
 
-The comparison identified existing semantic duplication and drift risks,
-especially:
+Phase 2 also reproduced a real DownloadConversation sandbox Markdown-link defect
+for filenames containing parentheses. That defect is tracked separately as issue
+#8 and is not an ordering/grouping change or a Phase 2 blocker.
+
+The comparison and production baselines confirm existing semantic duplication and
+drift risks, especially:
 
 - independent ChatGPT rendering/interpretation in `DownloadConversation` and
   `AI-transcript.py`;
@@ -42,9 +45,16 @@ especially:
   `JsonlRecordExtractor` and `TranscriptMarkdownFormatter`; and
 - AgentPanelSpeaker's bundled older `tools/AI-transcript.py` reference copy.
 
-No shared-core implementation should begin by blindly moving code. The next work
-must finish the executable Phase 2 baselines, then use those baselines to define
-and test the canonical model before existing provider logic is replaced.
+The AgentPanelSpeaker production baseline makes the dual-parser problem concrete:
+for the Claude adaptive-fence fixture, display includes the Bash tool call/result
+while extraction/speech omit it. The Codex orphan-patch fixture likewise differs
+from the current AI-transcript rendering. These are baseline facts to preserve and
+classify during migration, not reasons to rewrite unrelated association logic.
+
+**Phase 3 is now unblocked.** It should begin with mechanical ChatGPT adapter
+extraction against the Phase 2 fixtures and golden outputs. No speculative change
+to chronological ordering or User/Assistant association is justified by the Phase
+2 evidence.
 
 ## Working principles
 
@@ -86,35 +96,33 @@ forcing consumers to parse Markdown.
 
 ## Phase 2 — Behaviour inventory and regression fixtures
 
-Before extraction, inventory the current behaviour of:
+**Status: COMPLETE.**
 
-- `DownloadConversation`
-- `AI-transcript.py`
-- relevant `AgentPanelSpeaker` transcript/display/speech logic
+The current behaviour of `DownloadConversation`, `AI-transcript.py`, and relevant
+AgentPanelSpeaker transcript/display/speech logic has been inventoried and captured
+in representative raw fixtures and executable production baselines.
 
-The initial codebase inventory/comparison is recorded in
-`EXISTING_IMPLEMENTATIONS.md`. Phase 2 is **not complete** until representative
-regression fixtures and golden outputs exist for the behaviours that will be
-migrated and all required production baseline runners have passed.
+Phase 2 artifacts:
 
-Current Phase 2 artifacts:
-
-- `tests/phase2-baseline-manifest.json` — fixture/baseline inventory and runner
-  gate;
+- `tests/phase2-baseline-manifest.json` — fixture/baseline inventory and completed
+  runner gate;
 - `tests/known-differences.json` — explicit cross-implementation differences and
   migration rules;
 - `tests/fixtures/` — raw provider fixtures with provenance;
-- `tests/baseline/` — captured current-behaviour baselines; and
+- `tests/baseline/agentpanelspeaker-v212/` — C# display/extraction/speech baselines;
+- `tests/baseline/ai-transcript-current/` — current Python formatter baselines and
+  exact source provenance;
+- `tests/baseline/downloadconversation/` — browser renderer baseline plus exact
+  source provenance; and
 - `tests/validate-phase2-baseline.py` — integrity/completion validator.
 
-Create representative real-world fixtures and golden outputs that capture
-previously-correct behaviour. Include known provider/model variations and problem
-cases already encountered.
-
-The migration must be able to prove both:
+The migration must continue to prove both:
 
 1. new shared behaviour is correct; and
 2. behaviour that was already correct remains correct.
+
+Golden outputs are evidence. They must not be silently refreshed merely to make a
+test pass.
 
 ## Phase 3 — ChatGPT adapter
 
@@ -124,6 +132,10 @@ JavaScript core where practical.
 Do not combine extraction with speculative changes to ordering, grouping, or
 association logic. In particular, do not replace working chronological behaviour
 without real evidence that it fails.
+
+Every migration slice must run against the Phase 2 ChatGPT fixtures and preserve
+baseline behaviour unless a separately tracked, evidence-backed defect is being
+fixed.
 
 ## Phase 4 — Canonical Markdown renderer
 
@@ -151,9 +163,9 @@ Move provider interpretation and shared rendering/projection semantics into
 and other platform concerns in `DownloadConversation`.
 
 DownloadConversation is expected to gain individual-turn reading/navigation
-functionality in the near future. Core design and APIs must therefore support
-interactive turn access, speech/display projection, highlighting/source mapping,
-and related semantics where these can be shared with `AgentPanelSpeaker`.
+functionality. Core design and APIs must therefore support interactive turn access,
+speech/display projection, highlighting/source mapping, and related semantics where
+these can be shared with `AgentPanelSpeaker`.
 
 A browser extension may replace or supplement the Tampermonkey host later, but
 that is intentionally not part of the initial core migration.
