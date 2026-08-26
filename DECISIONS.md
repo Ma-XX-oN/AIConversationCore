@@ -146,12 +146,12 @@ GitHub Projects management. Project state still needs to survive across
 conversations, so it must be baked into repository documentation rather than left
 in chat history.
 
-## D011 — AI-transcript.py is the canonical multi-provider migration behaviour source
+## D011 — AI-transcript.py is the default multi-provider migration behaviour source
 
-**Status:** Accepted
+**Status:** Accepted, amended by D012
 
 **Decision:** During migration, the current
-`AI-General-Memory/scripts/AI-transcript.py` behaviour is the canonical
+`AI-General-Memory/scripts/AI-transcript.py` behaviour is the default canonical
 behavioural/rendering reference for every provider it recognizes, currently
 ChatGPT, Claude, and Codex.
 
@@ -162,7 +162,7 @@ to copy wholesale.
 **Reason:** `AI-transcript.py` already contains the broadest unified interpretation
 and rendering behaviour across the recognized providers. Treating separate
 consumer renderers as equal authorities would leave the migration without a stable
-target and would preserve existing drift instead of eliminating it.
+default target and would preserve existing drift instead of eliminating it.
 
 Provider-specific interpretation must therefore be decomposed behind independent
 adapters into one canonical event/block/turn model and shared renderers. Future
@@ -171,9 +171,35 @@ own renderer.
 
 A specific `AI-transcript.py` behaviour may be superseded only when separately
 tracked evidence proves a defect or a host has a verified capability the standalone
-Python process cannot supply. ChatGPT images are the current known area requiring
-that additional verification. `AI-transcript.py` provides useful source-position
-and missing/unavailable semantics; `DownloadConversation` may additionally resolve
-image resources using its authenticated API/browser resource context. That is an
-API/resource-resolution input to canonical image semantics, not DOM transcript
-rendering or DOM content extraction.
+Python process cannot supply.
+
+## D012 — ChatGPT citation and image exceptions require explicit provenance
+
+**Status:** Accepted
+
+**Decision:** Two ChatGPT semantics currently supersede or qualify the default
+`AI-transcript.py` authority:
+
+1. ChatGPT citation rendering uses verified `DownloadConversation` behaviour as
+   canonical. Browser/screenshot evidence showed the Python citation presentation
+   was not correct enough, while DownloadConversation matched the intended
+   transcript presentation better.
+2. ChatGPT image semantics preserve verified source-position and
+   missing/unavailable behaviour while allowing DownloadConversation's
+   authenticated API/resource-resolution evidence to supply capabilities the
+   standalone Python process cannot.
+
+These are narrow semantic exceptions. They do not make DownloadConversation the
+canonical source for unrelated ChatGPT behaviour, and they do not move
+browser/application APIs into the core.
+
+For any additional difference between `AI-transcript.py`, DownloadConversation, or
+another verified implementation, the implementation choice must not be inferred by
+an AI agent. The alternatives and evidence must be presented to the user, and the
+user's selected resolution must be recorded before it is incorporated into a
+canonical golden or shared implementation.
+
+**Reason:** The canonical transcript must be composed from verified behaviour, not
+from whichever implementation an agent happens to prefer. Explicit provenance and
+user resolution prevent the wrong pieces of competing implementations from being
+silently combined.
