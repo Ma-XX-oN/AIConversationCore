@@ -1,0 +1,35 @@
+{
+  "fixture": "claude-adaptive-fence.jsonl",
+  "source": "Claude",
+  "start_mode": "LiveEnd",
+  "fragments": [
+    {
+      "NodeId": 1,
+      "category": "User",
+      "kind": "Prose",
+      "Text": "Run the command.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:01+00:00",
+      "StartsUserTurn": true
+    },
+    {
+      "NodeId": 2,
+      "category": "Assistant",
+      "kind": "Prose",
+      "Text": "Done.",
+      "FenceType": "",
+      "FenceBlockId": -1,
+      "FenceLineIndex": -1,
+      "FenceLineCount": 0,
+      "PauseAfter": true,
+      "NodeTimestampUtc": "2026-01-01T00:00:04+00:00",
+      "StartsUserTurn": false
+    }
+  ],
+  "completions": [],
+  "background_work_events": []
+}
