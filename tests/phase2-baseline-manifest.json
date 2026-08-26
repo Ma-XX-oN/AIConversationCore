@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "phase": 2,
+  "status": "baseline-corpus-established-runners-pending",
+  "fixtures": [
+    {
+      "path": "tests/fixtures/chatgpt/chatgpt-metadata-sandbox.jsonl",
+      "provider": "chatgpt",
+      "provenance": "AI-General-Memory/scripts/fixtures/chatgpt-metadata-sandbox.jsonl",
+      "upstream_sha": "ae35858b8c34abdffbf33247c9dbc4edc4993771",
+      "covers": ["synthetic conversation metadata", "sandbox artifact URL", "ordinary user/final assistant"]
+    },
+    {
+      "path": "tests/fixtures/chatgpt/chatgpt-chronological-duplicate-identity.jsonl",
+      "provider": "chatgpt",
+      "provenance": "AI-General-Memory/scripts/fixtures/chatgpt-chronological-duplicate-identity.jsonl",
+      "upstream_sha": "3e77949671fe9994ba04bbdd230f85c2098438c9",
+      "covers": ["chronological ordering", "duplicate exchange/working identifiers", "two complete user/assistant turns"]
+    },
+    {
+      "path": "tests/fixtures/codex/codex-orphan-patch.jsonl",
+      "provider": "codex",
+      "provenance": "AI-General-Memory/scripts/fixtures/codex-orphan-patch.jsonl",
+      "upstream_sha": "c4ff1ff2beecd29df8270706156f8f12af3da764",
+      "covers": ["user message", "commentary", "apply_patch tool call", "task completion without final answer"]
+    },
+    {
+      "path": "tests/fixtures/claude/claude-subagent.jsonl",
+      "provider": "claude",
+      "provenance": "AgentPanelSpeaker-v212/tools/fixtures/claude-subagent.jsonl",
+      "upstream_sha": null,
+      "covers": ["top-level Agent tool", "tool result metadata", "child task notification", "subagent identity/lifecycle"]
+    }
+  ],
+  "baselines": [
+    {
+      "path": "tests/baseline/agentpanelspeaker-v212/claude-subagent.reference-formatter.md",
+      "producer": "AgentPanelSpeaker-v212/tools/AI-transcript.py",
+      "fixture": "tests/fixtures/claude/claude-subagent.jsonl",
+      "execution": "executed in Phase 2 environment",
+      "notes": "Reference formatter baseline only; C# display/speech production paths require issue #2."
+    }
+  ],
+  "required_runners": [
+    {"issue": 2, "consumer": "AgentPanelSpeaker v212 C# production parser/projections", "status": "pending"},
+    {"issue": 3, "consumer": "current AI-General-Memory/scripts/AI-transcript.py", "status": "pending"},
+    {"issue": 4, "consumer": "DownloadConversation browser production renderer", "status": "pending"}
+  ],
+  "known_differences_file": "tests/known-differences.json"
+}
