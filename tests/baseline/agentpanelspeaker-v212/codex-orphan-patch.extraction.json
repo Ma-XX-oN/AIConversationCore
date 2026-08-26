@@ -1,0 +1,58 @@
+{
+  "fixture": "codex-orphan-patch.jsonl",
+  "source": "Codex",
+  "records": [
+    {
+      "record_number": 1,
+      "RecordType": "event_msg",
+      "PayloadType": "user_message",
+      "Decision": "accepted codex user_message",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "codex.user_message",
+          "category": "User",
+          "Text": "Fix the corners order.",
+          "Timestamp": "2026-01-01T00:00:01.000Z",
+          "StartsUserTurn": true
+        }
+      ],
+      "background_work_events": []
+    },
+    {
+      "record_number": 2,
+      "RecordType": "event_msg",
+      "PayloadType": "agent_message",
+      "Decision": "accepted codex agent_message",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "codex.agent_message.commentary",
+          "category": "Reasoning",
+          "Text": "I found the ordering bug in corners().",
+          "Timestamp": "2026-01-01T00:00:02.000Z",
+          "StartsUserTurn": false
+        }
+      ],
+      "background_work_events": []
+    },
+    {
+      "record_number": 3,
+      "RecordType": "response_item",
+      "PayloadType": "custom_tool_call",
+      "Decision": "codex response-item tool/function/diff record is skipped",
+      "CompletionTimestamp": null,
+      "nodes": [],
+      "background_work_events": []
+    },
+    {
+      "record_number": 4,
+      "RecordType": "event_msg",
+      "PayloadType": "task_complete",
+      "Decision": "accepted codex task completion marker",
+      "CompletionTimestamp": "2026-01-01T00:00:04.000Z",
+      "nodes": [],
+      "background_work_events": []
+    }
+  ]
+}
