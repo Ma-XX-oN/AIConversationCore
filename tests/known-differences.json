@@ -16,7 +16,7 @@
       "downloadconversation": "historically malformed some filenames containing parentheses",
       "ai_transcript": "encodes the full sandbox path",
       "classification": "ai-transcript-correct",
-      "evidence": "observed malformed vs valid backend interpreter/download URL",
+      "evidence": "Phase 2 browser baseline reproduces malformed Markdown rewrite while direct URL construction and current AI-transcript output are valid",
       "migration_rule": "URL-encode the full sandbox_path value"
     },
     {
@@ -61,7 +61,7 @@
       "agentpanelspeaker_display": "TranscriptMarkdownFormatter independently interprets provider records",
       "agentpanelspeaker_speech": "JsonlRecordExtractor independently interprets provider records",
       "classification": "architectural-defect-to-eliminate",
-      "evidence": "v212 source inspection and historical queued-command divergence",
+      "evidence": "v212 production Phase 2 baselines: Claude adaptive-fence display includes the Bash tool call/result while extraction and speech omit it; Codex display/extraction/speech also omit an orphan patch that current AI-transcript renders",
       "migration_rule": "normalize once in core; display and speech are projections of the same canonical events"
     },
     {
@@ -70,7 +70,7 @@
       "agentpanelspeaker": "bundles an older tools/AI-transcript.py",
       "ai_general_memory": "current script has additional provider support and fixes",
       "classification": "drift-point",
-      "evidence": "v212 archive vs current repository source sizes/features",
+      "evidence": "v212 archive vs current repository source sizes/features and Phase 2 current-script baseline",
       "migration_rule": "do not create or preserve another independent semantic implementation"
     }
   ]
