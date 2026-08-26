@@ -5,6 +5,28 @@ and current project direction. GitHub Projects is not being used at this time, s
 project-management state that would otherwise live there must be kept here and in
 GitHub Issues.
 
+## Current status
+
+The initial source-level comparison of the three existing implementations has been
+completed and recorded in `EXISTING_IMPLEMENTATIONS.md` using these baselines:
+
+- `DownloadConversation` `main`, userscript version `0.6.132`;
+- current `AI-General-Memory/master/scripts/AI-transcript.py`; and
+- user-supplied `AgentPanelSpeaker-v212.zip`.
+
+That comparison is a required input to the canonical model. It identified existing
+semantic duplication and drift risks, especially:
+
+- independent ChatGPT rendering/interpretation in `DownloadConversation` and
+  `AI-transcript.py`;
+- independent provider interpretation in AgentPanelSpeaker's
+  `JsonlRecordExtractor` and `TranscriptMarkdownFormatter`; and
+- AgentPanelSpeaker's bundled older `tools/AI-transcript.py` reference copy.
+
+No shared-core implementation should begin by blindly moving code. The next work
+must use the comparison to define the canonical model and strengthen regression
+fixtures/golden outputs before existing provider logic is replaced.
+
 ## Working principles
 
 - Work is staged; do not perform a wholesale rewrite.
@@ -13,6 +35,8 @@ GitHub Issues.
 - Unrelated defects or improvements are separate issues and separate commits.
 - Testing is mandatory for each migration step. See `TESTING.md`.
 - Architecture and invariants live in `DESIGN.md`.
+- Existing implementation baselines and ownership findings live in
+  `EXISTING_IMPLEMENTATIONS.md`.
 - Durable decisions and reversals live in `DECISIONS.md`.
 - AI-specific change discipline lives in `AI_AGENT_RULES.md`.
 
@@ -48,6 +72,11 @@ Before extraction, inventory the current behaviour of:
 - `DownloadConversation`
 - `AI-transcript.py`
 - relevant `AgentPanelSpeaker` transcript/display/speech logic
+
+The initial codebase inventory/comparison is recorded in
+`EXISTING_IMPLEMENTATIONS.md`. Phase 2 is **not complete** until representative
+regression fixtures and golden outputs exist for the behaviours that will be
+migrated.
 
 Create representative real-world fixtures and golden outputs that capture
 previously-correct behaviour. Include known provider/model variations and problem
@@ -142,6 +171,11 @@ Where `AgentPanelSpeaker` and `DownloadConversation` require the same turn-readi
 speech, display, source-range, or highlighting semantics, implement those semantics
 once in `AIConversationCore` and test both consumers against them.
 
+AgentPanelSpeaker currently has independent provider interpretation in its speech
+extractor and Markdown formatter. Migration must converge those projections on one
+canonical normalization path rather than retaining both parsers behind the new
+core.
+
 ## Phase 9 — Additional providers/models
 
 Add provider adapters independently after the ChatGPT path is stable and tested.
@@ -156,6 +190,8 @@ integration cannot manage it reliably. Use:
 
 - this file for phases/current direction;
 - GitHub Issues for concrete work, bugs, and tracked follow-ups;
+- `EXISTING_IMPLEMENTATIONS.md` for reviewed baseline behaviour and migration
+  boundaries;
 - `DECISIONS.md` for architectural decisions/reversals;
 - `TESTING.md` for mandatory verification requirements.
 
