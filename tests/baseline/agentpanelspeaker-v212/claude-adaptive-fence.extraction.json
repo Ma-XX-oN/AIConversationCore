@@ -1,0 +1,58 @@
+{
+  "fixture": "claude-adaptive-fence.jsonl",
+  "source": "Claude",
+  "records": [
+    {
+      "record_number": 1,
+      "RecordType": "user",
+      "PayloadType": "",
+      "Decision": "accepted 1 claude conversational block(s)",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "claude.user_text",
+          "category": "User",
+          "Text": "Run the command.",
+          "Timestamp": "2026-01-01T00:00:01.000Z",
+          "StartsUserTurn": true
+        }
+      ],
+      "background_work_events": []
+    },
+    {
+      "record_number": 2,
+      "RecordType": "assistant",
+      "PayloadType": "",
+      "Decision": "claude record contained no conversational text",
+      "CompletionTimestamp": null,
+      "nodes": [],
+      "background_work_events": []
+    },
+    {
+      "record_number": 3,
+      "RecordType": "user",
+      "PayloadType": "",
+      "Decision": "claude record contained no conversational text",
+      "CompletionTimestamp": null,
+      "nodes": [],
+      "background_work_events": []
+    },
+    {
+      "record_number": 4,
+      "RecordType": "assistant",
+      "PayloadType": "",
+      "Decision": "accepted 1 claude conversational block(s)",
+      "CompletionTimestamp": null,
+      "nodes": [
+        {
+          "Kind": "claude.text",
+          "category": "Assistant",
+          "Text": "Done.",
+          "Timestamp": "2026-01-01T00:00:04.000Z",
+          "StartsUserTurn": false
+        }
+      ],
+      "background_work_events": []
+    }
+  ]
+}
