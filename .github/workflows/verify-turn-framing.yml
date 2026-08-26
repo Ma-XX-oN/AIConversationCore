@@ -1,0 +1,33 @@
+name: Verify turn framing correction
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-turn-framing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run core tests
+        run: npm test
+      - name: Re-run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Remove temporary workflow
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --ff-only origin main
+          git rm .github/workflows/verify-turn-framing.yml
+          git commit -m 'Remove temporary turn-framing verification workflow [skip ci]'
+          git push origin main
