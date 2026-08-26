@@ -24,8 +24,8 @@ renderers and projections.
 ChatGPT has two established exceptions:
 
 - **Citations:** verified `DownloadConversation` behaviour is canonical for ChatGPT
-  citation rendering because browser/screenshot evidence showed the Python
-  citation presentation was not correct enough.
+  citation rendering because existing browser/screenshot evidence showed the
+  Python citation presentation was not correct enough.
 - **Images/resource resolution:** preserve the verified source-position and
   missing/unavailable semantics while using `DownloadConversation` API/resource
   evidence where its authenticated browser context provides capabilities the
