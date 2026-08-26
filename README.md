@@ -54,6 +54,15 @@ Differences such as HTML escaping, code-fence language selection, citation HTML,
 whitespace policy, attachment URLs, `sandbox:` handling, or provider file-pointer
 handling are parity bugs unless documented otherwise.
 
+## Testing
+
+Testing is part of the project contract, not a later cleanup phase.  A behavioural
+change is not complete merely because the new behaviour works; previously-correct
+behaviour must also remain correct.
+
+See [`TESTING.md`](TESTING.md) for the mandatory unit, fixture, golden-output,
+cross-consumer parity, integration, regression, and migration verification rules.
+
 ## Language
 
 The canonical implementation is JavaScript because it must run directly in
@@ -81,6 +90,7 @@ The repository is the source of truth for project intent and state. Do not rely 
 chat history or assistant memory to reconstruct decisions.
 
 - [`DESIGN.md`](DESIGN.md) — architecture, canonical model, invariants, boundaries
+- [`TESTING.md`](TESTING.md) — mandatory regression/parity/integration test contract
 - [`ROADMAP.md`](ROADMAP.md) — migration phases and current work state
 - [`DECISIONS.md`](DECISIONS.md) — durable architectural decisions and reversals
 - [`AI_AGENT_RULES.md`](AI_AGENT_RULES.md) — mandatory change/verification discipline
