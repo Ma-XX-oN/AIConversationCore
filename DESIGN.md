@@ -11,6 +11,10 @@ must be represented explicitly rather than flattened away, while equivalent
 concepts must be normalized once rather than reimplemented independently by each
 application.
 
+The core is not only an export/rendering library. Canonical data must also support
+interactive consumers that read, navigate, speak, highlight, or otherwise operate
+on individual turns and content ranges.
+
 ## Architectural layers
 
 ### 1. Provider adapters
@@ -87,8 +91,14 @@ blob. Expected block types include:
 - structured/tool data
 
 Blocks should retain source provenance/ranges where available. This is important
-for consumers such as `AgentPanelSpeaker`, which needs stable mappings between
-source content, displayed content, and spoken/highlighted content.
+for interactive consumers such as `AgentPanelSpeaker` and future
+`DownloadConversation` turn-reading functionality, which need stable mappings
+between source content, displayed content, spoken content, and highlighted
+content.
+
+Where practical, canonical blocks/projections should expose stable identifiers and
+ranges so consumers do not have to parse rendered Markdown or rediscover semantic
+boundaries independently.
 
 ### 4. Derived structure
 
@@ -109,6 +119,10 @@ Other derived relationships may include:
 - delegated/subagent trees
 - visible transcript projection
 - speakable/displayable projections
+
+Derived turns must be directly consumable by interactive applications. Consumers
+must be able to navigate or request an individual turn without requiring a
+complete UAP or reparsing Markdown.
 
 ### 5. Shared renderers/projections
 
@@ -132,8 +146,13 @@ consumer invokes the renderer.
 Additional projections may include:
 
 - plain/display text
-- speech/highlight projection for `AgentPanelSpeaker`
+- speech/highlight projection
+- turn-navigation/read projection
 - canonical JSON interchange
+
+Speech/highlight and turn-reading projections may be shared by both
+`AgentPanelSpeaker` and `DownloadConversation`. The design must not assume that
+speech, highlighting, or interactive turn traversal belongs to only one consumer.
 
 ## Consumer boundaries
 
@@ -147,9 +166,17 @@ Owns browser-specific acquisition and recorder behaviour:
 - Tampermonkey UI
 - File System Access API operations
 - recorder state/resume
+- browser-side playback/reading UI when implemented
 
-It should delegate provider interpretation and shared rendering to
-`AIConversationCore`.
+It should delegate provider interpretation and shared rendering/projection logic
+to `AIConversationCore`.
+
+`DownloadConversation` is expected to gain the ability to read/navigate individual
+turns in the near future, with functionality conceptually similar to parts of
+`AgentPanelSpeaker`. Therefore the core must preserve enough structured content,
+turn identity, ordering, provenance, and source/display ranges for both consumers
+to share the same semantic interpretation rather than developing parallel
+implementations.
 
 The existing Tampermonkey form remains the target during this migration. A browser
 extension can be built later without changing core semantics.
@@ -180,6 +207,11 @@ Owns:
 It should consume canonical events/content or a core-generated speech/display
 projection, not parse Markdown to rediscover transcript semantics.
 
+Where `AgentPanelSpeaker` and `DownloadConversation` need equivalent turn-reading,
+speech, display, or highlighting semantics, those semantics belong in a shared
+core projection unless there is a demonstrated platform-specific reason to keep
+them separate.
+
 ## Critical invariants
 
 1. **Lossless-enough normalization.** Provider-specific information needed for
@@ -200,6 +232,13 @@ projection, not parse Markdown to rediscover transcript semantics.
    and diagnosable rather than silently disappearing.
 8. **Stable provenance.** Canonical events/blocks should retain enough source
    identity to trace rendered output back to originating provider records.
+9. **Interactive turn access is a core use case.** Canonical and derived data must
+   support individual-turn navigation/reading without requiring complete UAPs or
+   reparsing rendered Markdown.
+10. **Shared interactive semantics stay shared.** If multiple consumers need the
+    same speech/display/highlight/turn-reading interpretation, implement that
+    semantic projection once in the core and keep platform-specific playback/UI in
+    the consumer.
 
 ## Migration principle
 
