@@ -1,0 +1,22 @@
+name: Verify canonical rich ChatGPT golden
+on: push
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run core tests
+        run: npm test
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Validate canonical rich ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+      - name: Remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/verify-canonical-rich-chatgpt.yml
+          git commit -m "chore: remove temporary canonical golden workflow"
+          git push
