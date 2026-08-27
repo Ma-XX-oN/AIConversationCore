@@ -58,7 +58,6 @@ For ChatGPT, fixtures must include at least:
 - `sandbox:/mnt/data/...` artifact references;
 - provider file pointers such as `sediment://...`;
 - hidden/system/model-editable records;
-- incomplete or half-turn situations;
 - branch/parent relationships;
 - code blocks whose language can be inferred from tool context.
 
