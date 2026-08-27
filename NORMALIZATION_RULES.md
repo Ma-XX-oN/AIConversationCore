@@ -120,6 +120,16 @@ The currently evidenced forms are:
 
 These shapes are intentionally specific.  Do not create a generic fallback that copies arbitrary provider object fields merely because they are outside `content.parts`, and do not infer tool-call correlation from adjacency.  If another non-`parts` content type is observed, add its semantics from evidence as a separate extension.
 
+## Canonical display replacements
+
+Some provider records contain an opaque inline source marker plus separate metadata establishing the text that should actually be displayed.  That is a rendering semantic even when it is not a citation.
+
+For the evidenced ChatGPT `content_references` entry with `type: "alt_text"`, preserve a canonical `display_replacement` carrying the matched source text, display text, optional prompt text, exact canonical text range, and source/reference provenance.  Do not force the entry into the citation schema merely because ChatGPT stores it beside citations.
+
+Shared renderers apply canonical display replacements by range.  They must not parse ChatGPT-specific `entity...` syntax to rediscover the visible text after normalization has already had access to the provider metadata.
+
+When multimodal normalization changes text-part ordinals to true provider part positions, display-replacement ranges must be remapped the same way as citation/resource ranges.
+
 ## ChatGPT parent relationships
 
 When a ChatGPT source record supplies a non-empty `metadata.parent_id`, preserve that exact source identity as `relationships.parent_record_id`.
