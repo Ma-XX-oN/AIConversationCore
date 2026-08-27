@@ -155,6 +155,20 @@ also remaps citation/resource text ranges to the real provider `part_index` when
 images precede referenced text.  This keeps canonical blocks, ranges, and source
 provenance internally consistent.
 
+## ChatGPT parent relationships
+
+An explicit non-empty `metadata.parent_id` is preserved as
+`relationships.parent_record_id`.  When that target record exists in the same input
+dataset, the adapter also exposes its deterministic canonical event identity as
+`relationships.parent_event_id`; otherwise the source parent ID remains preserved
+and the canonical target is null.
+
+These fields record source graph identity only.  The adapter does not derive a
+parent from adjacency, chronology, role, `turn_exchange_id`, or `working_turn_id`,
+and parent metadata does not reorder records or alter derived User/Assistant
+turns.  Reverse child/branch structures can be derived later from the explicit
+relationship if a consumer needs them.
+
 ## Tool calls and results
 
 The canonical tool slice uses `tool_call` and `tool_result` events with structured
@@ -205,7 +219,8 @@ Each mapped ChatGPT event currently records:
   form;
 - canonical `resources` for evidenced file/retrieved-file/sandbox-artifact/image
   forms;
-- observed `turn_exchange_id` and `working_turn_id` relationship values; and
+- observed `turn_exchange_id`, `working_turn_id`, and explicit parent relationship
+  values; and
 - an explicit tool-call relationship field that remains null when the source has
   no explicit correlation ID.
 
