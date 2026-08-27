@@ -115,10 +115,11 @@ dependent access remains outside the core.
 
 The sandbox-link scanner follows the evidence-backed balanced-parenthesis rule, so
 a path such as `fixture(phase2).txt` remains one complete Markdown destination.
-The `download_url` uses the strict query-value percent-encoding established by the
-Python reference, so those parentheses become `%28` and `%29` in `sandbox_path`.
-General image semantics are deliberately not part of this slice; image asset
-pointers are not reclassified as file resources.
+The `download_url` percent-encodes only characters needed to preserve URL/query
+structure; safe characters such as the filename parentheses remain literal rather
+than copying incidental over-encoding from the Python reference. General image
+semantics are deliberately not part of this slice; image asset pointers are not
+reclassified as file resources.
 
 ## Tool calls and results
 
