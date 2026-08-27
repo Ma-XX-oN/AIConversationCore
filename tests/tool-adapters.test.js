@@ -45,7 +45,10 @@ test('ChatGPT code/tool records normalize without inventing call correlation', a
   }
 
   const browsingStatus = events.find(event => event.source_record_id === 'tool-3');
-  assert.equal(browsingStatus.kind, 'message');
+  assert.equal(browsingStatus.kind, 'tool_result');
+  assert.equal(browsingStatus.blocks[0].output_format, 'tether_browsing_display');
+  assert.equal(browsingStatus.blocks[0].output.summary, 'Browser is searching.');
+  assert.equal(browsingStatus.blocks[0].output.result, 'Waiting for sources.');
 });
 
 test('tool events do not create or re-associate derived turns without explicit turn semantics', async () => {
