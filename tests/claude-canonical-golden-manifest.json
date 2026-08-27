@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "provider": "claude",
+  "fixture": {
+    "path": "tests/fixtures/claude/claude-rich-subagent.jsonl",
+    "sha256": "4dc7f5b76dea71503b4c120d7e130593c7a7a3eafcea33335ccfba4a6cc002b8",
+    "derivation": "privacy-safe synthetic fixture derived only from verified structures in the user-supplied real Claude corpus"
+  },
+  "real_private_evidence": {
+    "raw_jsonl_sha256": "714412a64fd8ed97ff77f909562327b2b5eb9a456b93084b85d21e2c51a5d6ff",
+    "rendered_markdown_sha256": "ae2fe3af66201634295f2f4cb5e1477d3b588a2df69b0409baef210319ba7e1b",
+    "raw_record_count": 6201,
+    "rendered_subagent_section_count": 18,
+    "note": "private source files are not committed"
+  },
+  "production_renderer": {
+    "repository": "Ma-XX-oN/AI-General-Memory",
+    "source_commit": "2910c54a4786d17de684bcffb00181b5d2c37d38",
+    "script_blob": "69115508946fad15e03fa3f9074645ec0e9131db"
+  },
+  "goldens": [
+    {
+      "path": "tests/golden/claude/claude-rich-subagent.canonical.md",
+      "sha256": "5b73c36a99e70533a768c985d93f127714ef2804d799e4c361891a29d8b523a0",
+      "options": ["--color=never"],
+      "purpose": "base semantic rendering"
+    },
+    {
+      "path": "tests/golden/claude/claude-rich-subagent.decorated.md",
+      "sha256": "34edbc49e246f88a0f03024ae09fdbed4954dd58d0614e48f17e7dda408d7fb9",
+      "options": ["-d", "-n", "--color=always"],
+      "purpose": "colour, timestamp, and record-number projection"
+    }
+  ],
+  "verified_semantics": [
+    "ordinary User and Claude turns",
+    "Claude thinking plus tool activity grouped in Thoughts",
+    "Bash tool call/result rendering",
+    "successful Agent launch uses returned agentId and removes internal agentId transport metadata",
+    "failed Agent launch without agentId falls back to tool_use_id",
+    "queue-operation task-notification uses task-id and renders summary/result",
+    "ANSI colour projection",
+    "timestamp projection",
+    "record-number projection"
+  ],
+  "unresolved_differences": []
+}
