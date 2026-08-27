@@ -76,7 +76,9 @@ For an evidenced ChatGPT `sandbox:/...` generated-file link, canonical data pres
 
 Constructing that deterministic HTTPS URL belongs in the core because it is shared provider interpretation and does not require browser credentials.  Actually fetching the URL when authentication/session context is required remains a host responsibility.
 
-Markdown destinations containing balanced parentheses must preserve the complete destination.  A filename such as `fixture(phase2).txt` is one source path, not a path truncated at its first closing parenthesis.  The deterministic HTTPS URL must apply the established strict query-value percent-encoding used by the Python reference, including encoding such parentheses in `sandbox_path`.
+When constructing URLs, percent-encode characters only when required to preserve the URL structure or the exact value.  Do not copy incidental over-encoding from a reference implementation merely for byte-for-byte parity.  Safe characters should remain readable when doing so does not change semantics.
+
+Markdown destinations containing balanced parentheses must preserve the complete destination.  A filename such as `fixture(phase2).txt` is one source path, not a path truncated at its first closing parenthesis.  The deterministic HTTPS URL therefore keeps those parentheses literal in `sandbox_path` while still encoding structural characters such as `/`.
 
 Uploaded file references and retrieved/cited files may share `type: "file"` while retaining different `resource_kind` values and kind-specific fields when their evidence differs.  Do not force an uploaded attachment and a retrieved tool/file citation into an identical field set merely because both are files.
 
