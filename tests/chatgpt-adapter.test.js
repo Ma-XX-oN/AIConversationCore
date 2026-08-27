@@ -100,6 +100,34 @@ test('maps Assistant commentary as commentary without flattening it into a messa
   assert.equal(commentary.blocks[0].source.part_index, 0);
 });
 
+test('maps ChatGPT thoughts to canonical reasoning summaries with structured provenance', async () => {
+  const records = await loadJsonl(directFixtureUrl);
+  const events = adaptChatGPTRecords(records);
+  const reasoning = events.find(event => event.source_record_id === 'thought-1');
+
+  assert.ok(reasoning);
+  assert.equal(reasoning.kind, 'reasoning_summary');
+  assert.equal(reasoning.role, 'assistant');
+  assert.equal(reasoning.channel, null);
+  assert.equal(reasoning.visibility, 'visible');
+  assert.equal(reasoning.content_type, 'thoughts');
+  assert.equal(reasoning.source_index, 2);
+  assert.deepEqual(reasoning.blocks, [{
+    id: 'thought-1:thought:0',
+    type: 'reasoning_summary',
+    summary: 'Planning the reply',
+    content: 'I will run a tiny python snippet before answering.',
+    chunks: ['I will run a tiny python snippet before answering.'],
+    finished: true,
+    source: {
+      provider: 'chatgpt',
+      record_id: 'thought-1',
+      record_index: 2,
+      thought_index: 0
+    }
+  }]);
+});
+
 test('commentary starts an Assistant turn that the later final message completes', async () => {
   const records = await loadJsonl(directFixtureUrl);
   const events = adaptChatGPTRecords(records);
@@ -115,6 +143,45 @@ test('commentary starts an Assistant turn that the later final message completes
   assert.deepEqual(turns[0].event_ids, ['chatgpt:user-1']);
   assert.deepEqual(turns[1].event_ids, ['chatgpt:commentary-1', 'chatgpt:final-1']);
   assert.deepEqual(turns[1].source.record_ids, ['commentary-1', 'final-1']);
+});
+
+test('reasoning, commentary, and final message retain source order in one Assistant turn', async () => {
+  const records = await loadJsonl(directFixtureUrl);
+  const events = adaptChatGPTRecords(records);
+  const selected = events.filter(event =>
+    event.source_record_id === 'user-1' ||
+    event.source_record_id === 'thought-1' ||
+    event.source_record_id === 'commentary-1' ||
+    event.source_record_id === 'final-1'
+  );
+  const turns = deriveTurns(selected);
+
+  assert.equal(turns.length, 2);
+  assert.deepEqual(turns.map(turn => turn.role), ['user', 'assistant']);
+  assert.deepEqual(turns[0].event_ids, ['chatgpt:user-1']);
+  assert.deepEqual(turns[1].event_ids, [
+    'chatgpt:thought-1',
+    'chatgpt:commentary-1',
+    'chatgpt:final-1'
+  ]);
+  assert.deepEqual(turns[1].source.record_ids, ['thought-1', 'commentary-1', 'final-1']);
+});
+
+test('reasoning after a completed Assistant message does not collapse into that completed turn', () => {
+  const events = [
+    {
+      id: 'chatgpt:a1', provider: 'chatgpt', source_record_id: 'a1', role: 'assistant',
+      visibility: 'visible', kind: 'message', source: { provider: 'chatgpt' }
+    },
+    {
+      id: 'chatgpt:r1', provider: 'chatgpt', source_record_id: 'r1', role: 'assistant',
+      visibility: 'visible', kind: 'reasoning_summary', source: { provider: 'chatgpt' }
+    }
+  ];
+  const turns = deriveTurns(events);
+
+  assert.equal(turns.length, 2);
+  assert.deepEqual(turns.map(turn => turn.event_ids), [['chatgpt:a1'], ['chatgpt:r1']]);
 });
 
 test('rejects a source record without a stable id rather than inventing identity', () => {
