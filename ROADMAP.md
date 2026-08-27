@@ -77,15 +77,21 @@ while extraction/speech omit it. The Codex orphan-patch fixture likewise differs
 from the current AI-transcript rendering. These are baseline facts to preserve and
 classify during migration, not reasons to rewrite unrelated association logic.
 
-**Phase 3 is in progress.** ChatGPT is being extracted first, mechanically, from
-the applicable canonical behaviour sources. No speculative change to chronological
-ordering or User/Assistant association is justified by the Phase 2 evidence.
+**Phase 3 is complete.** The ChatGPT adapter now covers the concrete semantics
+established by the Phase 2 corpus and subsequent verified evidence: ordinary
+messages, commentary, exposed reasoning summaries, tool calls/results, evidenced
+non-`parts` content, citations including `sources_footnote`, uploaded/retrieved
+files, generated artifacts, ordered images, hidden/system/model-editable records,
+explicit parent relationships, source provenance/ranges, and the established turn
+and chronology invariants. The post-blocker completeness review found no remaining
+concrete Phase 3 semantic blocker. Issue #34 (streamed response events for live
+reading) is a future incremental-input capability, not a requirement for the
+persisted-record ChatGPT adapter completed in Phase 3.
 
-Before further reasoning/tool/citation/image adapter extraction, issue #13 must
-establish one canonical rich ChatGPT golden from `chatgpt-direct.jsonl`. That
-golden must be based on a complete Python-vs-DownloadConversation comparison. Any
-unresolved difference not already explicitly decided by the user must be presented
-to the user before a canonical choice is made.
+**Phase 4 is next.** Build the canonical Markdown renderer from canonical data only,
+using the decided migration behaviour and evidence-backed ChatGPT exceptions. Do
+not teach the renderer to inspect ChatGPT-native JSON to recover semantics that
+belong in the adapter.
 
 ## Working principles
 
@@ -162,23 +168,26 @@ test pass.
 
 ## Phase 3 — ChatGPT adapter
 
-Mechanically extract proven ChatGPT record interpretation from the applicable
-canonical behaviour sources into the shared JavaScript core.
+**Status: COMPLETE.**
 
-Do not combine extraction with speculative changes to ordering, grouping, or
-association logic. In particular, do not replace working chronological behaviour
-without real evidence that it fails.
+The proven persisted-record ChatGPT semantics required for the initial shared
+adapter have been extracted into the shared JavaScript core. The completion review
+was rerun after resolving the concrete gaps found by issue #29, including
+non-`parts` content (#30), explicit parent relationships (#31), and the separately
+discovered `sources_footnote` citation form (#35). The obsolete UAP/half-turn
+coverage premise from #32 was removed through the documentation correction tracked
+by #33 rather than being encoded as a canonical requirement.
 
-Every migration slice must preserve the applicable decided behaviour and run
-against the relevant fixtures/baselines. Consumer differences are evidence; they
-do not silently redefine canonical behaviour.
+The completed adapter preserves source order and does not infer chronology,
+grouping, parentage, or User/Assistant association beyond the explicit evidenced
+rules. Subagent/delegated-agent handling remains evidence-driven (`when available`)
+rather than speculative. Future streamed/provisional response capture is tracked
+separately in #34 and does not reopen this persisted-record adapter phase.
 
-ChatGPT citations use verified `DownloadConversation` behaviour. ChatGPT images
-remain a separate verification item because the authenticated browser environment
-may resolve API image resources that a standalone Python process cannot. The
-canonical model must preserve enough image source identity, position, availability
-state, and resolved resource data for either environment to supply what it knows
-without changing shared rendering semantics.
+ChatGPT citations use verified `DownloadConversation` behaviour. ChatGPT image
+semantics preserve source position and missing/unavailable state while allowing a
+credentialed browser host to supply resource-resolution enrichment outside the
+core.
 
 ## Phase 4 — Canonical Markdown renderer
 
