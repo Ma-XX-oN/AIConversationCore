@@ -72,9 +72,11 @@ Provider adapters may normalize source pointers, IDs, filenames, media types, so
 
 The core must not pretend that a provider pointer and a resolved URL are the same concept.
 
-For an evidenced ChatGPT `sandbox:/...` generated-file link, normalization preserves the source pointer, local sandbox path, display label/name, text position, Assistant message identity, and conversation identity required for later resolution.  Do not pre-render the ChatGPT backend download URL into canonical data.  The renderer/resolver can serialize the download URL from the normalized resolution context without reading the provider-native JSON record again.
+For an evidenced ChatGPT `sandbox:/...` generated-file link, canonical data preserves **both** the original source pointer/local sandbox path and the deterministic ChatGPT HTTPS download URL whenever the conversation ID and Assistant message ID required to derive that URL are present.  The source pointer remains provenance/identity; the HTTPS URL is the core-derived transport location.  Consumers must not have to call back into provider-native JSON or independently reconstruct the mapping.
 
-Markdown destinations containing balanced parentheses must preserve the complete destination.  A filename such as `fixture(phase2).txt` is one source path, not a path truncated at its first closing parenthesis.
+Constructing that deterministic HTTPS URL belongs in the core because it is shared provider interpretation and does not require browser credentials.  Actually fetching the URL when authentication/session context is required remains a host responsibility.
+
+Markdown destinations containing balanced parentheses must preserve the complete destination.  A filename such as `fixture(phase2).txt` is one source path, not a path truncated at its first closing parenthesis.  The deterministic HTTPS URL must apply the established strict query-value percent-encoding used by the Python reference, including encoding such parentheses in `sandbox_path`.
 
 Uploaded file references and retrieved/cited files may share `type: "file"` while retaining different `resource_kind` values and kind-specific fields when their evidence differs.  Do not force an uploaded attachment and a retrieved tool/file citation into an identical field set merely because both are files.
 
