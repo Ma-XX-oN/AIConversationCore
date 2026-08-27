@@ -16,8 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch current AI transcript source
         run: git clone --depth 1 https://github.com/Ma-XX-oN/AI-General-Memory.git /tmp/ai-general-memory
-      - name: Install colorama
-        run: python -m pip install colorama
+      - name: Install renderer dependencies
+        run: python -m pip install colorama regex
       - name: Render plain Claude evidence
         run: python /tmp/ai-general-memory/scripts/AI-transcript.py --claude --file tests/fixtures/claude/claude-rich-subagent.jsonl --color=never > claude-rich.plain.md
       - name: Render decorated Claude evidence
