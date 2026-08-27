@@ -1,0 +1,11 @@
+{"type":"event_msg","timestamp":"2026-01-02T00:00:01.000Z","payload":{"type":"user_message","message":"Please update the example and explain the result."}}
+{"type":"event_msg","timestamp":"2026-01-02T00:00:02.000Z","payload":{"type":"agent_reasoning","text":"I will inspect the relevant file first."}}
+{"type":"event_msg","timestamp":"2026-01-02T00:00:03.000Z","payload":{"type":"agent_message","phase":"commentary","message":"I found the relevant section and I am applying a small patch."}}
+{"type":"response_item","timestamp":"2026-01-02T00:00:04.000Z","payload":{"type":"custom_tool_call","name":"apply_patch","call_id":"call-patch-1","input":"*** Begin Patch\n*** Update File: example.txt\n@@\n-old value\n+new value\n*** End Patch"}}
+{"type":"response_item","timestamp":"2026-01-02T00:00:05.000Z","payload":{"type":"custom_tool_call_output","call_id":"call-patch-1","output":"Done!"}}
+{"type":"event_msg","timestamp":"2026-01-02T00:00:06.000Z","payload":{"type":"agent_message","phase":"final","message":"The example now uses the new value."}}
+{"type":"event_msg","timestamp":"2026-01-02T00:00:07.000Z","payload":{"type":"user_message","message":"Which verification mode should I use?"}}
+{"type":"response_item","timestamp":"2026-01-02T00:00:08.000Z","payload":{"type":"function_call","name":"request_user_input","call_id":"call-question-1","arguments":"{\"questions\":[{\"id\":\"mode\",\"question\":\"Choose verification mode\",\"options\":[{\"label\":\"Focused\",\"description\":\"Run the narrow regression\"},{\"label\":\"Full\",\"description\":\"Run the complete suite\"}]}]}"}}
+{"type":"response_item","timestamp":"2026-01-02T00:00:09.000Z","payload":{"type":"function_call_output","call_id":"call-question-1","output":"{\"answers\":{\"mode\":{\"answers\":[\"Focused\"]}}}"}}
+{"type":"event_msg","timestamp":"2026-01-02T00:00:10.000Z","payload":{"type":"agent_reasoning","text":"I will use the selected focused verification."}}
+{"type":"event_msg","timestamp":"2026-01-02T00:00:11.000Z","payload":{"type":"agent_message","phase":"final","message":"Focused verification is selected."}}
