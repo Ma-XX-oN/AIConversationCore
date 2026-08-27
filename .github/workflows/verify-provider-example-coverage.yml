@@ -1,0 +1,37 @@
+name: Verify provider example coverage
+on:
+  push:
+    paths:
+      - 'tests/fixtures/claude/claude-questions.jsonl'
+      - '.github/workflows/verify-provider-example-coverage.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch production transcript renderer
+        run: curl -fsSL https://raw.githubusercontent.com/Ma-XX-oN/AI-General-Memory/master/scripts/AI-transcript.py -o /tmp/AI-transcript.py
+      - name: Install renderer dependencies
+        run: python -m pip install --disable-pip-version-check colorama regex
+      - name: Render Claude question fixture
+        run: |
+          python /tmp/AI-transcript.py --claude --file tests/fixtures/claude/claude-questions.jsonl --color=never > /tmp/claude-questions.canonical.md
+          python /tmp/AI-transcript.py --claude --file tests/fixtures/claude/claude-questions.jsonl -d -n --color=always > /tmp/claude-questions.decorated.md
+      - name: Render decorated ChatGPT fixture
+        run: python /tmp/AI-transcript.py --chatgpt --file tests/fixtures/chatgpt/chatgpt-direct.jsonl -d -n --color=always > /tmp/chatgpt-direct.decorated.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: provider-example-regression-outputs
+          path: |
+            /tmp/claude-questions.canonical.md
+            /tmp/claude-questions.decorated.md
+            /tmp/chatgpt-direct.decorated.md
+      - name: Remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/verify-provider-example-coverage.yml
+          git commit -m 'cleanup: remove provider example verification workflow'
+          git push
