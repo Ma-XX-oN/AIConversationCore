@@ -233,6 +233,40 @@ function normalizeNonPartsContent(event, record) {
   return normalizeModelEditableContext(normalized, record);
 }
 
+function normalizeSourceFootnotes(event, record) {
+  const references = record?.metadata?.content_references;
+  if (!Array.isArray(references)) return event;
+
+  const footnotes = [];
+  references.forEach((reference, referenceIndex) => {
+    if (reference?.type !== 'sources_footnote') return;
+
+    footnotes.push({
+      id: `${event.source_record_id}:citation:${referenceIndex}`,
+      type: 'citation',
+      citation_kind: 'sources_footnote',
+      matched_text: typeof reference?.matched_text === 'string' ? reference.matched_text : null,
+      text_range: null,
+      sources_footnote: {
+        sources: Array.isArray(reference?.sources)
+          ? reference.sources.map(source => ({
+              title: typeof source?.title === 'string' ? source.title : null,
+              url: typeof source?.url === 'string' ? source.url : null,
+              attribution: typeof source?.attribution === 'string' ? source.attribution : null
+            }))
+          : []
+      },
+      source: sourceFor(event, { reference_index: referenceIndex })
+    });
+  });
+
+  if (!footnotes.length) return event;
+  return {
+    ...event,
+    citations: [...event.citations, ...footnotes]
+  };
+}
+
 function normalizeParentRelationship(event, record, knownRecordIds) {
   const parentRecordId = typeof record?.metadata?.parent_id === 'string' &&
       record.metadata.parent_id.trim()
@@ -261,6 +295,7 @@ export function adaptChatGPTRecords(records) {
     const record = records[event.source_index];
     const withImages = normalizeMultimodalImages(event, record);
     const withNonParts = normalizeNonPartsContent(withImages, record);
-    return normalizeParentRelationship(withNonParts, record, knownRecordIds);
+    const withFootnotes = normalizeSourceFootnotes(withNonParts, record);
+    return normalizeParentRelationship(withFootnotes, record, knownRecordIds);
   });
 }
