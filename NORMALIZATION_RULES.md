@@ -82,7 +82,31 @@ Markdown destinations containing balanced parentheses must preserve the complete
 
 Uploaded file references and retrieved/cited files may share `type: "file"` while retaining different `resource_kind` values and kind-specific fields when their evidence differs.  Do not force an uploaded attachment and a retrieved tool/file citation into an identical field set merely because both are files.
 
-Image normalization must preserve source/block position.  Images are ordered content, not merely entries in an attachment collection.
+## Image normalization
+
+Images are ordered content, not merely entries in an attachment collection.  A provider part sequence such as `text -> image -> text` must remain that sequence in canonical blocks, and canonical source `part_index` values must continue to refer to the original provider part positions.
+
+For the evidenced ChatGPT `image_asset_pointer` form, source identity is selected in this order when present:
+
+1. `metadata.asset_pointer_link`;
+2. `asset_pointer_link`; then
+3. `asset_pointer`.
+
+The canonical image block references a canonical image resource by `resource_id`.  The resource preserves the source pointer and evidenced metadata such as byte size, width, and height without converting the image into a generic file attachment.
+
+Image resolution has a genuinely multi-state domain in the verified Python and DownloadConversation behaviour, so a string status is appropriate when a state is actually known:
+
+- `available` — image data/resource has been established as usable;
+- `missing` — the image has been established as absent, including the no-pointer case and verified 404/410 responses; and
+- `unavailable` — a resource identity exists but an attempted resolution could not provide usable image data for a reason other than established absence.
+
+Do not invent one of those states merely from a pointer.  A valid unresolved provider pointer may omit `status` until resolution evidence exists.  In particular, deriving a deterministic HTTPS transport URL does not by itself prove that the host can retrieve the image.
+
+An inline `data:image/...` pointer is already usable image data and may therefore be normalized as `status: "available"` with its data URL retained.  An evidenced `sediment://file_...` identity may also carry the deterministic ChatGPT `https://chatgpt.com/backend-api/files/download/...` transport URL while retaining the original `sediment:` pointer; authenticated retrieval remains a host responsibility.
+
+DownloadConversation may enrich an image resource after credential-bound browser resolution with the resulting status and resolved/data resource information.  The shared renderer must consume that canonical enrichment rather than perform browser authentication or inspect ChatGPT-native records itself.
+
+When images change the mapping between prior text-only block ordinals and true source part positions, citation/resource ranges attached to text must be remapped to the real source `part_index`.  A range pointing into text after an image must not continue to claim that the text occupied the earlier text-only ordinal.
 
 ## Renderer independence from provider-native records
 
