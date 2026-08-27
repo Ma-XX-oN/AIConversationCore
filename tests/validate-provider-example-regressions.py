@@ -63,6 +63,56 @@ def main():
     if marker not in plain:
       fail(f"Claude question golden missing {marker!r}")
 
+  plan = manifest["claude_exit_plan"]
+  plan_fixture = ROOT / plan["fixture"]
+  if not plan_fixture.is_file() or sha256(plan_fixture) != plan["fixture_sha256"]:
+    fail("Claude ExitPlanMode fixture hash mismatch")
+  plan_records = [json.loads(line) for line in plan_fixture.read_text(encoding="utf-8").splitlines() if line.strip()]
+  exit_blocks = [
+    block
+    for record in plan_records
+    if record.get("type") == "assistant"
+    for block in record.get("message", {}).get("content", [])
+    if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "ExitPlanMode"
+  ]
+  if len(exit_blocks) != 1:
+    fail(f"expected 1 Claude ExitPlanMode call, found {len(exit_blocks)}")
+  exit_id = exit_blocks[0].get("id")
+  approval_results = [
+    block
+    for record in plan_records
+    if record.get("type") == "user"
+    for block in record.get("message", {}).get("content", [])
+    if isinstance(block, dict) and block.get("type") == "tool_result" and block.get("tool_use_id") == exit_id
+  ]
+  if len(approval_results) != 1 or "approved your plan" not in str(approval_results[0].get("content", "")):
+    fail("Claude ExitPlanMode fixture lost correlated approval tool_result")
+  for entry in plan["goldens"]:
+    path = ROOT / entry["path"]
+    if not path.is_file() or sha256(path) != entry["sha256"]:
+      fail(f"Claude ExitPlanMode golden mismatch: {entry['path']}")
+  plan_plain = (ROOT / plan["goldens"][0]["path"]).read_text(encoding="utf-8")
+  for marker in (
+    "### Plan",
+    "Demonstration plan.",
+    "## User",
+    "User has approved your plan.",
+    "<summary>Approved Plan</summary>",
+    "Proceeding with the approved plan.",
+  ):
+    if marker not in plan_plain:
+      fail(f"Claude ExitPlanMode golden missing {marker!r}")
+
+  notice = manifest["claude_synthetic_notice"]
+  if notice.get("repository") != "Ma-XX-oN/AI-General-Memory":
+    fail("Claude synthetic notice lost upstream repository provenance")
+  if notice.get("path") != "scripts/fixtures/notice.jsonl":
+    fail("Claude synthetic notice lost upstream fixture path")
+  if notice.get("git_blob") != "40f331fa27d3ed14aad882e6d13ab8f260278986":
+    fail("Claude synthetic notice upstream blob changed unexpectedly")
+  if notice.get("model_marker") != "<synthetic>" or notice.get("example_text") != "Context limit reached.":
+    fail("Claude synthetic notice semantics changed unexpectedly")
+
   chatgpt = manifest["chatgpt_decorated"]
   decorated_path = ROOT / chatgpt["golden"]
   if not decorated_path.is_file() or sha256(decorated_path) != chatgpt["sha256"]:
