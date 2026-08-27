@@ -1,0 +1,36 @@
+name: Verify Codex question evidence provenance
+
+on:
+  push:
+    paths:
+      - 'tests/codex-canonical-golden-manifest.json'
+      - 'tests/validate-codex-canonical-golden.py'
+      - '.github/workflows/verify-codex-question-evidence.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run core tests
+        run: npm test
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Validate ChatGPT canonical golden
+        run: python tests/validate-canonical-golden.py
+      - name: Validate Claude canonical golden
+        run: python tests/validate-claude-canonical-golden.py
+      - name: Validate Codex canonical golden and question provenance
+        run: python tests/validate-codex-canonical-golden.py
+      - name: Remove temporary workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git rm .github/workflows/verify-codex-question-evidence.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -m 'chore: remove temporary Codex question verification workflow'
+          git push
