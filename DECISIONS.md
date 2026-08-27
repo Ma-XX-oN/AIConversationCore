@@ -230,3 +230,48 @@ Inventing correlation from adjacency would violate the project's evidence and
 chronology rules and could associate unrelated tool activity.  Preserving explicit
 provider IDs gives the shared model a common relationship where it is proven while
 retaining uncertainty where the provider evidence does not establish one.
+
+## D014 — Projection styling uses semantic roles exposed through the core API
+
+**Status:** Accepted
+
+**Decision:** Shared display/header projections must represent style intent with
+semantic roles rather than embedding ANSI colours, HTML/CSS classes, or other
+format-specific styling directly in canonical conversation data or provider
+adapters.
+
+Initial turn-header style roles include at least:
+
+- `user-heading`
+- `assistant-heading`
+- `timestamp`
+- `record-number`
+- `turn-id`
+
+The core projection API must expose these roles and their default mappings through
+a documented configuration surface.  The intended API shape is a shared/default
+configuration or theme setup function, with per-render overrides where useful.
+Consumers must not need to duplicate the semantic-role definitions themselves.
+
+ANSI rendering maps the roles to terminal styles.  HTML rendering maps the same
+roles to stable semantic classes or equivalent structured style metadata.
+Plain-text rendering ignores presentation styling while retaining the same header
+component structure.  Other consumers may map the roles to their own presentation
+system.
+
+The default ANSI grammar preserves established behaviour: User headings are
+yellow, Assistant/provider headings green, timestamps cyan, and record numbers
+dim.  `turn-id` receives its own default role/style, currently intended to be
+magenta/purple.  Those colour choices are projection defaults, not canonical
+conversation semantics.
+
+`AgentPanelSpeaker` must therefore be able either to consume core-generated HTML
+with stable semantic classes or to consume structured header components/style
+roles and map them into WebView2/CSS itself.  Provider adapters must never know
+about these colours or CSS classes.
+
+**Reason:** ANSI is only one presentation target.  The same semantic header data
+will be useful in terminal output, HTML/WebView2, browser UI, and future display
+projections.  Separating semantic style roles from format-specific presentation
+prevents styling knowledge from being duplicated across consumers and keeps the
+core API suitable for both `AI-transcript.py` and `AgentPanelSpeaker`.
