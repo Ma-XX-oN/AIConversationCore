@@ -71,6 +71,45 @@ Citation tooltip presentation remains a renderer contract.  The established
 canonical golden protects a blank line between tooltip title and blurb/snippet so
 readability is preserved, not merely data presence.
 
+## ChatGPT files and generated artifacts
+
+File-like resources are exposed on `event.resources`.  This slice normalizes only
+the concrete forms established by checked-in evidence:
+
+- a ChatGPT `file` citation becomes a canonical `type: "file"` resource with
+  `resource_kind: "attachment"`, source file identity/name/source/snippet, and
+  source-reference provenance;
+- an exactly resolved hidden tool/file citation becomes a distinct
+  `resource_kind: "retrieved_file"` resource instead of being forced into the
+  uploaded-attachment shape; and
+- an Assistant Markdown link whose destination is an evidenced `sandbox:/...`
+  pointer becomes `type: "artifact"`, `resource_kind: "generated_file"`.
+
+Citation objects that correspond to canonical file resources expose a
+`resource_id` relationship to the resource rather than requiring downstream
+consumers to reconstruct that relationship from ChatGPT metadata.
+
+Generated-file artifacts preserve the source pointer, normalized sandbox path,
+display label/name, text-block range, and resolution context required by the
+established Python behaviour: ChatGPT conversation ID plus Assistant message ID.
+The adapter does not pre-render the ChatGPT backend download URL; URL serialization
+belongs to the later renderer/resolver layer.
+
+The exported `chatgpt_conversation_metadata` JSONL wrapper supplies conversation
+context and is not emitted as a conversation event.  Original JSONL source indices
+are still retained for the actual conversation records, so provenance remains
+traceable through the wrapper line.
+
+No `available` flag or `resolved_url` is invented for sandbox artifacts merely
+because a source pointer exists.  Resource availability is only represented when
+verified evidence actually establishes that state.  Browser-credential-dependent
+resource resolution remains outside the core.
+
+The sandbox-link scanner follows the evidence-backed balanced-parenthesis rule, so
+a path such as `fixture(phase2).txt` remains one complete Markdown destination.
+General image semantics are deliberately not part of this slice; image asset
+pointers are not reclassified as file resources.
+
 ## Tool calls and results
 
 The canonical tool slice uses `tool_call` and `tool_result` events with structured
@@ -118,6 +157,7 @@ Each mapped ChatGPT event currently records:
 - ordered structured content `blocks` with stable block IDs and source provenance;
 - canonical `citations` where the source record contains an evidenced citation
   form;
+- canonical `resources` for evidenced file/retrieved-file/sandbox-artifact forms;
 - observed `turn_exchange_id` and `working_turn_id` relationship values; and
 - an explicit tool-call relationship field that remains null when the source has
   no explicit correlation ID.
@@ -148,10 +188,10 @@ recorded separately in `tests/canonical-golden-manifest.json`. Claude and Codex
 tool tests use the checked-in privacy-safe fixtures whose real-evidence provenance
 is pinned in the provider canonical/regression manifests.
 
-This is intentionally not the complete provider schema. Files, images, artifacts,
-additional hidden/system records, branches, and additional content types must be
-added incrementally against fixture/baseline evidence. Unsupported semantics must
-not be invented merely to make the schema look complete.
+This is intentionally not the complete provider schema. Images, additional
+hidden/system records, branches, and additional content types must be added
+incrementally against fixture/baseline evidence. Unsupported semantics must not be
+invented merely to make the schema look complete.
 
 The chronology invariant is explicit: source ordering is preserved unless real
 provider evidence establishes a different required rule and that change is
