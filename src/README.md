@@ -33,18 +33,19 @@ remains a separate projection concern.
 
 The ChatGPT adapter now exposes canonical citation metadata on `event.citations`
 for the concrete citation/reference forms established by the checked-in rich
-fixture.  Citation normalization follows `NORMALIZATION_RULES.md`: equivalent
-semantics share a small base, while citation-kind-specific information remains in
-kind-specific substructures rather than being forced into one rigid schema.
+fixture and subsequent verified evidence. Citation normalization follows
+`NORMALIZATION_RULES.md`: equivalent semantics share a small base, while
+citation-kind-specific information remains in kind-specific substructures rather
+than being forced into one rigid schema.
 
 The shared citation base contains:
 
 - stable canonical citation ID;
 - `type: "citation"`;
 - `citation_kind`;
-- the source marker text;
-- a canonical text-block range locating that marker; and
-- provider/source record/reference-index provenance.
+- provider/source record/reference-index provenance; and
+- source marker text and a canonical text-block range when the evidenced citation
+  form is tied to an inline marker.
 
 The currently evidenced kinds are:
 
@@ -54,10 +55,15 @@ The currently evidenced kinds are:
   boolean `resolved` plus the resolved title/URL and provenance;
 - `web` — keeps web source title, URL, attribution, snippet, safe URLs, and
   supporting-source relationships in `web`; same-record search-result evidence is
-  used to enrich a supporting source only when its normalized URL matches; and
+  used to enrich a supporting source only when its normalized URL matches;
 - `memory` — keeps the evidenced conversation-context citation sources in
   `memory`, including citation UUID, title, URL, snippet, attribution, category,
-  deletion flag, and retrieval origin.
+  deletion flag, and retrieval origin; and
+- `sources_footnote` — keeps the independently evidenced user-visible source list
+  in `sources_footnote.sources`, currently preserving only source `title`, `url`,
+  and `attribution`. It remains distinct from `grouped_webpages` and
+  `search_result_groups`; no inline marker/range or selection relationship is
+  invented when the evidence does not establish one.
 
 The rich fixture also contains an `alt_text` entity reference.  It is deliberately
 not forced into the citation schema because the checked-in evidence does not make
