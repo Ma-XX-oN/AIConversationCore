@@ -1,0 +1,37 @@
+name: Verify provider example regressions
+on:
+  push:
+    paths:
+      - 'tests/provider-example-regression-manifest.json'
+      - 'tests/validate-provider-example-regressions.py'
+      - 'tests/fixtures/claude/claude-questions.jsonl'
+      - 'tests/golden/claude/claude-questions.canonical.md'
+      - 'tests/golden/claude/claude-questions.decorated.md'
+      - 'tests/golden/chatgpt/chatgpt-direct.decorated.md'
+      - '.github/workflows/verify-provider-example-regressions-final.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run core tests
+        run: npm test
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
+      - name: Remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/verify-provider-example-regressions-final.yml
+          git commit -m 'cleanup: remove provider example regression workflow'
+          git push
