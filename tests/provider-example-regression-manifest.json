@@ -23,6 +23,46 @@
       }
     ]
   },
+  "claude_exit_plan": {
+    "fixture": "tests/fixtures/claude/claude-exit-plan.jsonl",
+    "fixture_sha256": "6d18078a0d2501dd41a12928d7bfab713b44ebd27694b0a12bc4e8ea10a3fbd7",
+    "real_private_evidence": {
+      "raw_jsonl_sha256": "12be7848580e50be517bda18fd775e3c838d794d11da77c28f4f6fde596b2846",
+      "rendered_markdown_sha256": "4cbcf3539e94238ed4b6bf623971ca2e7a9d03573682620e74e6db7b209b9991",
+      "raw_record_count": 93,
+      "exit_plan_mode_record_number": 90,
+      "approval_tool_result_record_number": 91,
+      "note": "private source files are not committed; fixture is a privacy-safe reduction of the verified real structures"
+    },
+    "goldens": [
+      {
+        "path": "tests/golden/claude/claude-exit-plan.canonical.md",
+        "sha256": "7d91386b6a7191fc301011c7a623e861da50e1b6fedfcdb2b243052e640a972d",
+        "options": ["--color=never"]
+      },
+      {
+        "path": "tests/golden/claude/claude-exit-plan.decorated.md",
+        "sha256": "966b70dcafe8861dc2c47b3e2328fd248f8b0a4901a61ebe6698e4213aeb144e",
+        "options": ["-d", "-n", "--color=always"]
+      }
+    ],
+    "verified_semantics": [
+      "ExitPlanMode input.plan renders under a ### Plan section",
+      "the correlated approved-plan tool_result renders as a visible User turn",
+      "the approved plan detail is preserved",
+      "the subsequent Claude response remains a separate Claude turn"
+    ]
+  },
+  "claude_synthetic_notice": {
+    "authority": "existing maintained AI-General-Memory fixture",
+    "repository": "Ma-XX-oN/AI-General-Memory",
+    "path": "scripts/fixtures/notice.jsonl",
+    "git_blob": "40f331fa27d3ed14aad882e6d13ab8f260278986",
+    "sha256": "2e2cfa69d5b87328d8d0f29699a7f1649a6fc6ec5954cf1f369cb495051dac49",
+    "model_marker": "<synthetic>",
+    "example_text": "Context limit reached.",
+    "note": "this behaviour was already represented in the production renderer repository and was not missing user evidence"
+  },
   "chatgpt_decorated": {
     "fixture": "tests/fixtures/chatgpt/chatgpt-direct.jsonl",
     "golden": "tests/golden/chatgpt/chatgpt-direct.decorated.md",
