@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "status": "established",
+  "goldens": [
+    {
+      "provider": "chatgpt",
+      "fixture": "tests/fixtures/chatgpt/chatgpt-direct.jsonl",
+      "fixture_git_blob": "1631c0b4fe7b059759d3546f9c8ab54d6ae22c92",
+      "fixture_sha256": "9348f559872bc46662ac98a58c21561daf02cfaeefff4f3ee56ce66a64daf217",
+      "golden": "tests/golden/chatgpt/chatgpt-direct.canonical.md",
+      "golden_sha256": "11084d32e03f835b734b7bf9d43dc6bae2f3868941a5c0df06fd220adf423b41",
+      "base_authority": {
+        "repository": "Ma-XX-oN/AI-General-Memory",
+        "commit": "2910c54a4786d17de684bcffb00181b5d2c37d38",
+        "path": "scripts/AI-transcript.py",
+        "script_sha256": "8c0c906d6ca2a8413b7578fe1ed3f083855ff3716244607f17fa24d5b648ef90"
+      },
+      "exception_authority": {
+        "repository": "Ma-XX-oN/DownloadConversation",
+        "comparison_commit": "da97311bc5eff2ff8e126fab4594ba61f9adbdd5",
+        "path": "chatgpt-conversation-markdown-export.user.js",
+        "script_sha256": "9dc3885d81fa8be71e0d3cacc54ce7813a3c029bf77c287b7e899f0b3112c9ec"
+      },
+      "decisions": [
+        {
+          "semantic": "session_header",
+          "choice": "The two-line AI-transcript.py session header/title is optional outer metadata and is excluded from the base canonical transcript body.",
+          "authority": "user decision 2026-08-26"
+        },
+        {
+          "semantic": "heading_metadata",
+          "choice": "Timestamps and record numbers remain optional; stable turn_id is added as another optional heading annotation. The base golden has optional heading metadata disabled.",
+          "authority": "user decision 2026-08-26"
+        },
+        {
+          "semantic": "container_exec_code_language",
+          "choice": "Use AI-transcript.py code-language inference; the fixture's declared unknown container.exec command renders with a bash fence.",
+          "authority": "user decision 2026-08-26"
+        },
+        {
+          "semantic": "eof_whitespace",
+          "choice": "Use AI-transcript.py EOF formatting, including its final blank line.",
+          "authority": "user decision 2026-08-26"
+        },
+        {
+          "semantic": "chatgpt_citations",
+          "choice": "Use DownloadConversation citation rendering, including the memory-file favicon behaviour exercised by this fixture.",
+          "authority": "user decision before 2026-08-26 rich-golden review"
+        },
+        {
+          "semantic": "chatgpt_image_fallback",
+          "choice": "Both compared renderers agreed for this fixture: preserve source part position and distinguish linked image-not-available from image-missing. Authenticated image-resource resolution is a separate host capability and is not fabricated in this golden.",
+          "authority": "production comparison run 33024670047"
+        }
+      ],
+      "comparison": {
+        "downloadconversation_run": 33024670047,
+        "artifact_id": 9627921256,
+        "artifact_sha256": "54ef886bd0f8a16bb31555f6aa2aaa941f5242120de171d4429f504501fd7c4c"
+      }
+    }
+  ]
+}
