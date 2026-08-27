@@ -11,6 +11,8 @@ export {
   renderTurnHeader
 } from './projections/turn-header.js';
 
+export { renderCanonicalMarkdown } from './projections/markdown.js';
+
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
 export { adaptClaudeToolEvents } from './adapters/claude.js';
