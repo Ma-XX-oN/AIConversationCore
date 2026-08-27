@@ -8,15 +8,17 @@ For ordinary visible message records, each source record becomes one canonical `
 
 For an Assistant record whose provider channel is `commentary`, the adapter emits a canonical `commentary` event rather than flattening that record into a final/ordinary message event. Commentary preserves the same stable source identity, source index, channel, visibility, text blocks, and block provenance as other mapped records.
 
+For an Assistant record whose source `content_type` is `thoughts`, the adapter emits a canonical `reasoning_summary` event. Each source thought is retained as a structured `reasoning_summary` block with its `summary`, `content`, `chunks`, `finished` state, stable block ID, source record index, and thought index. Normalizing a source reasoning record does not by itself assert that the material is eligible for public/export presentation; visibility/export policy remains a separate projection concern.
+
 Each mapped event currently records:
 
 - canonical `id` derived from the stable ChatGPT message ID;
 - `provider`, `source_record_id`, and `source_index`;
 - `kind`, `role`, `channel`, `visibility`, and source `content_type`;
-- ordered structured text `blocks` with stable block IDs and source record/part provenance;
+- ordered structured content `blocks` with stable block IDs and source provenance;
 - observed `turn_exchange_id` and `working_turn_id` relationship values.
 
-`src/derive/turns.js` derives independently addressable turns from the ordered canonical event stream. Ordinary message events start turns. Assistant commentary joins the current Assistant turn when one already exists; if commentary appears before the final Assistant message, it starts the Assistant turn and the later Assistant message completes that same turn. This is a turn/event relationship, not User/Assistant pairing.
+`src/derive/turns.js` derives independently addressable turns from the ordered canonical event stream. Ordinary message events start turns. Assistant commentary joins the current Assistant turn when one already exists; if commentary appears before the final Assistant message, it starts the Assistant turn and the later Assistant message completes that same turn. A pre-final Assistant `reasoning_summary` likewise starts or joins the still-open Assistant turn, preserving source event order before commentary/final content. A reasoning event observed after a completed Assistant message is not collapsed backward into that completed turn. These are turn/event relationships, not User/Assistant pairing.
 
 The duplicate-identity fixture protects two separate invariants:
 
@@ -25,8 +27,8 @@ The duplicate-identity fixture protects two separate invariants:
 
 It is not a User/Assistant-pair (UAP) association test. Any exchange or pairing relationship is a later derived relationship and is not used to establish canonical ordering or turn identity.
 
-The rich ChatGPT fixture `tests/fixtures/chatgpt/chatgpt-direct.jsonl` is imported from `AI-General-Memory/scripts/fixtures/chatgpt-direct.jsonl` at upstream blob SHA `1631c0b4fe7b059759d3546f9c8ab54d6ae22c92`. The current commentary slice uses its real `commentary-1` record and deliberately does not assign semantics yet to its thoughts, code/tool calls, tool results, citations, files, images, or browsing-display records.
+The rich ChatGPT fixture `tests/fixtures/chatgpt/chatgpt-direct.jsonl` is imported from `AI-General-Memory/scripts/fixtures/chatgpt-direct.jsonl` at upstream blob SHA `1631c0b4fe7b059759d3546f9c8ab54d6ae22c92`. The current slices use its real `thought-1` and `commentary-1` records. The canonical rich ChatGPT golden is recorded separately in `tests/canonical-golden-manifest.json` and protects the resolved rendering contract while semantic extraction proceeds incrementally.
 
-This is intentionally not the complete ChatGPT schema. Reasoning summaries, tools/results, citations, files, images, artifacts, hidden/system records, branches, and additional content types must be added incrementally against fixture/baseline evidence. Unsupported semantics must not be invented merely to make the schema look complete.
+This is intentionally not the complete ChatGPT schema. Tools/results, citations, files, images, artifacts, hidden/system records, branches, and additional content types must be added incrementally against fixture/baseline evidence. Unsupported semantics must not be invented merely to make the schema look complete.
 
 The chronology invariant is explicit: source ordering is preserved unless real provider evidence establishes a different required rule and that change is separately tracked and tested.
