@@ -233,11 +233,34 @@ function normalizeNonPartsContent(event, record) {
   return normalizeModelEditableContext(normalized, record);
 }
 
+function normalizeParentRelationship(event, record, knownRecordIds) {
+  const parentRecordId = typeof record?.metadata?.parent_id === 'string' &&
+      record.metadata.parent_id.trim()
+    ? record.metadata.parent_id.trim()
+    : null;
+
+  return {
+    ...event,
+    relationships: {
+      ...event.relationships,
+      parent_record_id: parentRecordId,
+      parent_event_id: parentRecordId && knownRecordIds.has(parentRecordId)
+        ? `chatgpt:${parentRecordId}`
+        : null
+    }
+  };
+}
+
 export function adaptChatGPTRecords(records) {
   const events = adaptBaseChatGPTRecords(records);
+  const knownRecordIds = new Set(records
+    .map(record => record?.id)
+    .filter(id => typeof id === 'string' && id));
+
   return events.map(event => {
     const record = records[event.source_index];
     const withImages = normalizeMultimodalImages(event, record);
-    return normalizeNonPartsContent(withImages, record);
+    const withNonParts = normalizeNonPartsContent(withImages, record);
+    return normalizeParentRelationship(withNonParts, record, knownRecordIds);
   });
 }
