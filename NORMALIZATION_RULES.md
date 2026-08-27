@@ -62,6 +62,8 @@ Do not encode a binary state as strings such as `"available"` / `"unavailable"` 
 
 Use a string/enum state only when the domain is genuinely ternary or larger, such as when distinct `unknown`, `available`, and `missing` states are all required by verified semantics.  Do not invent additional states merely to justify an enum.
 
+Do not add an availability field at all merely because a resource identity or pointer exists.  If the evidence does not establish availability, preserve the identity and omit the unproven state.
+
 ## Resource identity versus host resolution
 
 Canonical file/image/artifact data must distinguish provider/source identity from host-specific resource resolution.
@@ -69,6 +71,12 @@ Canonical file/image/artifact data must distinguish provider/source identity fro
 Provider adapters may normalize source pointers, IDs, filenames, media types, source positions, and other provider evidence.  Browser-credential-dependent resource resolution remains outside the core and may enrich canonical data through an explicit host boundary.
 
 The core must not pretend that a provider pointer and a resolved URL are the same concept.
+
+For an evidenced ChatGPT `sandbox:/...` generated-file link, normalization preserves the source pointer, local sandbox path, display label/name, text position, Assistant message identity, and conversation identity required for later resolution.  Do not pre-render the ChatGPT backend download URL into canonical data.  The renderer/resolver can serialize the download URL from the normalized resolution context without reading the provider-native JSON record again.
+
+Markdown destinations containing balanced parentheses must preserve the complete destination.  A filename such as `fixture(phase2).txt` is one source path, not a path truncated at its first closing parenthesis.
+
+Uploaded file references and retrieved/cited files may share `type: "file"` while retaining different `resource_kind` values and kind-specific fields when their evidence differs.  Do not force an uploaded attachment and a retrieved tool/file citation into an identical field set merely because both are files.
 
 Image normalization must preserve source/block position.  Images are ordered content, not merely entries in an attachment collection.
 
