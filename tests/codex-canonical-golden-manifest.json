@@ -4,14 +4,24 @@
   "fixture": {
     "path": "tests/fixtures/codex/codex-rich.jsonl",
     "sha256": "18a8655ecf0620dbd1793dd1f405c9819abbab3bee1af90c0b6d9c13d1b2a085",
-    "derivation": "privacy-safe synthetic fixture derived from verified structures in the user-supplied real Codex rollout; request_user_input is retained as an independently verified current-renderer regression path"
+    "derivation": "privacy-safe synthetic fixture derived from verified structures in the user-supplied real Codex rollouts, including request_user_input question/answer structures now directly evidenced by the dedicated question corpus"
   },
   "real_private_evidence": {
-    "raw_jsonl_sha256": "c99c423e7fea30eda6ffd6e6b94fca1f86b8c1f3daade718c4b674629100bfef",
-    "rendered_markdown_sha256": "4e65b65a3894ed2ce3d58d05139c4a0926d64f8d72eef83241cd7bce99bb8cf4",
-    "raw_record_count": 2628,
-    "rendered_user_heading_count": 29,
-    "rendered_codex_heading_count": 29,
+    "primary_rollout": {
+      "raw_jsonl_sha256": "c99c423e7fea30eda6ffd6e6b94fca1f86b8c1f3daade718c4b674629100bfef",
+      "rendered_markdown_sha256": "4e65b65a3894ed2ce3d58d05139c4a0926d64f8d72eef83241cd7bce99bb8cf4",
+      "raw_record_count": 2628,
+      "rendered_user_heading_count": 29,
+      "rendered_codex_heading_count": 29
+    },
+    "question_rollout": {
+      "raw_jsonl_sha256": "7847e7ff192f8eeee70aeb8450a8cea4a68748fc56446ba328a9acb64a27b29a",
+      "rendered_markdown_sha256": "004005cc65819e8e6e827949deacafe12b103dea2509c8c73176c4c9e726e28e",
+      "raw_record_count": 1849,
+      "request_user_input_call_count": 10,
+      "matched_function_call_output_count": 10,
+      "rendered_question_heading_count": 18
+    },
     "note": "private source files are not committed"
   },
   "production_renderer": {
@@ -37,15 +47,14 @@
     "ordinary User and Codex turns",
     "Codex reasoning and commentary grouped in Thoughts",
     "apply_patch custom-tool input rendered as file-change diff attached to a Codex response",
+    "request_user_input question rendering and correlated function_call_output answer rendering",
     "ANSI colour projection",
     "timestamp projection",
     "record-number projection"
   ],
-  "additional_renderer_regressions": [
-    "request_user_input question rendering and correlated function_call_output answer rendering"
-  ],
   "scope_notes": [
-    "the real raw corpus contains many generic function_call/function_call_output records, but their presence does not imply that the transcript renderer exposes all of them",
+    "the primary real raw corpus contains many generic function_call/function_call_output records, but their presence does not imply that the transcript renderer exposes all of them",
+    "the dedicated question rollout directly verifies request_user_input and correlated answer rendering and replaces the earlier renderer-only evidence qualification for that path",
     "task-complete, token-count, compaction, and web-search status records are not treated as transcript text merely because they occur in the raw rollout",
     "the existing codex-orphan-patch fixture remains a separate narrow regression for a patch with no final text response"
   ],
