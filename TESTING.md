@@ -12,6 +12,29 @@ Every behavioural change must have tests that cover:
 
 No migration step is accepted on visual inspection alone.
 
+## Permanent CI gate
+
+The repository keeps a permanent GitHub Actions workflow at
+`.github/workflows/ci.yml`.  It runs on pushes to `main` and pull requests targeting
+`main` and is the standard clean-checkout regression gate for repository changes.
+
+The CI workflow runs:
+
+- `npm test`;
+- `python tests/validate-phase2-baseline.py`;
+- `python tests/validate-canonical-golden.py`;
+- `python tests/validate-claude-canonical-golden.py`;
+- `python tests/validate-codex-canonical-golden.py`; and
+- `python tests/validate-provider-example-regressions.py`.
+
+Do not replace this maintained workflow with per-change self-deleting verification
+workflows.  When a new mandatory repository-wide regression validator is added,
+update both this section and `.github/workflows/ci.yml` in the same change.
+
+A successful CI run is evidence that the checked-in repository passes this common
+gate on a clean GitHub-hosted environment.  It does not replace consumer-specific
+integration tests that require environments or capabilities unavailable in CI.
+
 ## Test layers
 
 ### Unit tests
