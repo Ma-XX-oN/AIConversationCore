@@ -108,6 +108,18 @@ DownloadConversation may enrich an image resource after credential-bound browser
 
 When images change the mapping between prior text-only block ordinals and true source part positions, citation/resource ranges attached to text must be remapped to the real source `part_index`.  A range pointing into text after an image must not continue to claim that the text occupied the earlier text-only ordinal.
 
+## ChatGPT non-`parts` content
+
+Do not assume useful ChatGPT content is stored in string `content.parts`.  Normalize concrete non-`parts` forms only when their fields are established by source or fixture evidence.
+
+The currently evidenced forms are:
+
+- `reasoning_recap` on an Assistant record becomes a canonical `reasoning_summary` event/block whose recap text comes from `content.content`;
+- `model_editable_context` on an Assistant record becomes canonical `system_context`; the established text-bearing fields are `model_set_context` and `repo_summary`, which remain distinguishable through block context provenance rather than being concatenated into an anonymous string; and
+- `tether_browsing_display` on a tool record becomes a canonical `tool_result`.  Its structured output preserves evidenced `summary`, `result`, `tether_id`, and asset `title`, `text`, `alt`, `caption`, and `url` fields.
+
+These shapes are intentionally specific.  Do not create a generic fallback that copies arbitrary provider object fields merely because they are outside `content.parts`, and do not infer tool-call correlation from adjacency.  If another non-`parts` content type is observed, add its semantics from evidence as a separate extension.
+
 ## Renderer independence from provider-native records
 
 Shared renderers and other downstream projections must consume canonical data, not inspect provider-native AI JSON DB records.
