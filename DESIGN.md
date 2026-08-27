@@ -192,6 +192,55 @@ Speech/highlight and turn-reading projections may be shared by both
 `AgentPanelSpeaker` and `DownloadConversation`. The design must not assume that
 speech, highlighting, or interactive turn traversal belongs to only one consumer.
 
+### 6. Semantic projection styling
+
+Presentation styling is downstream of canonical conversation semantics.  Shared
+projections should first expose semantic components and style roles, then map those
+roles into output-format-specific presentation.
+
+For turn headings, initial semantic roles include:
+
+- `user-heading`
+- `assistant-heading`
+- `timestamp`
+- `record-number`
+- `turn-id`
+
+The core API must expose the role definitions and default mappings through a
+shared configuration surface.  The intended public API is a global/default
+projection-theme setup function, with per-render overrides where useful.  The exact
+function name is implementation detail, but the capability is part of the core API
+contract and must be documented when implemented.
+
+Provider adapters do not own style information.  Canonical events/turns do not
+contain ANSI colours or CSS classes merely for presentation.  Instead, a heading
+projection may expose semantic components such as:
+
+```text
+speaker       -> assistant-heading
+timestamp     -> timestamp
+record number -> record-number
+turn ID       -> turn-id
+```
+
+Output-specific mappings then apply those roles:
+
+- ANSI: User yellow, Assistant/provider green, timestamp cyan, record number dim,
+  and turn ID magenta/purple by default;
+- HTML: stable semantic CSS classes or equivalent structured style metadata;
+- plain text: no visual style while preserving component ordering/content;
+- other projections: consumer-appropriate mappings of the same roles.
+
+Consumers must be able to query/override the shared role mapping rather than
+copying role definitions.  In particular, `AgentPanelSpeaker` may consume either
+core-generated HTML with stable semantic classes or structured header components
+and map the roles into WebView2/CSS itself.
+
+This semantic-role layer is also where optional heading fields are composed.
+Showing timestamps, record numbers, and canonical `turn_id` values are independent
+projection options; enabling ANSI/HTML styling changes their presentation, not
+whether those fields exist.
+
 ## Consumer boundaries
 
 ### DownloadConversation
@@ -293,6 +342,9 @@ them separate.
     difference requires user review and an explicit recorded decision before it
     can alter canonical behaviour. The final shared implementation remains
     JavaScript.
+12. **Projection styling is semantic before it is format-specific.** Shared style
+    roles belong to the projection/API layer; ANSI colours, CSS classes, and host
+    theme choices are mappings of those roles rather than provider/canonical data.
 
 ## Migration principle
 
