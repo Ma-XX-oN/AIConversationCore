@@ -1,0 +1,40 @@
+name: Verify Claude ExitPlanMode regression
+
+on:
+  push:
+    paths:
+      - 'tests/fixtures/claude/claude-exit-plan.jsonl'
+      - 'tests/golden/claude/claude-exit-plan.canonical.md'
+      - 'tests/golden/claude/claude-exit-plan.decorated.md'
+      - 'tests/provider-example-regression-manifest.json'
+      - 'tests/validate-provider-example-regressions.py'
+      - '.github/workflows/verify-claude-exit-plan-final.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run core tests
+        run: npm test
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
+      - name: Remove temporary workflow
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/verify-claude-exit-plan-final.yml
+          git commit -m 'chore: remove temporary Claude ExitPlanMode final workflow'
+          git push
