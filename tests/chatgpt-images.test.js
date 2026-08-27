@@ -94,6 +94,35 @@ test('keeps text-image-text ordering and deterministic sediment file transport m
   assert.equal(Object.hasOwn(image, 'status'), false);
 });
 
+test('remaps citation ranges to actual source part positions after images', () => {
+  const marker = 'fileciteturn1file0';
+  const [event] = adaptChatGPTRecords([{
+    id: 'a-image-cite',
+    author: { role: 'assistant' },
+    content: {
+      content_type: 'multimodal_text',
+      parts: [
+        { content_type: 'image_asset_pointer', asset_pointer: 'sediment://fixture-image' },
+        `See ${marker}`
+      ]
+    },
+    metadata: {
+      content_references: [{
+        type: 'file',
+        matched_text: marker,
+        name: 'notes.txt',
+        id: 'file_notes',
+        source: 'my_files'
+      }]
+    }
+  }]);
+
+  assert.deepEqual(event.blocks.map(block => block.source.part_index), [0, 1]);
+  assert.equal(event.citations[0].text_range.part_index, 1);
+  assert.equal(event.citations[0].text_range.start, 4);
+  assert.equal(event.citations[0].text_range.end, 4 + marker.length);
+});
+
 test('marks inline data images available without requiring host resolution', () => {
   const dataUrl = 'data:image/png;base64,AAAA';
   const [event] = adaptChatGPTRecords([{
