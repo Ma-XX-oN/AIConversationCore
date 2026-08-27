@@ -120,6 +120,14 @@ The currently evidenced forms are:
 
 These shapes are intentionally specific.  Do not create a generic fallback that copies arbitrary provider object fields merely because they are outside `content.parts`, and do not infer tool-call correlation from adjacency.  If another non-`parts` content type is observed, add its semantics from evidence as a separate extension.
 
+## ChatGPT parent relationships
+
+When a ChatGPT source record supplies a non-empty `metadata.parent_id`, preserve that exact source identity as `relationships.parent_record_id`.
+
+If the referenced source record is present in the same normalized dataset, the adapter may also expose its deterministic canonical event identity as `relationships.parent_event_id`.  If the target record is absent, retain the source `parent_record_id` and leave `parent_event_id` null rather than inventing or discarding the relationship.
+
+Do not infer parentage from adjacency, chronology, speaker role, exchange identity, or any other heuristic.  A record without an explicit `metadata.parent_id` has no canonical parent relationship merely because a neighbouring record would be a plausible parent.  Reverse child lists, branch membership, and other derived graph relationships may be built later from explicit normalized identities; they must not rewrite source ordering or User/Assistant turn derivation.
+
 ## Renderer independence from provider-native records
 
 Shared renderers and other downstream projections must consume canonical data, not inspect provider-native AI JSON DB records.
