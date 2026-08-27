@@ -1,0 +1,42 @@
+name: Verify issue 20 turn headers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/projections/**'
+      - 'src/index.js'
+      - 'tests/turn-header.test.js'
+      - 'README.md'
+      - '.github/workflows/verify-turn-header.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run core tests
+        run: npm test
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
+      - name: Remove temporary workflow
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/verify-turn-header.yml
+          git commit -m "chore: remove temporary issue 20 verification workflow"
+          git push
