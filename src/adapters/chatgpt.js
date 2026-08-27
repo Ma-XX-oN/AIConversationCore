@@ -346,13 +346,14 @@ function sandboxPath(pointer) {
 
 function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
   if (!path || !sourceRecordId || !chatgptConversationId) return null;
-  const conversation = encodeURIComponent(chatgptConversationId);
-  const message = encodeURIComponent(sourceRecordId);
-  const sandbox = encodeURIComponent(path);
+  const params = new URLSearchParams({
+    message_id: sourceRecordId,
+    sandbox_path: path,
+    download_intent: 'true'
+  });
   return (
-    `https://chatgpt.com/backend-api/conversation/${conversation}/` +
-    `interpreter/download?message_id=${message}&sandbox_path=${sandbox}` +
-    '&download_intent=true'
+    `https://chatgpt.com/backend-api/conversation/${encodeURIComponent(chatgptConversationId)}/` +
+    `interpreter/download?${params.toString()}`
   );
 }
 
