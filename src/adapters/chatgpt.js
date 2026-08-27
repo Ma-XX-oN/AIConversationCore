@@ -344,6 +344,18 @@ function sandboxPath(pointer) {
   return value.slice('sandbox:'.length);
 }
 
+function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
+  if (!path || !sourceRecordId || !chatgptConversationId) return null;
+  const conversation = encodeURIComponent(chatgptConversationId);
+  const message = encodeURIComponent(sourceRecordId);
+  const sandbox = encodeURIComponent(path);
+  return (
+    `https://chatgpt.com/backend-api/conversation/${conversation}/` +
+    `interpreter/download?message_id=${message}&sandbox_path=${sandbox}` +
+    '&download_intent=true'
+  );
+}
+
 function sandboxLinks(text) {
   if (typeof text !== 'string' || !text) return [];
   const links = [];
@@ -459,6 +471,7 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
         label: link.label,
         source_pointer: link.source_pointer,
         path,
+        download_url: sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId),
         text_range: {
           part_index: partIndex,
           start: link.start,
