@@ -4,7 +4,7 @@ These rules are mandatory for AI-assisted work in this repository.
 
 ## Repository is authoritative
 
-Read `README.md`, `DESIGN.md`, `TESTING.md`, `ROADMAP.md`, and `DECISIONS.md` before making architectural or behavioural changes.  Do not rely on chat history or memory when the repository documents the decision.
+Read `README.md`, `DESIGN.md`, `TESTING.md`, `ROADMAP.md`, `DECISIONS.md`, and `NORMALIZATION_RULES.md` before making architectural or behavioural changes.  Do not rely on chat history or memory when the repository documents the decision.
 
 ## Preserve proven behaviour
 
@@ -34,6 +34,6 @@ Distinguish facts established by tests or source inspection from assumptions, hy
 
 ## Documentation
 
-Architectural decisions and reversals belong in `DECISIONS.md`.  Stable design and invariants belong in `DESIGN.md`.  Current migration sequencing/state belongs in `ROADMAP.md`.  Test contracts belong in `TESTING.md`.
+Architectural decisions and reversals belong in `DECISIONS.md`.  Stable design and invariants belong in `DESIGN.md`.  Current migration sequencing/state belongs in `ROADMAP.md`.  Test contracts belong in `TESTING.md`.  Durable normalization/rendering-shape rules belong in `NORMALIZATION_RULES.md`.
 
 When a change alters one of those contracts, update the corresponding document in the same logical change.
