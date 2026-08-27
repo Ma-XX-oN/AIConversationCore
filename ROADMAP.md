@@ -121,7 +121,7 @@ Required capabilities include:
 - attachments, images, citations, and artifacts
 - hidden/visible distinctions
 - parent/child, call/result, branch, and exchange relationships
-- incomplete conversations and half-turn situations
+- arbitrary turn sequences without requiring User/Assistant alternation
 - derived turns that can be addressed independently
 - provenance and stable source identity/ranges
 - provider-specific information that does not yet have a canonical field
@@ -229,8 +229,8 @@ Python should invoke the canonical JavaScript implementation, initially through 
 persistent Node.js worker or another single-process bridge that does not spawn one
 JavaScript process per record.
 
-Keep Python-specific CLI, file discovery, JSONL I/O, search/filter commands, and
-output routing in `AI-transcript.py`.
+Keep Python-specific CLI, file discovery, JSONL I/O, search/filter/session commands,
+and output routing in `AI-transcript.py`.
 
 ## Phase 7 — Cross-consumer parity gate
 
