@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "provider": "codex",
+  "fixture": {
+    "path": "tests/fixtures/codex/codex-rich.jsonl",
+    "sha256": "18a8655ecf0620dbd1793dd1f405c9819abbab3bee1af90c0b6d9c13d1b2a085",
+    "derivation": "privacy-safe synthetic fixture derived from verified structures in the user-supplied real Codex rollout; request_user_input is retained as an independently verified current-renderer regression path"
+  },
+  "real_private_evidence": {
+    "raw_jsonl_sha256": "c99c423e7fea30eda6ffd6e6b94fca1f86b8c1f3daade718c4b674629100bfef",
+    "rendered_markdown_sha256": "4e65b65a3894ed2ce3d58d05139c4a0926d64f8d72eef83241cd7bce99bb8cf4",
+    "raw_record_count": 2628,
+    "rendered_user_heading_count": 29,
+    "rendered_codex_heading_count": 29,
+    "note": "private source files are not committed"
+  },
+  "production_renderer": {
+    "repository": "Ma-XX-oN/AI-General-Memory",
+    "source_commit": "2910c54a4786d17de684bcffb00181b5d2c37d38",
+    "script_blob": "69115508946fad15e03fa3f9074645ec0e9131db"
+  },
+  "goldens": [
+    {
+      "path": "tests/golden/codex/codex-rich.canonical.md",
+      "sha256": "67a40d02ad13fa4a95145002a31ae18bc6ad014a7e9501ed8970021c0088452e",
+      "options": ["--color=never"],
+      "purpose": "base semantic rendering"
+    },
+    {
+      "path": "tests/golden/codex/codex-rich.decorated.md",
+      "sha256": "acd46aef91f43bf522c5985fa7141ceffd6d4ac1a28391e3102302ff7957c103",
+      "options": ["-d", "-n", "--color=always"],
+      "purpose": "colour, timestamp, and record-number projection"
+    }
+  ],
+  "verified_real_pair_semantics": [
+    "ordinary User and Codex turns",
+    "Codex reasoning and commentary grouped in Thoughts",
+    "apply_patch custom-tool input rendered as file-change diff attached to a Codex response",
+    "ANSI colour projection",
+    "timestamp projection",
+    "record-number projection"
+  ],
+  "additional_renderer_regressions": [
+    "request_user_input question rendering and correlated function_call_output answer rendering"
+  ],
+  "scope_notes": [
+    "the real raw corpus contains many generic function_call/function_call_output records, but their presence does not imply that the transcript renderer exposes all of them",
+    "task-complete, token-count, compaction, and web-search status records are not treated as transcript text merely because they occur in the raw rollout",
+    "the existing codex-orphan-patch fixture remains a separate narrow regression for a patch with no final text response"
+  ],
+  "unresolved_differences": []
+}
