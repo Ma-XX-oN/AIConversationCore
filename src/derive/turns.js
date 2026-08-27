@@ -1,7 +1,7 @@
 function isVisibleTurnEvent(event) {
   return event?.visibility === 'visible' &&
     (event?.role === 'user' || event?.role === 'assistant') &&
-    (event?.kind === 'message' || event?.kind === 'commentary');
+    (event?.kind === 'message' || event?.kind === 'commentary' || event?.kind === 'reasoning_summary');
 }
 
 function newTurn(event, turnIndex) {
@@ -26,6 +26,13 @@ export function deriveTurns(events) {
     if (!isVisibleTurnEvent(event)) continue;
 
     const current = turns.at(-1);
+    if (event.kind === 'reasoning_summary' && event.role === 'assistant' &&
+        current?.role === 'assistant' && !turnsWithMessage.has(current.id)) {
+      current.event_ids.push(event.id);
+      current.source.record_ids.push(event.source_record_id);
+      continue;
+    }
+
     if (event.kind === 'commentary' && current?.role === 'assistant') {
       current.event_ids.push(event.id);
       current.source.record_ids.push(event.source_record_id);
