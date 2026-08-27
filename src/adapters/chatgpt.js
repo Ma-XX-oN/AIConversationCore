@@ -66,6 +66,14 @@ function remapCitation(citation, textOrdinalToPartIndex) {
   };
 }
 
+function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
+  if (!replacement || typeof replacement !== 'object') return replacement;
+  return {
+    ...replacement,
+    text_range: remapTextRange(replacement.text_range, textOrdinalToPartIndex)
+  };
+}
+
 function remapExistingResource(resource, textOrdinalToPartIndex) {
   if (!resource || typeof resource !== 'object') return resource;
   const remapped = { ...resource };
@@ -129,6 +137,8 @@ function normalizeMultimodalImages(event, record) {
     ...event,
     blocks,
     citations: event.citations.map(citation => remapCitation(citation, textOrdinalToPartIndex)),
+    display_replacements: (event.display_replacements ?? [])
+      .map(replacement => remapDisplayReplacement(replacement, textOrdinalToPartIndex)),
     resources: [
       ...event.resources.map(resource => remapExistingResource(resource, textOrdinalToPartIndex)),
       ...images
@@ -142,6 +152,70 @@ function sourceFor(event, extra = {}) {
     record_id: event.source_record_id,
     record_index: event.source_index,
     ...extra
+  };
+}
+
+function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
+  if (typeof matchedText !== 'string' || !matchedText) return null;
+  for (let partIndex = startPartIndex; partIndex < blocks.length; partIndex += 1) {
+    const block = blocks[partIndex];
+    if (block?.type !== 'text' || typeof block.text !== 'string') continue;
+    const from = partIndex === startPartIndex ? startOffset : 0;
+    const index = block.text.indexOf(matchedText, from);
+    if (index >= 0) {
+      return {
+        part_index: partIndex,
+        start: index,
+        end: index + matchedText.length
+      };
+    }
+  }
+  return null;
+}
+
+function normalizeDisplayReplacements(event, record) {
+  const references = record?.metadata?.content_references;
+  if (!Array.isArray(references)) return event;
+
+  const replacements = [];
+  let partIndex = 0;
+  let offset = 0;
+
+  references.forEach((reference, referenceIndex) => {
+    if (reference?.type !== 'alt_text') return;
+    const matchedText = typeof reference?.matched_text === 'string'
+      ? reference.matched_text
+      : null;
+    const displayText = typeof reference?.alt === 'string'
+      ? reference.alt
+      : null;
+    if (!matchedText || displayText == null) return;
+
+    const range = locateTextRange(event.blocks, matchedText, partIndex, offset);
+    if (range) {
+      partIndex = range.part_index;
+      offset = range.end;
+    }
+
+    replacements.push({
+      id: `${event.source_record_id}:display_replacement:${referenceIndex}`,
+      type: 'display_replacement',
+      replacement_kind: 'alt_text',
+      matched_text: matchedText,
+      display_text: displayText,
+      prompt_text: typeof reference?.prompt_text === 'string' ? reference.prompt_text : null,
+      text_range: range,
+      source: sourceFor(event, { reference_index: referenceIndex })
+    });
+  });
+
+  if (!replacements.length) return event;
+  return {
+    ...event,
+    display_replacements: [
+      ...(Array.isArray(event.display_replacements) ? event.display_replacements : []),
+      ...replacements
+    ]
   };
 }
 
@@ -293,7 +367,8 @@ export function adaptChatGPTRecords(records) {
 
   return events.map(event => {
     const record = records[event.source_index];
-    const withImages = normalizeMultimodalImages(event, record);
+    const withReplacements = normalizeDisplayReplacements(event, record);
+    const withImages = normalizeMultimodalImages(withReplacements, record);
     const withNonParts = normalizeNonPartsContent(withImages, record);
     const withFootnotes = normalizeSourceFootnotes(withNonParts, record);
     return normalizeParentRelationship(withFootnotes, record, knownRecordIds);
