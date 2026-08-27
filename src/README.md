@@ -26,6 +26,51 @@ index. Normalizing a source reasoning record does not by itself assert that the
 material is eligible for public/export presentation; visibility/export policy
 remains a separate projection concern.
 
+## ChatGPT citations
+
+The ChatGPT adapter now exposes canonical citation metadata on `event.citations`
+for the concrete citation/reference forms established by the checked-in rich
+fixture.  Citation normalization follows `NORMALIZATION_RULES.md`: equivalent
+semantics share a small base, while citation-kind-specific information remains in
+kind-specific substructures rather than being forced into one rigid schema.
+
+The shared citation base contains:
+
+- stable canonical citation ID;
+- `type: "citation"`;
+- `citation_kind`;
+- the source marker text;
+- a canonical text-block range locating that marker; and
+- provider/source record/reference-index provenance.
+
+The currently evidenced kinds are:
+
+- `file` — keeps source file ID, name, source, and snippet in `file`;
+- `retrieved_file` — resolves an evidenced retrieval marker to same-conversation
+  retrieval metadata when an exact retrieval turn/file identity exists, keeping a
+  boolean `resolved` plus the resolved title/URL and provenance;
+- `web` — keeps web source title, URL, attribution, snippet, safe URLs, and
+  supporting-source relationships in `web`; same-record search-result evidence is
+  used to enrich a supporting source only when its normalized URL matches; and
+- `memory` — keeps the evidenced conversation-context citation sources in
+  `memory`, including citation UUID, title, URL, snippet, attribution, category,
+  deletion flag, and retrieval origin.
+
+The rich fixture also contains an `alt_text` entity reference.  It is deliberately
+not forced into the citation schema because the checked-in evidence does not make
+it a citation semantic merely because it lives in `content_references`.
+
+Canonical citation consumers do not need to inspect ChatGPT-native fields such as
+`content_references`, `search_result_groups`, or
+`conversation_context_citation_metadata`.  If future rendering requires source
+information that is not represented by the canonical citation object, the adapter
+must be extended from evidence rather than teaching the shared renderer to read
+provider-native JSON.
+
+Citation tooltip presentation remains a renderer contract.  The established
+canonical golden protects a blank line between tooltip title and blurb/snippet so
+readability is preserved, not merely data presence.
+
 ## Tool calls and results
 
 The canonical tool slice uses `tool_call` and `tool_result` events with structured
@@ -71,6 +116,8 @@ Each mapped ChatGPT event currently records:
 - `provider`, `source_record_id`, and `source_index`;
 - `kind`, `role`, `channel`, `visibility`, and source `content_type`;
 - ordered structured content `blocks` with stable block IDs and source provenance;
+- canonical `citations` where the source record contains an evidenced citation
+  form;
 - observed `turn_exchange_id` and `working_turn_id` relationship values; and
 - an explicit tool-call relationship field that remains null when the source has
   no explicit correlation ID.
@@ -101,10 +148,10 @@ recorded separately in `tests/canonical-golden-manifest.json`. Claude and Codex
 tool tests use the checked-in privacy-safe fixtures whose real-evidence provenance
 is pinned in the provider canonical/regression manifests.
 
-This is intentionally not the complete provider schema. Citations, files, images,
-artifacts, additional hidden/system records, branches, and additional content
-types must be added incrementally against fixture/baseline evidence. Unsupported
-semantics must not be invented merely to make the schema look complete.
+This is intentionally not the complete provider schema. Files, images, artifacts,
+additional hidden/system records, branches, and additional content types must be
+added incrementally against fixture/baseline evidence. Unsupported semantics must
+not be invented merely to make the schema look complete.
 
 The chronology invariant is explicit: source ordering is preserved unless real
 provider evidence establishes a different required rule and that change is
