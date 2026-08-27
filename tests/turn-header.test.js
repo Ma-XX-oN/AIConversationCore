@@ -3,14 +3,12 @@ import test from 'node:test';
 
 import {
   STYLE_ROLES,
+  buildTurnHeaderComponents,
   configureProjectionTheme,
   getDefaultProjectionTheme,
+  renderTurnHeader,
   resetProjectionTheme
-} from '../src/projections/style.js';
-import {
-  buildTurnHeaderComponents,
-  renderTurnHeader
-} from '../src/projections/turn-header.js';
+} from '../src/index.js';
 
 const PROVIDER_TURNS = [
   { id: 'turn:chatgpt:user-1', role: 'user', source: { provider: 'chatgpt' } },
