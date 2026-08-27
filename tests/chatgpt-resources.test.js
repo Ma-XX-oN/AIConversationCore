@@ -99,11 +99,12 @@ test('normalizes sandbox links as generated-file artifacts with source and downl
   assert.equal(Object.hasOwn(assistant.resources[0], 'resolved_url'), false);
 });
 
-test('image asset pointers are not reclassified as file resources in this slice', async () => {
+test('image asset pointers remain distinct from canonical file resources', async () => {
   const records = await loadJsonl(directFixtureUrl);
   const events = adaptChatGPTRecords(records);
   const user = events.find(event => event.source_record_id === 'user-1');
 
   assert.ok(user);
-  assert.deepEqual(user.resources, []);
+  assert.equal(user.resources.some(resource => resource.type === 'file'), false);
+  assert.equal(user.resources.filter(resource => resource.type === 'image').length, 2);
 });
