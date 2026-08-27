@@ -2,10 +2,13 @@
 
 ## Incremental provider-adapter slices
 
-`src/adapters/chatgpt.js` began Phase 3 with incremental, fixture-backed ChatGPT
-normalization.  Claude and Codex tool slices now exist alongside it so equivalent
-call/result semantics can share one canonical shape without pretending that the
-rest of those provider adapters is already complete.
+`src/adapters/chatgpt.js` exposes the current fixture-backed ChatGPT adapter.  The
+previously extracted ChatGPT semantics are retained in `chatgpt-base.js`, while
+the image slice composes ordered multimodal image normalization over that existing
+adapter rather than rewriting the already-proven citation/file/tool behaviour.
+Claude and Codex tool slices exist alongside it so equivalent call/result
+semantics can share one canonical shape without pretending that the rest of those
+provider adapters is already complete.
 
 For ordinary visible ChatGPT message records, each source record becomes one
 canonical `message` event in the same source-array order. The adapter does not
@@ -117,9 +120,40 @@ The sandbox-link scanner follows the evidence-backed balanced-parenthesis rule, 
 a path such as `fixture(phase2).txt` remains one complete Markdown destination.
 The `download_url` percent-encodes only characters needed to preserve URL/query
 structure; safe characters such as the filename parentheses remain literal rather
-than copying incidental over-encoding from the Python reference. General image
-semantics are deliberately not part of this slice; image asset pointers are not
-reclassified as file resources.
+than copying incidental over-encoding from the Python reference.
+
+## ChatGPT images
+
+ChatGPT `image_asset_pointer` parts are canonical ordered content.  They become
+`type: "image"` blocks at their original provider `part_index`, with each block
+referencing a canonical `type: "image"`, `resource_kind: "conversation_image"`
+resource through `resource_id`.  Text parts around an image retain their actual
+source positions, so `text -> image -> text` stays in that order rather than being
+flattened into text plus attachment metadata.
+
+For the verified ChatGPT image form, pointer identity is taken from
+`metadata.asset_pointer_link`, then `asset_pointer_link`, then `asset_pointer`.
+Evidenced `size_bytes`, `width`, and `height` are retained when present.  A missing
+pointer is `status: "missing"`; an inline `data:image/...` pointer is already usable
+and is `status: "available"`.  Other pointers do not receive a guessed status
+before resolution evidence exists.
+
+The verified image state domain also includes `unavailable` when a resolution
+attempt has a resource identity but cannot obtain usable image data for a reason
+other than established absence.  That multi-state distinction is intentional and
+is documented in `NORMALIZATION_RULES.md`; it is not reduced to a boolean.
+
+For `sediment://file_...`, the core may expose the deterministic ChatGPT
+`https://chatgpt.com/backend-api/files/download/...` transport URL while retaining
+the original source pointer.  The existence of that URL does not establish
+availability.  Credential-bound fetching and browser recovery remain host
+responsibilities, and a host may enrich the canonical image resource with the
+resolved state/data without teaching downstream renderers ChatGPT-native fields.
+
+Because earlier ChatGPT extraction counted only text parts, image normalization
+also remaps citation/resource text ranges to the real provider `part_index` when
+images precede referenced text.  This keeps canonical blocks, ranges, and source
+provenance internally consistent.
 
 ## Tool calls and results
 
@@ -165,10 +199,12 @@ Each mapped ChatGPT event currently records:
 - canonical `id` derived from the stable ChatGPT message ID;
 - `provider`, `source_record_id`, and `source_index`;
 - `kind`, `role`, `channel`, `visibility`, and source `content_type`;
-- ordered structured content `blocks` with stable block IDs and source provenance;
+- ordered structured content `blocks` with stable block IDs and source provenance,
+  including image blocks at their original multimodal part positions;
 - canonical `citations` where the source record contains an evidenced citation
   form;
-- canonical `resources` for evidenced file/retrieved-file/sandbox-artifact forms;
+- canonical `resources` for evidenced file/retrieved-file/sandbox-artifact/image
+  forms;
 - observed `turn_exchange_id` and `working_turn_id` relationship values; and
 - an explicit tool-call relationship field that remains null when the source has
   no explicit correlation ID.
@@ -199,10 +235,10 @@ recorded separately in `tests/canonical-golden-manifest.json`. Claude and Codex
 tool tests use the checked-in privacy-safe fixtures whose real-evidence provenance
 is pinned in the provider canonical/regression manifests.
 
-This is intentionally not the complete provider schema. Images, additional
-hidden/system records, branches, and additional content types must be added
-incrementally against fixture/baseline evidence. Unsupported semantics must not be
-invented merely to make the schema look complete.
+This is intentionally not the complete provider schema. Additional hidden/system
+records, branches, and additional content types must be added incrementally
+against fixture/baseline evidence. Unsupported semantics must not be invented
+merely to make the schema look complete.
 
 The chronology invariant is explicit: source ordering is preserved unless real
 provider evidence establishes a different required rule and that change is
