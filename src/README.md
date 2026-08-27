@@ -89,11 +89,19 @@ Citation objects that correspond to canonical file resources expose a
 `resource_id` relationship to the resource rather than requiring downstream
 consumers to reconstruct that relationship from ChatGPT metadata.
 
-Generated-file artifacts preserve the source pointer, normalized sandbox path,
-display label/name, text-block range, and resolution context required by the
-established Python behaviour: ChatGPT conversation ID plus Assistant message ID.
-The adapter does not pre-render the ChatGPT backend download URL; URL serialization
-belongs to the later renderer/resolver layer.
+Generated-file artifacts preserve both forms of location that are useful for
+different purposes:
+
+- `source_pointer` and normalized `path` preserve the original ChatGPT sandbox
+  identity/provenance; and
+- `download_url` contains the deterministic ChatGPT HTTPS interpreter-download URL
+  when the required conversation ID and Assistant message ID are available.
+
+The conversation ID and Assistant message ID also remain in `resolution_context`
+so the derivation is explicit and traceable.  Consumers therefore do not have to
+call another provider-specific mapping layer or inspect the original ChatGPT JSON
+to turn a `sandbox:` pointer into the shared HTTPS transport location.  Actual
+authenticated retrieval of that URL remains outside the core.
 
 The exported `chatgpt_conversation_metadata` JSONL wrapper supplies conversation
 context and is not emitted as a conversation event.  Original JSONL source indices
@@ -101,12 +109,14 @@ are still retained for the actual conversation records, so provenance remains
 traceable through the wrapper line.
 
 No `available` flag or `resolved_url` is invented for sandbox artifacts merely
-because a source pointer exists.  Resource availability is only represented when
-verified evidence actually establishes that state.  Browser-credential-dependent
-resource resolution remains outside the core.
+because a source pointer or deterministic download URL exists.  Those facts do not
+prove that the host can currently retrieve the resource.  Browser-credential-
+dependent access remains outside the core.
 
 The sandbox-link scanner follows the evidence-backed balanced-parenthesis rule, so
 a path such as `fixture(phase2).txt` remains one complete Markdown destination.
+The `download_url` uses the strict query-value percent-encoding established by the
+Python reference, so those parentheses become `%28` and `%29` in `sandbox_path`.
 General image semantics are deliberately not part of this slice; image asset
 pointers are not reclassified as file resources.
 
