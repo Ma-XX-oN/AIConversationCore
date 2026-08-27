@@ -142,13 +142,10 @@ boundaries independently.
 
 Turns are derived from events.
 
-A turn must be representable even when its counterpart does not exist. Therefore
-complete User/Assistant pairing is never required to preserve a valid event or
-turn.
-
-User/assistant pairs (historically called UAPs in `DownloadConversation`) are a
-further derived relationship. They may still be useful for recorder/export logic,
-but they are not the canonical storage model.
+Turn derivation does not require User/Assistant alternation or a matching
+opposite-role turn. Consecutive User turns and consecutive Assistant turns are
+valid. A turn is preserved according to the semantics of its own events and the
+explicit derivation rules for content such as Assistant reasoning/commentary.
 
 Other derived relationships may include:
 
@@ -159,8 +156,8 @@ Other derived relationships may include:
 - speakable/displayable projections
 
 Derived turns must be directly consumable by interactive applications. Consumers
-must be able to navigate or request an individual turn without requiring a
-complete UAP or reparsing Markdown.
+must be able to navigate or request an individual turn without reparsing Markdown
+or assuming an alternating speaker pattern.
 
 ### 5. Shared renderers/projections
 
@@ -313,8 +310,10 @@ them separate.
 1. **Lossless-enough normalization.** Provider-specific information needed for
    current or future interpretation must not be discarded solely because it has
    no current canonical field.
-2. **Incomplete conversations are valid.** A missing User or Assistant half must
-   not invalidate the other half.
+2. **Arbitrary turn sequences are valid.** Available events and derived turns
+   remain valid regardless of the surrounding speaker-role sequence. User and
+   Assistant turns do not have to alternate, and no opposite-role counterpart is
+   required.
 3. **Ordering must preserve observed/source ordering unless actual evidence shows
    that a provider requires a different rule.** Do not replace working
    chronological association/grouping based on speculation.
@@ -330,8 +329,8 @@ them separate.
 8. **Stable provenance.** Canonical events/blocks should retain enough source
    identity to trace rendered output back to originating provider records.
 9. **Interactive turn access is a core use case.** Canonical and derived data must
-   support individual-turn navigation/reading without requiring complete UAPs or
-   reparsing rendered Markdown.
+   support individual-turn navigation/reading without reparsing rendered Markdown
+   or assuming User/Assistant alternation.
 10. **Shared interactive semantics stay shared.** If multiple consumers need the
     same speech/display/highlight/turn-reading interpretation, implement that
     semantic projection once in the core and keep platform-specific playback/UI in
