@@ -76,7 +76,7 @@ test('normalizes sandbox links as generated-file artifacts with source and downl
     label: 'Download fixture',
     source_pointer: 'sandbox:/mnt/data/work/fixture(phase2).txt',
     path: '/mnt/data/work/fixture(phase2).txt',
-    download_url: 'https://chatgpt.com/backend-api/conversation/fixture-conversation-123/interpreter/download?message_id=fixture-assistant-1&sandbox_path=%2Fmnt%2Fdata%2Fwork%2Ffixture%28phase2%29.txt&download_intent=true',
+    download_url: 'https://chatgpt.com/backend-api/conversation/fixture-conversation-123/interpreter/download?message_id=fixture-assistant-1&sandbox_path=%2Fmnt%2Fdata%2Fwork%2Ffixture(phase2).txt&download_intent=true',
     text_range: {
       part_index: 0,
       start: 0,
