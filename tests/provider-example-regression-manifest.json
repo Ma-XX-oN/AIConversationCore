@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "claude_questions": {
+    "fixture": "tests/fixtures/claude/claude-questions.jsonl",
+    "real_private_evidence": {
+      "raw_jsonl_sha256": "6a5dedf4a103ebd075d4c4ea8901539ae9f208c72ee7e257f8496d0ee1527540",
+      "rendered_markdown_sha256": "ed05b15d176250a8217f62286b2e635bdb560f04b8234c0dc4eab69c05322570",
+      "raw_record_count": 60,
+      "ask_user_question_call_count": 2,
+      "rendered_question_heading_count": 3,
+      "note": "private source files are not committed"
+    },
+    "goldens": [
+      {
+        "path": "tests/golden/claude/claude-questions.canonical.md",
+        "sha256": "34985502aff70d7ecd190e3780d2a335e8d2082c1fee5f5f7e57f9bb1e123011",
+        "options": ["--color=never"]
+      },
+      {
+        "path": "tests/golden/claude/claude-questions.decorated.md",
+        "sha256": "288d835892eecdbc5c42b392ca9caf32306cbf70da8f64b5bf255e13f5152d34",
+        "options": ["-d", "-n", "--color=always"]
+      }
+    ]
+  },
+  "chatgpt_decorated": {
+    "fixture": "tests/fixtures/chatgpt/chatgpt-direct.jsonl",
+    "golden": "tests/golden/chatgpt/chatgpt-direct.decorated.md",
+    "sha256": "58e6e5569485ebabe7a9902e07e31f4724e63bc1e768a10a90eb2cd63d6bfc73",
+    "options": ["-d", "-n", "--color=always"],
+    "note": "turn_id remains a separate shared-renderer requirement tracked by issue #20; current AI-transcript.py decorated output verifies colour, timestamp, and record number only"
+  },
+  "codex_questions": {
+    "manifest": "tests/codex-canonical-golden-manifest.json",
+    "note": "dedicated real question rollout provenance and counts are pinned in the Codex canonical manifest"
+  }
+}
