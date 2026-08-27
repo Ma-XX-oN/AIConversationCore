@@ -5,6 +5,7 @@ import test from 'node:test';
 import { adaptChatGPTRecords } from '../src/adapters/chatgpt.js';
 import { adaptClaudeToolEvents } from '../src/adapters/claude.js';
 import { adaptCodexToolEvents } from '../src/adapters/codex.js';
+import { deriveTurns } from '../src/derive/turns.js';
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
@@ -45,6 +46,21 @@ test('ChatGPT code/tool records normalize without inventing call correlation', a
 
   const browsingStatus = events.find(event => event.source_record_id === 'tool-3');
   assert.equal(browsingStatus.kind, 'message');
+});
+
+test('tool events do not create or re-associate derived turns without explicit turn semantics', async () => {
+  const records = await loadJsonl(chatgptFixture);
+  const events = adaptChatGPTRecords(records);
+  const turns = deriveTurns(events);
+
+  assert.deepEqual(turns.map(turn => turn.role), ['user', 'assistant']);
+  assert.deepEqual(turns[0].event_ids, ['chatgpt:user-1']);
+  assert.deepEqual(turns[1].event_ids, [
+    'chatgpt:thought-1',
+    'chatgpt:commentary-1',
+    'chatgpt:final-1'
+  ]);
+  assert.equal(turns.some(turn => turn.event_ids.some(id => id.includes('code-') || id.includes('tool-'))), false);
 });
 
 test('Claude tool_use and tool_result preserve explicit correlation and special tool identity', async () => {
