@@ -87,16 +87,31 @@ def main():
       fail(f"decorated Codex golden missing option projection {marker!r}")
 
   real = manifest.get("real_private_evidence", {})
-  if real.get("raw_record_count") != 2628:
-    fail("real Codex record count changed unexpectedly")
-  if real.get("rendered_user_heading_count") != 29:
-    fail("real Codex User-heading count changed unexpectedly")
-  if real.get("rendered_codex_heading_count") != 29:
-    fail("real Codex heading count changed unexpectedly")
+  primary = real.get("primary_rollout", {})
+  if primary.get("raw_record_count") != 2628:
+    fail("primary real Codex record count changed unexpectedly")
+  if primary.get("rendered_user_heading_count") != 29:
+    fail("primary real Codex User-heading count changed unexpectedly")
+  if primary.get("rendered_codex_heading_count") != 29:
+    fail("primary real Codex heading count changed unexpectedly")
+
+  questions = real.get("question_rollout", {})
+  if questions.get("raw_record_count") != 1849:
+    fail("Codex question-corpus record count changed unexpectedly")
+  if questions.get("request_user_input_call_count") != 10:
+    fail("Codex request_user_input evidence count changed unexpectedly")
+  if questions.get("matched_function_call_output_count") != 10:
+    fail("Codex question-answer correlation count changed unexpectedly")
+  if questions.get("rendered_question_heading_count") != 18:
+    fail("Codex rendered question-heading count changed unexpectedly")
+
+  verified = manifest.get("verified_real_pair_semantics", [])
+  if "request_user_input question rendering and correlated function_call_output answer rendering" not in verified:
+    fail("Codex question/answer rendering is no longer recorded as real-pair evidence")
   if manifest.get("unresolved_differences") != []:
     fail("Codex canonical manifest contains unresolved differences")
 
-  print("PASS: canonical rich Codex plain/decorated goldens validated")
+  print("PASS: canonical rich Codex plain/decorated goldens and real question evidence validated")
   return 0
 
 
