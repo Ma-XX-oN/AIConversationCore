@@ -44,6 +44,40 @@ This allows incomplete/half conversations, in-progress responses, commentary,
 tools, subagents, branches, and other non-paired activity to be represented
 without forcing data into a complete UAP.
 
+## Projection API
+
+The public JavaScript entry point is `src/index.js`.
+
+Turn-header projection is built from semantic components and style roles before
+format-specific rendering. The initial public API includes:
+
+- `buildTurnHeaderComponents(turn, options)` — returns structured heading pieces
+  with semantic style roles;
+- `renderTurnHeader(turn, options)` — renders `plain`, `ansi`, `html`, or raw
+  `components` output;
+- `STYLE_ROLES` — stable semantic role names including `user-heading`,
+  `assistant-heading`, `timestamp`, `record-number`, and `turn-id`;
+- `configureProjectionTheme(overrides)` — changes the process-wide/default
+  projection theme;
+- `getDefaultProjectionTheme()` — obtains a copy of the current default theme;
+- `resetProjectionTheme()` — restores built-in defaults; and
+- `resolveProjectionTheme(overrides)` — resolves a one-render override against the
+  current default theme.
+
+`renderTurnHeader()` accepts optional `timestamp`, `recordNumber`, and
+`showTurnId`. The turn ID is the canonical derived `turn.id` and is serialized as
+`turn_id=<canonical-id>` when enabled. These fields are independently optional;
+styling changes presentation only.
+
+Default ANSI mappings preserve the established transcript grammar: User heading
+is yellow, Assistant/provider heading green, timestamp cyan, record number dim,
+and turn ID magenta. HTML uses stable semantic classes such as
+`transcript-turn-id` rather than ANSI concepts. Consumers such as
+`AgentPanelSpeaker` may either use the HTML projection or consume structured
+components and map the semantic roles into their own CSS/WebView2 theme.
+
+Provider adapters do not contain colour or CSS configuration.
+
 ## Shared Markdown
 
 Markdown serialization belongs in this repository. Given the same canonical
