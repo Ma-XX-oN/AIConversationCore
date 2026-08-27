@@ -68,10 +68,10 @@ function remapCitation(citation, textOrdinalToPartIndex) {
 
 function remapExistingResource(resource, textOrdinalToPartIndex) {
   if (!resource || typeof resource !== 'object') return resource;
-  const remapped = {
-    ...resource,
-    text_range: remapTextRange(resource.text_range, textOrdinalToPartIndex)
-  };
+  const remapped = { ...resource };
+  if (resource.text_range) {
+    remapped.text_range = remapTextRange(resource.text_range, textOrdinalToPartIndex);
+  }
   if (resource.source && Number.isInteger(resource.source.part_index)) {
     const partIndex = textOrdinalToPartIndex.get(resource.source.part_index);
     if (Number.isInteger(partIndex)) {
