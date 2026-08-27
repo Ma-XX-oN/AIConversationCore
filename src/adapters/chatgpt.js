@@ -319,12 +319,188 @@ function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFi
   return citations;
 }
 
+function conversationId(records) {
+  const metadata = records.find(record =>
+    record?.record_type === 'chatgpt_conversation_metadata' &&
+    typeof record?.conversation_id === 'string'
+  );
+  return metadata?.conversation_id ?? null;
+}
+
+function isConversationMetadata(record) {
+  return record?.record_type === 'chatgpt_conversation_metadata';
+}
+
+function basename(path) {
+  if (typeof path !== 'string') return null;
+  const pieces = path.split('/').filter(Boolean);
+  return pieces.length ? pieces[pieces.length - 1] : null;
+}
+
+function sandboxPath(pointer) {
+  if (typeof pointer !== 'string') return null;
+  const value = pointer.trim();
+  if (!value.startsWith('sandbox:/') || value.startsWith('sandbox://')) return null;
+  return value.slice('sandbox:'.length);
+}
+
+function sandboxLinks(text) {
+  if (typeof text !== 'string' || !text) return [];
+  const links = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const destinationMarker = text.indexOf('](', cursor);
+    if (destinationMarker < 0) break;
+
+    const labelStart = text.lastIndexOf('[', destinationMarker);
+    if (labelStart < 0) {
+      cursor = destinationMarker + 2;
+      continue;
+    }
+
+    const destinationStart = destinationMarker + 2;
+    if (!text.startsWith('sandbox:/', destinationStart) ||
+        text.startsWith('sandbox://', destinationStart)) {
+      cursor = destinationStart;
+      continue;
+    }
+
+    let depth = 0;
+    let destinationEnd = -1;
+    for (let index = destinationStart; index < text.length; index += 1) {
+      const char = text[index];
+      if (char === '(') {
+        depth += 1;
+      } else if (char === ')') {
+        if (depth === 0) {
+          destinationEnd = index;
+          break;
+        }
+        depth -= 1;
+      }
+    }
+
+    if (destinationEnd < 0) break;
+
+    links.push({
+      label: text.slice(labelStart + 1, destinationMarker),
+      source_pointer: text.slice(destinationStart, destinationEnd),
+      start: labelStart,
+      end: destinationEnd + 1
+    });
+    cursor = destinationEnd + 1;
+  }
+
+  return links;
+}
+
+function citationResources(citations, sourceRecordId, sourceIndex) {
+  const resources = [];
+
+  for (const citation of citations) {
+    if (citation?.citation_kind === 'file') {
+      const resourceId = `${sourceRecordId}:resource:citation:${citation.source.reference_index}`;
+      citation.resource_id = resourceId;
+      resources.push({
+        id: resourceId,
+        type: 'file',
+        resource_kind: 'attachment',
+        name: citation.file?.name ?? null,
+        provider_file_id: citation.file?.id ?? null,
+        provider_source: citation.file?.source ?? null,
+        snippet: citation.file?.snippet ?? null,
+        source: {
+          provider: 'chatgpt',
+          record_id: sourceRecordId,
+          record_index: sourceIndex,
+          reference_index: citation.source.reference_index
+        }
+      });
+    }
+
+    if (citation?.citation_kind === 'retrieved_file' && citation.retrieved_file?.resolved) {
+      const resourceId = `${sourceRecordId}:resource:citation:${citation.source.reference_index}`;
+      citation.resource_id = resourceId;
+      resources.push({
+        id: resourceId,
+        type: 'file',
+        resource_kind: 'retrieved_file',
+        name: citation.retrieved_file?.title ?? null,
+        source_url: citation.retrieved_file?.url ?? null,
+        source_record_id: citation.retrieved_file?.source_record_id ?? null,
+        source: {
+          provider: 'chatgpt',
+          record_id: sourceRecordId,
+          record_index: sourceIndex,
+          reference_index: citation.source.reference_index
+        }
+      });
+    }
+  }
+
+  return resources;
+}
+
+function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId) {
+  const resources = [];
+  let resourceIndex = 0;
+
+  blocks.forEach((block, partIndex) => {
+    if (block?.type !== 'text') return;
+    for (const link of sandboxLinks(block.text)) {
+      const path = sandboxPath(link.source_pointer);
+      if (!path) continue;
+      resources.push({
+        id: `${sourceRecordId}:resource:sandbox:${resourceIndex}`,
+        type: 'artifact',
+        resource_kind: 'generated_file',
+        name: basename(path),
+        label: link.label,
+        source_pointer: link.source_pointer,
+        path,
+        text_range: {
+          part_index: partIndex,
+          start: link.start,
+          end: link.end
+        },
+        resolution_context: {
+          provider: 'chatgpt',
+          conversation_id: chatgptConversationId,
+          message_id: sourceRecordId
+        },
+        source: {
+          provider: 'chatgpt',
+          record_id: sourceRecordId,
+          record_index: sourceIndex,
+          part_index: partIndex
+        }
+      });
+      resourceIndex += 1;
+    }
+  });
+
+  return resources;
+}
+
+function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
+                        chatgptConversationId) {
+  return [
+    ...citationResources(citations, sourceRecordId, sourceIndex),
+    ...sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId)
+  ];
+}
+
 export function adaptChatGPTRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('ChatGPT records must be an array.');
 
+  const chatgptConversationId = conversationId(records);
   const retrievedFiles = retrievedFileLookup(records);
+  const sourceRecords = records
+    .map((record, sourceIndex) => ({ record, sourceIndex }))
+    .filter(({ record }) => !isConversationMetadata(record));
 
-  return records.map((record, sourceIndex) => {
+  return sourceRecords.map(({ record, sourceIndex }) => {
     const sourceRecordId = typeof record?.id === 'string' ? record.id : null;
     if (!sourceRecordId) throw new Error(`ChatGPT source record at index ${sourceIndex} is missing id.`);
 
@@ -333,6 +509,15 @@ export function adaptChatGPTRecords(records) {
     const contentType = record?.content?.content_type ?? null;
     const kind = eventKind(record);
     const blocks = eventBlocks(record, sourceRecordId, sourceIndex, kind);
+    const citations = eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles);
+    const resources = eventResources(
+      record,
+      sourceRecordId,
+      sourceIndex,
+      blocks,
+      citations,
+      chatgptConversationId
+    );
 
     return {
       id: `chatgpt:${sourceRecordId}`,
@@ -345,7 +530,8 @@ export function adaptChatGPTRecords(records) {
       visibility: eventVisibility(record),
       content_type: contentType,
       blocks,
-      citations: eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles),
+      citations,
+      resources,
       relationships: {
         turn_exchange_id: record?.metadata?.turn_exchange_id ?? null,
         working_turn_id: record?.metadata?.working_turn_id ?? null,
