@@ -38,11 +38,13 @@ model does not yet use it directly.
 
 The primitive model is an ordered stream/graph of canonical **events**.
 
-**Turns are derived structure.** User/assistant pairs (historically called UAPs in
-`DownloadConversation`) are also derived relationships, not storage primitives.
-This allows incomplete/half conversations, in-progress responses, commentary,
-tools, subagents, branches, and other non-paired activity to be represented
-without forcing data into a complete UAP.
+**Turns are derived structure.** Turn derivation does not require User/Assistant
+alternation or a matching opposite-role turn. Consecutive User turns and
+consecutive Assistant turns are valid, while provider semantics such as Assistant
+reasoning/commentary determine when multiple events belong to one derived turn.
+This allows in-progress responses, commentary, tools, subagents, branches, and
+other activity to be represented without forcing the conversation into a paired
+speaker model.
 
 ## Projection API
 
