@@ -136,7 +136,108 @@ function normalizeMultimodalImages(event, record) {
   };
 }
 
+function sourceFor(event, extra = {}) {
+  return {
+    provider: 'chatgpt',
+    record_id: event.source_record_id,
+    record_index: event.source_index,
+    ...extra
+  };
+}
+
+function normalizedTetherAssets(assets) {
+  if (assets == null) return null;
+  const values = Array.isArray(assets) ? assets : [assets];
+  return values.filter(asset => asset && typeof asset === 'object').map((asset, assetIndex) => {
+    const normalized = { asset_index: assetIndex };
+    for (const key of ['title', 'text', 'alt', 'caption', 'url']) {
+      if (typeof asset[key] === 'string') normalized[key] = asset[key];
+    }
+    return normalized;
+  });
+}
+
+function normalizeTetherBrowsingDisplay(event, record) {
+  if (record?.author?.role !== 'tool' ||
+      record?.content?.content_type !== 'tether_browsing_display') return event;
+
+  const output = {
+    summary: typeof record.content.summary === 'string' ? record.content.summary : null,
+    result: typeof record.content.result === 'string' ? record.content.result : null,
+    assets: normalizedTetherAssets(record.content.assets),
+    tether_id: typeof record.content.tether_id === 'string' ? record.content.tether_id : null
+  };
+
+  return {
+    ...event,
+    kind: 'tool_result',
+    blocks: [{
+      id: `${event.source_record_id}:tool_result:0`,
+      type: 'tool_result',
+      call_id: null,
+      name: record?.author?.name ?? null,
+      output,
+      output_format: 'tether_browsing_display',
+      source: sourceFor(event)
+    }]
+  };
+}
+
+function normalizeReasoningRecap(event, record) {
+  if (record?.author?.role !== 'assistant' ||
+      record?.content?.content_type !== 'reasoning_recap') return event;
+
+  const content = typeof record.content.content === 'string' ? record.content.content : null;
+  return {
+    ...event,
+    kind: 'reasoning_summary',
+    blocks: [{
+      id: `${event.source_record_id}:reasoning_recap:0`,
+      type: 'reasoning_summary',
+      summary: null,
+      content,
+      chunks: null,
+      finished: null,
+      source: sourceFor(event)
+    }]
+  };
+}
+
+function normalizeModelEditableContext(event, record) {
+  if (record?.author?.role !== 'assistant' ||
+      record?.content?.content_type !== 'model_editable_context') return event;
+
+  const blocks = [];
+  for (const key of ['model_set_context', 'repo_summary']) {
+    const value = record.content[key];
+    if (typeof value !== 'string' || !value.trim()) continue;
+    blocks.push({
+      id: `${event.source_record_id}:context:${key}`,
+      type: 'text',
+      text: value,
+      context_kind: key,
+      source: sourceFor(event, { context_key: key })
+    });
+  }
+
+  return {
+    ...event,
+    kind: 'system_context',
+    blocks
+  };
+}
+
+function normalizeNonPartsContent(event, record) {
+  let normalized = normalizeTetherBrowsingDisplay(event, record);
+  normalized = normalizeReasoningRecap(normalized, record);
+  return normalizeModelEditableContext(normalized, record);
+}
+
 export function adaptChatGPTRecords(records) {
   const events = adaptBaseChatGPTRecords(records);
-  return events.map(event => normalizeMultimodalImages(event, records[event.source_index]));
+  return events.map(event => {
+    const record = records[event.source_index];
+    const withImages = normalizeMultimodalImages(event, record);
+    return normalizeNonPartsContent(withImages, record);
+  });
 }
