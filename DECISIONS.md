@@ -203,3 +203,30 @@ canonical golden or shared implementation.
 from whichever implementation an agent happens to prefer. Explicit provenance and
 user resolution prevent the wrong pieces of competing implementations from being
 silently combined.
+
+## D013 — Tool call/result correlation requires explicit source identity
+
+**Status:** Accepted
+
+**Decision:** Normalize provider tool activity into canonical `tool_call` and
+`tool_result` events/blocks, but populate call/result correlation only when the
+source provider supplies an explicit correlation identifier.  Do not infer a
+relationship merely because a result follows a call chronologically.
+
+Claude `tool_use.id` / `tool_result.tool_use_id` and Codex `call_id` are explicit
+correlation evidence and therefore populate canonical `call_id` and
+`relationships.tool_call_id`.  The established rich ChatGPT fixture has code-tool
+calls and tool-role results but no explicit source correlation ID, so those fields
+remain null for that evidence set.
+
+Special tool behaviours remain provider semantics layered on the canonical tool
+shape.  Names and raw payloads such as Claude `AskUserQuestion`, `ExitPlanMode`,
+`Agent`, and Codex `request_user_input` / `apply_patch` must be preserved so later
+renderers can reproduce their established presentation without flattening them
+into generic text during normalization.
+
+**Reason:** Call/result is a semantic relationship, not an ordering heuristic.
+Inventing correlation from adjacency would violate the project's evidence and
+chronology rules and could associate unrelated tool activity.  Preserving explicit
+provider IDs gives the shared model a common relationship where it is proven while
+retaining uncertainty where the provider evidence does not establish one.
