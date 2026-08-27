@@ -48,10 +48,10 @@ function sourceLabel(source, fallback = '') {
   return source?.attribution || source?.title || fallback;
 }
 
-function renderSourceAnchor(source, fallbackLabel = '') {
+function renderSourceAnchor(source, fallbackLabel = '', labelOverride = null) {
   const url = source?.url ?? '';
   const tooltip = sourceTooltip(source);
-  const label = sourceLabel(source, fallbackLabel);
+  const label = labelOverride ?? sourceLabel(source, fallbackLabel);
   const favicon = `https://www.google.com/s2/favicons?domain=${faviconDomain(url)}&sz=32`;
   const escapedTooltip = htmlEscape(tooltip).replaceAll('\n', '&#10;');
   return `<a href="${htmlEscape(url)}" title="${escapedTooltip}" style="display:inline-block;white-space:nowrap;"><img alt="" src="${htmlEscape(favicon)}" width="15" height="15" title="${escapedTooltip}" style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">${htmlEscape(label)}</a>`;
@@ -70,7 +70,7 @@ function renderWebCitation(citation) {
 
 function renderMemoryCitation(citation) {
   const rendered = (citation.memory?.sources ?? [])
-    .map(source => renderSourceAnchor(source, source?.title ?? 'memory'));
+    .map(source => renderSourceAnchor(source, 'memory', source?.title ?? 'memory'));
   return `**(memory: ${rendered.join(', ')})**`;
 }
 
@@ -78,7 +78,7 @@ function retrievedLineLabel(citation) {
   const matched = citation?.matched_text;
   if (typeof matched !== 'string') return '';
   const match = matched.match(/(L\d+(?:-L?\d+)?)$/);
-  return match ? ` ${match[1].replace('-L', '-')}` : '';
+  return match ? ` ${match[1]}` : '';
 }
 
 function renderCitation(citation) {
