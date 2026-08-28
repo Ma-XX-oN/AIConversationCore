@@ -1,6 +1,3 @@
-[claude] [2026-01-03 12:00]-[2026-08-27 02:34] [claude] records: 6
-(claude-q) Ask me a structured question.
-
 ## User
 
 > Ask me a structured question.
