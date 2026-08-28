@@ -939,7 +939,6 @@
           ...event.source,
           record_id: recordId,
           record_index: sourceIndex,
-          record_number: sourceIndex == null ? null : sourceIndex + 1,
           turn_id: recordId,
           create_time: record?.create_time ?? null,
           update_time: record?.update_time ?? null,
