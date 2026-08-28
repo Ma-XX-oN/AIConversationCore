@@ -1,6 +1,3 @@
-[claude] [2026-01-02 12:00]-[2026-08-27 01:10] [claude] records: 10
-(claude-r) Please delegate a small review.
-
 ## User
 
 > Please delegate a small review.
