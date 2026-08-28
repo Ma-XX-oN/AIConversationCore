@@ -26,12 +26,6 @@ async function loadJsonl(url) {
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
 }
 
-function transcriptBody(text) {
-  const start = text.indexOf('## ');
-  assert.notEqual(start, -1, 'Expected canonical transcript body heading.');
-  return text.slice(start);
-}
-
 test('canonical Markdown renderer reproduces the established rich ChatGPT golden exactly', async () => {
   const records = await loadJsonl(chatgptFixtureUrl);
   assert.equal(renderCanonicalMarkdown(adaptChatGPTRecords(records)), await readFile(chatgptGoldenUrl, 'utf8'));
@@ -44,14 +38,12 @@ test('canonical Markdown renderer reproduces the established Claude golden exact
 
 test('canonical Markdown renderer reproduces Claude AskUserQuestion behaviour', async () => {
   const records = await loadJsonl(claudeQuestionsFixtureUrl);
-  const expected = transcriptBody(await readFile(claudeQuestionsGoldenUrl, 'utf8'));
-  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), expected);
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), await readFile(claudeQuestionsGoldenUrl, 'utf8'));
 });
 
 test('canonical Markdown renderer reproduces Claude ExitPlanMode behaviour', async () => {
   const records = await loadJsonl(claudeExitPlanFixtureUrl);
-  const expected = transcriptBody(await readFile(claudeExitPlanGoldenUrl, 'utf8'));
-  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), expected);
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), await readFile(claudeExitPlanGoldenUrl, 'utf8'));
 });
 
 test('canonical Markdown renderer preserves Claude synthetic notices as system notices', async () => {
