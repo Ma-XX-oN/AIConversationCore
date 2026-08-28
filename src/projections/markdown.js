@@ -147,6 +147,14 @@ function thoughtSummary(count) {
   return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
 }
 
+function fencedCode(content, language = '') {
+  const text = String(content ?? '');
+  const runs = text.match(/`+/g) ?? [];
+  const longest = runs.reduce((max, run) => Math.max(max, run.length), 0);
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${fence}${language}\n${text}\n${fence}`;
+}
+
 function inferredToolLanguage(block) {
   const language = typeof block.language === 'string' ? block.language.trim() : '';
   if (language && language !== 'unknown') return language;
@@ -254,7 +262,7 @@ function renderClaudeToolThought(callEvent, resultEvent) {
   const command = typeof block.input?.command === 'string' ? block.input.command : '';
   const summary = typeof block.input?.description === 'string' && block.input.description ? block.input.description : 'Bash';
   const output = resultEvent ? toolOutput(resultEvent) : '';
-  return details(summary, [`\`\`\`bash\n${command}\n\`\`\``, `**OUT**\n\n\`\`\`\n${output}\n\`\`\``].join('\n\n'));
+  return details(summary, [fencedCode(command, 'bash'), `**OUT**\n\n${fencedCode(output)}`].join('\n\n'));
 }
 
 function renderSubagentEvent(event) {
