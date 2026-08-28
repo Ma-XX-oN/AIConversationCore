@@ -160,6 +160,10 @@ function details(summary, body) {
   return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
 }
 
+function thoughtSummary(count) {
+  return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
+}
+
 function inferredToolLanguage(block) {
   const language = typeof block.language === 'string' ? block.language.trim() : '';
   if (language && language !== 'unknown') return language;
@@ -275,7 +279,7 @@ function toolCallId(event) {
   return event?.relationships?.tool_call_id ?? event?.blocks?.[0]?.call_id ?? null;
 }
 
-function claudeToolResultByCallId(segment) {
+function toolResultByCallId(segment) {
   const results = new Map();
   for (const event of segment) {
     if (event.kind !== 'tool_result') continue;
@@ -285,7 +289,7 @@ function claudeToolResultByCallId(segment) {
   return results;
 }
 
-function claudeToolOutput(event) {
+function toolOutput(event) {
   const block = event?.blocks?.find(item => item.type === 'tool_result');
   if (!block) return '';
   if (typeof block.output === 'string') return block.output;
@@ -307,7 +311,7 @@ function renderClaudeToolThought(callEvent, resultEvent) {
     const summary = typeof block.input?.description === 'string' && block.input.description
       ? block.input.description
       : 'Bash';
-    const output = resultEvent ? claudeToolOutput(resultEvent) : '';
+    const output = resultEvent ? toolOutput(resultEvent) : '';
     const body = [
       `\`\`\`bash\n${command}\n\`\`\``,
       `**OUT**\n\n\`\`\`\n${output}\n\`\`\``
@@ -331,8 +335,7 @@ function renderSubagentEvent(event) {
 function renderClaudeAssistantSegment(segment) {
   const sections = [];
   const thoughtItems = [];
-  const toolResults = claudeToolResultByCallId(segment);
-  const consumedResults = new Set();
+  const toolResults = toolResultByCallId(segment);
 
   for (const event of segment) {
     if (event.kind === 'reasoning_summary') {
@@ -345,13 +348,12 @@ function renderClaudeAssistantSegment(segment) {
     const result = callId ? toolResults.get(callId) : null;
     const rendered = renderClaudeToolThought(event, result);
     if (rendered) thoughtItems.push(rendered);
-    if (result) consumedResults.add(result.id);
   }
 
   const mainBody = [];
   if (thoughtItems.length) {
     const thoughtBody = thoughtItems.join('\n\n***\n\n');
-    mainBody.push(quoteMarkdown(details(`Having ${thoughtItems.length} thoughts`, thoughtBody)));
+    mainBody.push(quoteMarkdown(details(thoughtSummary(thoughtItems.length), thoughtBody)));
   }
   for (const event of segment) {
     if (event.kind !== 'message' || event.role !== 'assistant') continue;
@@ -369,9 +371,126 @@ function renderClaudeAssistantSegment(segment) {
   return sections;
 }
 
-function renderAssistantSegment(segment, events) {
+function codexRequestBlock(event) {
+  return event?.blocks?.find(block =>
+    block.type === 'tool_call' && block.name === 'request_user_input');
+}
+
+function codexResponseBlock(event) {
+  return event?.blocks?.find(block =>
+    block.type === 'tool_result' && block.request_user_input_response);
+}
+
+function renderCodexRequestSections(callEvent, resultEvent, state) {
+  const call = codexRequestBlock(callEvent);
+  if (!call) return [];
+  const response = codexResponseBlock(resultEvent);
+  const questions = call.request_user_input?.questions ?? [];
+  if (!questions.length) return [];
+
+  const questionParts = [];
+  const answerLines = [];
+  for (const question of questions) {
+    state.codexQuestionNumber += 1;
+    const lines = [];
+    if (question.question) lines.push(`**${question.question}**`);
+    for (const option of question.options ?? []) {
+      if (!option?.label) continue;
+      const description = option.description ? ` - ${option.description}` : '';
+      lines.push(`- ${option.label}${description}`);
+    }
+    questionParts.push(`### Question ${state.codexQuestionNumber}\n\n${quoteMarkdown(lines.join('\n'))}`);
+
+    const selected = response?.request_user_input_response?.answers?.[question.id] ?? [];
+    if (question.question && selected.length) {
+      const renderedAnswers = selected.map(value => `"${value}"`).join(', ');
+      answerLines.push(`**${question.question}** → ${renderedAnswers}`);
+    }
+  }
+
+  const sections = [`## Codex\n\n${questionParts.join('\n\n')}`];
+  if (answerLines.length) sections.push(`## User\n\n${quoteMarkdown(answerLines.join('\n'))}`);
+  return sections;
+}
+
+function renderCodexFileChanges(segment) {
+  const patches = [];
+  for (const event of segment) {
+    if (event.kind !== 'tool_call') continue;
+    const block = event.blocks?.find(item =>
+      item.type === 'tool_call' && item.name === 'apply_patch' && item.file_change?.patch);
+    if (block) patches.push(block.file_change.patch);
+  }
+  if (!patches.length) return null;
+
+  const fileCount = patches.reduce((count, patch) =>
+    count + (patch.match(/^\*\*\* (?:Update|Add|Delete) File:/gm)?.length ?? 0), 0);
+  const summary = `${fileCount || patches.length} file change${(fileCount || patches.length) === 1 ? '' : 's'}`;
+  const body = patches.map(patch => quoteMarkdown(`\`\`\`diff\n${patch}\n\`\`\``)).join('\n\n');
+  return details(summary, body);
+}
+
+function renderCodexMainResponse(segment) {
+  const thoughtItems = [];
+  const finalMessages = [];
+
+  for (const event of segment) {
+    if (event.kind === 'reasoning_summary') {
+      const text = reasoningBody(event);
+      if (text) thoughtItems.push(text);
+      continue;
+    }
+    if (event.kind === 'commentary') {
+      const text = renderMessageBlocks(event);
+      if (text) thoughtItems.push(text);
+      continue;
+    }
+    if (event.kind === 'message' && event.role === 'assistant') {
+      const text = renderMessageBlocks(event);
+      if (text) finalMessages.push(text);
+    }
+  }
+
+  if (!thoughtItems.length && !finalMessages.length) return null;
+  const body = [];
+  if (thoughtItems.length) {
+    body.push(quoteMarkdown(details(
+      thoughtSummary(thoughtItems.length),
+      thoughtItems.join('\n\n***\n\n')
+    )));
+  }
+  for (const text of finalMessages) body.push(quoteMarkdown(text));
+  return `## Codex\n\n${body.join('\n\n')}`;
+}
+
+function renderCodexAssistantSegment(segment, state) {
+  const sections = [];
+  const results = toolResultByCallId(segment);
+  const requestEventIds = new Set();
+
+  for (const event of segment) {
+    const request = codexRequestBlock(event);
+    if (!request) continue;
+    const callId = toolCallId(event);
+    const result = callId ? results.get(callId) : null;
+    sections.push(...renderCodexRequestSections(event, result, state));
+    requestEventIds.add(event.id);
+    if (result) requestEventIds.add(result.id);
+  }
+
+  const mainSegment = segment.filter(event => !requestEventIds.has(event.id));
+  const main = renderCodexMainResponse(mainSegment);
+  if (main) sections.push(main);
+
+  const fileChanges = renderCodexFileChanges(mainSegment);
+  if (fileChanges) sections.push(fileChanges);
+  return sections;
+}
+
+function renderAssistantSegment(segment, events, state) {
   const provider = segment.find(event => event?.provider)?.provider ?? 'chatgpt';
   if (provider === 'claude') return renderClaudeAssistantSegment(segment);
+  if (provider === 'codex') return renderCodexAssistantSegment(segment, state);
   return renderChatGPTAssistantSegment(segment, events);
 }
 
@@ -379,11 +498,12 @@ export function renderCanonicalMarkdown(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
 
   const sections = [];
+  const state = { codexQuestionNumber: 0 };
   let assistantSegment = [];
 
   const flushAssistant = () => {
     if (!assistantSegment.length) return;
-    sections.push(...renderAssistantSegment(assistantSegment, events));
+    sections.push(...renderAssistantSegment(assistantSegment, events, state));
     assistantSegment = [];
   };
 
