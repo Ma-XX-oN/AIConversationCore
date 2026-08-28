@@ -107,6 +107,18 @@ function textReplacements(event, partIndex) {
     if (citation?.text_range?.part_index !== partIndex) continue;
     replacements.push({ start: citation.text_range.start, end: citation.text_range.end, text: renderCitation(citation) });
   }
+  for (const resource of event.resources ?? []) {
+  if (resource?.type !== 'artifact' || resource?.resource_kind !== 'generated_file') continue;
+  if (resource?.text_range?.part_index !== partIndex) continue;
+  const destination = resource.download_url ?? resource.source_pointer;
+  if (!destination) continue;
+  const label = resource.label ?? resource.name ?? 'Download';
+  replacements.push({
+    start: resource.text_range.start,
+    end: resource.text_range.end,
+    text: `[${label}](${destination})`
+  });
+}
   return replacements.sort((a, b) => b.start - a.start || b.end - a.end);
 }
 
