@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   adaptChatGPTRecords,
   adaptClaudeRecords,
+  adaptCodexRecords,
   renderCanonicalMarkdown
 } from '../src/index.js';
 
@@ -12,6 +13,8 @@ const chatgptFixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', imp
 const chatgptGoldenUrl = new URL('./golden/chatgpt/chatgpt-direct.canonical.md', import.meta.url);
 const claudeFixtureUrl = new URL('./fixtures/claude/claude-rich-subagent.jsonl', import.meta.url);
 const claudeGoldenUrl = new URL('./golden/claude/claude-rich-subagent.canonical.md', import.meta.url);
+const codexFixtureUrl = new URL('./fixtures/codex/codex-rich.jsonl', import.meta.url);
+const codexGoldenUrl = new URL('./golden/codex/codex-rich.canonical.md', import.meta.url);
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
@@ -36,6 +39,14 @@ test('canonical Markdown renderer reproduces the established Claude transcript b
   const records = await loadJsonl(claudeFixtureUrl);
   const events = adaptClaudeRecords(records);
   const expected = transcriptBody(await readFile(claudeGoldenUrl, 'utf8'));
+
+  assert.equal(renderCanonicalMarkdown(events), expected);
+});
+
+test('canonical Markdown renderer reproduces the established Codex transcript body exactly', async () => {
+  const records = await loadJsonl(codexFixtureUrl);
+  const events = adaptCodexRecords(records);
+  const expected = transcriptBody(await readFile(codexGoldenUrl, 'utf8'));
 
   assert.equal(renderCanonicalMarkdown(events), expected);
 });
