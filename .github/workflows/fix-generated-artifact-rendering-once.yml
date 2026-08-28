@@ -1,0 +1,70 @@
+name: Fix generated artifact rendering once
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-generated-artifact-rendering-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch canonical artifact rendering
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/projections/markdown.js')
+          text = path.read_text()
+          needle = "  return replacements.sort((a, b) => b.start - a.start || b.end - a.end);\n"
+          if text.count(needle) != 1:
+            raise SystemExit(f'expected one textReplacements return, found {text.count(needle)}')
+          addition = """  for (const resource of event.resources ?? []) {
+            if (resource?.type !== 'artifact' || resource?.resource_kind !== 'generated_file') continue;
+            if (resource?.text_range?.part_index !== partIndex) continue;
+            const destination = resource.download_url ?? resource.source_pointer;
+            if (!destination) continue;
+            const label = resource.label ?? resource.name ?? 'Download';
+            replacements.push({
+              start: resource.text_range.start,
+              end: resource.text_range.end,
+              text: `[${label}](${destination})`
+            });
+          }
+          """
+          path.write_text(text.replace(needle, addition + needle))
+          PY
+      - name: Regenerate browser artifact
+        run: npm run build:browser
+      - name: Verify sandbox baseline and full suite
+        run: |
+          node --input-type=module - <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { adaptChatGPTRecords, renderCanonicalMarkdown } from './src/index.js';
+          const raw = await readFile('tests/fixtures/chatgpt/chatgpt-metadata-sandbox.jsonl', 'utf8');
+          const records = raw.split('\n').filter(Boolean).map(JSON.parse);
+          const baseline = await readFile('tests/baseline/ai-transcript-current/chatgpt-metadata-sandbox.md', 'utf8');
+          const expected = baseline.slice(baseline.indexOf('## '));
+          const actual = renderCanonicalMarkdown(adaptChatGPTRecords(records));
+          if (actual !== expected) {
+            console.error('Sandbox canonical body mismatch.');
+            console.error(actual);
+            process.exit(1);
+          }
+          NODE
+          npm test
+      - name: Commit renderer and generated bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "fix: render generated artifact download links"
+          git push
