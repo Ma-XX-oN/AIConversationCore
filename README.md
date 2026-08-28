@@ -126,6 +126,8 @@ The repository is the source of truth for project intent and state. Do not rely 
 chat history or assistant memory to reconstruct decisions.
 
 - [`DESIGN.md`](DESIGN.md) — architecture, canonical model, invariants, boundaries
+- [`NORMALIZATION_RULES.md`](NORMALIZATION_RULES.md) — durable normalization and rendering rules
+- [`SOURCE_PROVENANCE.md`](SOURCE_PROVENANCE.md) — original JSONL record identity/index/timestamp preservation contract
 - [`EXISTING_IMPLEMENTATIONS.md`](EXISTING_IMPLEMENTATIONS.md) — reviewed codebase baselines, commonalities, differences, ownership boundaries, and migration risks
 - [`TESTING.md`](TESTING.md) — mandatory regression/parity/integration test contract
 - [`ROADMAP.md`](ROADMAP.md) — migration phases and current work state
