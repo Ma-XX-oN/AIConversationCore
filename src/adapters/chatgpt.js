@@ -359,6 +359,31 @@ function normalizeParentRelationship(event, record, knownRecordIds) {
   };
 }
 
+function normalizeSourceProvenance(event, record) {
+  const sourceIndex = Number.isInteger(event.source_index) ? event.source_index : null;
+  const recordId = typeof record?.id === 'string' ? record.id : event.source_record_id;
+  const metadata = record?.metadata && typeof record.metadata === 'object' ? record.metadata : {};
+
+  return {
+    ...event,
+    source: {
+      ...event.source,
+      record_id: recordId,
+      record_index: sourceIndex,
+      record_number: sourceIndex == null ? null : sourceIndex + 1,
+      turn_id: recordId,
+      create_time: record?.create_time ?? null,
+      update_time: record?.update_time ?? null,
+      turn_exchange_id: typeof metadata.turn_exchange_id === 'string'
+        ? metadata.turn_exchange_id
+        : null,
+      working_turn_id: typeof metadata.working_turn_id === 'string'
+        ? metadata.working_turn_id
+        : null
+    }
+  };
+}
+
 export function adaptChatGPTRecords(records) {
   const events = adaptBaseChatGPTRecords(records);
   const knownRecordIds = new Set(records
@@ -371,6 +396,7 @@ export function adaptChatGPTRecords(records) {
     const withImages = normalizeMultimodalImages(withReplacements, record);
     const withNonParts = normalizeNonPartsContent(withImages, record);
     const withFootnotes = normalizeSourceFootnotes(withNonParts, record);
-    return normalizeParentRelationship(withFootnotes, record, knownRecordIds);
+    const withParent = normalizeParentRelationship(withFootnotes, record, knownRecordIds);
+    return normalizeSourceProvenance(withParent, record);
   });
 }
