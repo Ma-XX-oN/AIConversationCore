@@ -25,26 +25,29 @@ test('preserves original JSONL provenance through ChatGPT normalization and turn
     provider: 'chatgpt',
     record_id: recordId,
     record_index: 8,
-    record_number: 9,
     turn_id: recordId,
     create_time: 1772317719.480372,
     update_time: null,
     turn_exchange_id: '7a7d9077-dafb-4b5c-a567-afb382039884',
     working_turn_id: null
   });
+  assert.equal(event.source.record_index + 1, 9);
+  assert.equal(Object.hasOwn(event.source, 'record_number'), false);
 
   const turn = deriveTurns(events).find(item => item.event_ids.includes(event.id));
   assert.ok(turn);
-  assert.deepEqual(turn.source.records.find(record => record.record_id === recordId), {
+  const sourceRecord = turn.source.records.find(record => record.record_id === recordId);
+  assert.deepEqual(sourceRecord, {
     record_id: recordId,
     record_index: 8,
-    record_number: 9,
     turn_id: recordId,
     create_time: 1772317719.480372,
     update_time: null,
     turn_exchange_id: '7a7d9077-dafb-4b5c-a567-afb382039884',
     working_turn_id: null
   });
+  assert.equal(sourceRecord.record_index + 1, 9);
+  assert.equal(Object.hasOwn(sourceRecord, 'record_number'), false);
 });
 
 test('round-trips ordinary Markdown footnote syntax without provider-specific conversion', async () => {
