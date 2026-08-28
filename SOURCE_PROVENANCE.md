@@ -12,7 +12,6 @@ For each normalized source record, preserve enough information to locate and
 identify that exact record in the original JSONL database:
 
 - the 0-based source record index used internally;
-- the corresponding 1-based record number used by transcript projections;
 - the provider/source record or message ID when present;
 - the provider/source turn ID when present or, for the evidenced ChatGPT export
   where the stable message record ID is the source turn identity used by the
@@ -25,6 +24,10 @@ identify that exact record in the original JSONL database:
 Do not replace a source value with a reformatted, synthesized, or canonical value.
 A projection may format a timestamp for display, but the canonical provenance must
 retain the original source value from which the display value is derived.
+
+A human-facing 1-based record number is a projection of the 0-based source index,
+not separate provenance.  When needed, derive it as `record_index + 1` rather than
+storing both representations of the same source position.
 
 ## Derived turns
 
@@ -39,9 +42,10 @@ derivation.
 ## Projection rule
 
 Renderers and other projections consume canonical data only.  If a projection
-needs an original record number, timestamp, or source/provider identity, it must
-obtain that value from canonical provenance rather than reopening or re-parsing
-the provider JSONL record.
+needs a human-facing record number, derive it from canonical provenance as
+`record_index + 1`.  If it needs a timestamp or source/provider identity, obtain
+that value from canonical provenance rather than reopening or re-parsing the
+provider JSONL record.
 
 A projection may also expose canonical turn identity when requested.  Canonical
 and source identities are separate namespaces and must not silently overwrite or
