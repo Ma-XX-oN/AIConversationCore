@@ -11,6 +11,12 @@ function quoteMarkdown(text) {
   return String(text).split('\n').map(line => line ? `> ${line}` : '>').join('\n');
 }
 
+function providerLabel(provider) {
+  if (provider === 'claude') return 'Claude';
+  if (provider === 'codex') return 'Codex';
+  return 'ChatGPT';
+}
+
 function resourceById(event, resourceId) {
   return event.resources?.find(resource => resource.id === resourceId) ?? null;
 }
@@ -30,7 +36,6 @@ function faviconDomain(url) {
   if (typeof url !== 'string' || !url) return '';
   try {
     const parsed = new URL(url);
-    if (parsed.protocol === 'file:') return `${parsed.protocol}//${parsed.host}`;
     return `${parsed.protocol}//${parsed.host}`;
   } catch {
     return url;
@@ -48,10 +53,11 @@ function sourceLabel(source, fallback = '') {
   return source?.attribution || source?.title || fallback;
 }
 
-function renderSourceAnchor(source, fallbackLabel = '', labelOverride = null) {
+function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
   const url = source?.url ?? '';
   const tooltip = sourceTooltip(source);
-  const label = labelOverride ?? sourceLabel(source, fallbackLabel);
+  const label = preferTitle ? (source?.title || source?.attribution || fallbackLabel)
+    : sourceLabel(source, fallbackLabel);
   const favicon = `https://www.google.com/s2/favicons?domain=${faviconDomain(url)}&sz=32`;
   const escapedTooltip = htmlEscape(tooltip).replaceAll('\n', '&#10;');
   return `<a href="${htmlEscape(url)}" title="${escapedTooltip}" style="display:inline-block;white-space:nowrap;"><img alt="" src="${htmlEscape(favicon)}" width="15" height="15" title="${escapedTooltip}" style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">${htmlEscape(label)}</a>`;
@@ -70,7 +76,7 @@ function renderWebCitation(citation) {
 
 function renderMemoryCitation(citation) {
   const rendered = (citation.memory?.sources ?? [])
-    .map(source => renderSourceAnchor(source, 'memory', source?.title ?? 'memory'));
+    .map(source => renderSourceAnchor(source, source?.title ?? 'memory', true));
   return `**(memory: ${rendered.join(', ')})**`;
 }
 
@@ -78,7 +84,7 @@ function retrievedLineLabel(citation) {
   const matched = citation?.matched_text;
   if (typeof matched !== 'string') return '';
   const match = matched.match(/(L\d+(?:-L?\d+)?)$/);
-  return match ? ` ${match[1]}` : '';
+  return match ? ` ${match[1].replace(/-(?=\d)/, '-L')}` : '';
 }
 
 function renderCitation(citation) {
@@ -189,7 +195,7 @@ function renderMultimodalToolOutput(event, block, events) {
   return visible.join('\n\n');
 }
 
-function renderToolBlock(event, block, events) {
+function renderChatGPTToolBlock(event, block, events) {
   if (block.type === 'tool_call') {
     const language = inferredToolLanguage(block);
     const fence = `\`\`\`${language}`;
@@ -208,8 +214,8 @@ function renderToolBlock(event, block, events) {
   return '';
 }
 
-function renderToolEvent(event, events) {
-  return (event.blocks ?? []).map(block => renderToolBlock(event, block, events))
+function renderChatGPTToolEvent(event, events) {
+  return (event.blocks ?? []).map(block => renderChatGPTToolBlock(event, block, events))
     .filter(Boolean).join('\n\n');
 }
 
@@ -217,7 +223,7 @@ function renderUser(event) {
   return `## User\n\n${quoteMarkdown(renderMessageBlocks(event))}`;
 }
 
-function renderCommentarySegment(reasoningEvents, commentaryEvents) {
+function renderChatGPTCommentarySegment(reasoningEvents, commentaryEvents) {
   const body = [];
   for (const event of reasoningEvents) {
     const text = reasoningBody(event);
@@ -231,7 +237,7 @@ function renderCommentarySegment(reasoningEvents, commentaryEvents) {
   return `## ChatGPT Commentary\n\n${body.join('\n\n')}`;
 }
 
-function renderAssistantSegment(segment, events) {
+function renderChatGPTAssistantSegment(segment, events) {
   const reasoning = segment.filter(event => event.kind === 'reasoning_summary');
   const commentary = segment.filter(event => event.kind === 'commentary');
   const tools = segment.filter(event => event.kind === 'tool_call' || event.kind === 'tool_result');
@@ -239,7 +245,7 @@ function renderAssistantSegment(segment, events) {
   const sections = [];
 
   if (commentary.length) {
-    const commentarySection = renderCommentarySegment(reasoning, commentary);
+    const commentarySection = renderChatGPTCommentarySegment(reasoning, commentary);
     if (commentarySection) sections.push(commentarySection);
   }
 
@@ -252,7 +258,7 @@ function renderAssistantSegment(segment, events) {
     }
   }
   for (const event of tools) {
-    const text = renderToolEvent(event, events);
+    const text = renderChatGPTToolEvent(event, events);
     if (text) thoughtItems.push(text);
   }
   if (thoughtItems.length) assistantBody.push(details('Thoughts', thoughtItems.join('\n\n')));
@@ -263,6 +269,110 @@ function renderAssistantSegment(segment, events) {
 
   if (assistantBody.length) sections.push(`## ChatGPT\n\n${assistantBody.join('\n\n')}`);
   return sections;
+}
+
+function toolCallId(event) {
+  return event?.relationships?.tool_call_id ?? event?.blocks?.[0]?.call_id ?? null;
+}
+
+function claudeToolResultByCallId(segment) {
+  const results = new Map();
+  for (const event of segment) {
+    if (event.kind !== 'tool_result') continue;
+    const callId = toolCallId(event);
+    if (callId) results.set(callId, event);
+  }
+  return results;
+}
+
+function claudeToolOutput(event) {
+  const block = event?.blocks?.find(item => item.type === 'tool_result');
+  if (!block) return '';
+  if (typeof block.output === 'string') return block.output;
+  if (Array.isArray(block.output)) {
+    return block.output
+      .filter(item => item?.type === 'text' && typeof item.text === 'string')
+      .map(item => item.text)
+      .join('\n');
+  }
+  return String(block.output ?? '');
+}
+
+function renderClaudeToolThought(callEvent, resultEvent) {
+  const block = callEvent?.blocks?.find(item => item.type === 'tool_call');
+  if (!block) return '';
+
+  if (block.name === 'Bash') {
+    const command = typeof block.input?.command === 'string' ? block.input.command : '';
+    const summary = typeof block.input?.description === 'string' && block.input.description
+      ? block.input.description
+      : 'Bash';
+    const output = resultEvent ? claudeToolOutput(resultEvent) : '';
+    const body = [
+      `\`\`\`bash\n${command}\n\`\`\``,
+      `**OUT**\n\n\`\`\`\n${output}\n\`\`\``
+    ].join('\n\n');
+    return details(summary, body);
+  }
+
+  return '';
+}
+
+function renderSubagentEvent(event) {
+  const block = event?.blocks?.find(item => item.type === 'subagent');
+  if (!block?.agent_id) return '';
+  const label = providerLabel(event.provider);
+  const body = [];
+  if (block.description) body.push(quoteMarkdown(`**${block.description}**`));
+  if (block.output) body.push(quoteMarkdown(block.output));
+  return `## ${label} Sub-agent ${block.agent_id}\n\n${body.join('\n\n')}`;
+}
+
+function renderClaudeAssistantSegment(segment) {
+  const sections = [];
+  const thoughtItems = [];
+  const toolResults = claudeToolResultByCallId(segment);
+  const consumedResults = new Set();
+
+  for (const event of segment) {
+    if (event.kind === 'reasoning_summary') {
+      const text = reasoningBody(event);
+      if (text) thoughtItems.push(text);
+      continue;
+    }
+    if (event.kind !== 'tool_call') continue;
+    const callId = toolCallId(event);
+    const result = callId ? toolResults.get(callId) : null;
+    const rendered = renderClaudeToolThought(event, result);
+    if (rendered) thoughtItems.push(rendered);
+    if (result) consumedResults.add(result.id);
+  }
+
+  const mainBody = [];
+  if (thoughtItems.length) {
+    const thoughtBody = thoughtItems.join('\n\n***\n\n');
+    mainBody.push(quoteMarkdown(details(`Having ${thoughtItems.length} thoughts`, thoughtBody)));
+  }
+  for (const event of segment) {
+    if (event.kind !== 'message' || event.role !== 'assistant') continue;
+    const text = renderMessageBlocks(event);
+    if (text) mainBody.push(quoteMarkdown(text));
+  }
+  if (mainBody.length) sections.push(`## Claude\n\n${mainBody.join('\n\n')}`);
+
+  for (const event of segment) {
+    if (event.kind !== 'subagent') continue;
+    const rendered = renderSubagentEvent(event);
+    if (rendered) sections.push(rendered);
+  }
+
+  return sections;
+}
+
+function renderAssistantSegment(segment, events) {
+  const provider = segment.find(event => event?.provider)?.provider ?? 'chatgpt';
+  if (provider === 'claude') return renderClaudeAssistantSegment(segment);
+  return renderChatGPTAssistantSegment(segment, events);
 }
 
 export function renderCanonicalMarkdown(events) {
@@ -287,7 +397,7 @@ export function renderCanonicalMarkdown(events) {
     }
 
     const isAssistantActivity = event?.role === 'assistant' ||
-      event?.kind === 'tool_call' || event?.kind === 'tool_result';
+      event?.kind === 'tool_call' || event?.kind === 'tool_result' || event?.kind === 'subagent';
     if (!isAssistantActivity) continue;
 
     assistantSegment.push(event);
