@@ -1,0 +1,33 @@
+name: Generate browser bundle once
+
+on:
+  push:
+    paths:
+      - .github/workflows/generate-browser-bundle-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate browser bundle
+        run: npm run build:browser
+      - name: Commit generated artifact
+        run: |
+          if git diff --quiet -- dist/aiconversationcore.chatgpt.browser.js && git ls-files --error-unmatch dist/aiconversationcore.chatgpt.browser.js >/dev/null 2>&1; then
+            echo "Browser bundle is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "build: add generated ChatGPT browser bundle"
+          git push
