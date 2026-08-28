@@ -13,6 +13,11 @@ const chatgptFixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', imp
 const chatgptGoldenUrl = new URL('./golden/chatgpt/chatgpt-direct.canonical.md', import.meta.url);
 const claudeFixtureUrl = new URL('./fixtures/claude/claude-rich-subagent.jsonl', import.meta.url);
 const claudeGoldenUrl = new URL('./golden/claude/claude-rich-subagent.canonical.md', import.meta.url);
+const claudeQuestionsFixtureUrl = new URL('./fixtures/claude/claude-questions.jsonl', import.meta.url);
+const claudeQuestionsGoldenUrl = new URL('./golden/claude/claude-questions.canonical.md', import.meta.url);
+const claudeExitPlanFixtureUrl = new URL('./fixtures/claude/claude-exit-plan.jsonl', import.meta.url);
+const claudeExitPlanGoldenUrl = new URL('./golden/claude/claude-exit-plan.canonical.md', import.meta.url);
+const claudeNoticeFixtureUrl = new URL('./fixtures/claude/claude-notice.jsonl', import.meta.url);
 const codexFixtureUrl = new URL('./fixtures/codex/codex-rich.jsonl', import.meta.url);
 const codexGoldenUrl = new URL('./golden/codex/codex-rich.canonical.md', import.meta.url);
 
@@ -21,28 +26,43 @@ async function loadJsonl(url) {
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
 }
 
+function transcriptBody(text) {
+  const start = text.indexOf('## ');
+  assert.notEqual(start, -1, 'Expected canonical transcript body heading.');
+  return text.slice(start);
+}
+
 test('canonical Markdown renderer reproduces the established rich ChatGPT golden exactly', async () => {
   const records = await loadJsonl(chatgptFixtureUrl);
-  const events = adaptChatGPTRecords(records);
-  const expected = await readFile(chatgptGoldenUrl, 'utf8');
-
-  assert.equal(renderCanonicalMarkdown(events), expected);
+  assert.equal(renderCanonicalMarkdown(adaptChatGPTRecords(records)), await readFile(chatgptGoldenUrl, 'utf8'));
 });
 
 test('canonical Markdown renderer reproduces the established Claude golden exactly', async () => {
   const records = await loadJsonl(claudeFixtureUrl);
-  const events = adaptClaudeRecords(records);
-  const expected = await readFile(claudeGoldenUrl, 'utf8');
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), await readFile(claudeGoldenUrl, 'utf8'));
+});
 
-  assert.equal(renderCanonicalMarkdown(events), expected);
+test('canonical Markdown renderer reproduces Claude AskUserQuestion behaviour', async () => {
+  const records = await loadJsonl(claudeQuestionsFixtureUrl);
+  const expected = transcriptBody(await readFile(claudeQuestionsGoldenUrl, 'utf8'));
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), expected);
+});
+
+test('canonical Markdown renderer reproduces Claude ExitPlanMode behaviour', async () => {
+  const records = await loadJsonl(claudeExitPlanFixtureUrl);
+  const expected = transcriptBody(await readFile(claudeExitPlanGoldenUrl, 'utf8'));
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), expected);
+});
+
+test('canonical Markdown renderer preserves Claude synthetic notices as system notices', async () => {
+  const records = await loadJsonl(claudeNoticeFixtureUrl);
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)),
+    '## User\n\n> Hello.\n\n## Claude\n\n> Hi there!\n\n> *(system: Context limit reached.)*\n\n## User\n\n> Continue.\n\n');
 });
 
 test('canonical Markdown renderer reproduces the established Codex golden exactly', async () => {
   const records = await loadJsonl(codexFixtureUrl);
-  const events = adaptCodexRecords(records);
-  const expected = await readFile(codexGoldenUrl, 'utf8');
-
-  assert.equal(renderCanonicalMarkdown(events), expected);
+  assert.equal(renderCanonicalMarkdown(adaptCodexRecords(records)), await readFile(codexGoldenUrl, 'utf8'));
 });
 
 test('canonical Markdown renderer consumes normalized events, not provider-native records', () => {
