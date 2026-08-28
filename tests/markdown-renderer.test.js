@@ -11,6 +11,8 @@ import {
 
 const chatgptFixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', import.meta.url);
 const chatgptGoldenUrl = new URL('./golden/chatgpt/chatgpt-direct.canonical.md', import.meta.url);
+const chatgptSandboxFixtureUrl = new URL('./fixtures/chatgpt/chatgpt-metadata-sandbox.jsonl', import.meta.url);
+const chatgptSandboxBaselineUrl = new URL('./baseline/ai-transcript-current/chatgpt-metadata-sandbox.md', import.meta.url);
 const claudeFixtureUrl = new URL('./fixtures/claude/claude-rich-subagent.jsonl', import.meta.url);
 const claudeGoldenUrl = new URL('./golden/claude/claude-rich-subagent.canonical.md', import.meta.url);
 const claudeQuestionsFixtureUrl = new URL('./fixtures/claude/claude-questions.jsonl', import.meta.url);
@@ -39,6 +41,12 @@ function transcriptBody(text) {
 test('canonical Markdown renderer reproduces the established rich ChatGPT golden exactly', async () => {
   const records = await loadJsonl(chatgptFixtureUrl);
   assert.equal(renderCanonicalMarkdown(adaptChatGPTRecords(records)), await readFile(chatgptGoldenUrl, 'utf8'));
+});
+
+test('canonical Markdown renderer renders generated-file resources from canonical download URLs', async () => {
+  const records = await loadJsonl(chatgptSandboxFixtureUrl);
+  const expected = transcriptBody(await readFile(chatgptSandboxBaselineUrl, 'utf8'));
+  assert.equal(renderCanonicalMarkdown(adaptChatGPTRecords(records)), expected);
 });
 
 test('canonical Markdown renderer reproduces the established Claude golden exactly', async () => {
