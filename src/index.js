@@ -16,4 +16,4 @@ export { renderCanonicalMarkdown } from './projections/markdown.js';
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
 export { adaptClaudeRecords, adaptClaudeToolEvents } from './adapters/claude.js';
-export { adaptCodexToolEvents } from './adapters/codex.js';
+export { adaptCodexRecords, adaptCodexToolEvents } from './adapters/codex.js';
