@@ -3,7 +3,7 @@
   "provider": "codex",
   "fixture": {
     "path": "tests/fixtures/codex/codex-rich.jsonl",
-    "sha256": "18a8655ec0620dbd1793dd1f405c9819abbab3bee1af90c0b6d9c13d1b2a085",
+    "sha256": "18a8655ecf0620dbd1793dd1f405c9819abbab3bee1af90c0b6d9c13d1b2a085",
     "derivation": "privacy-safe synthetic fixture derived from verified structures in the user-supplied real Codex rollouts, including request_user_input question/answer structures now directly evidenced by the dedicated question corpus"
   },
   "real_private_evidence": {
