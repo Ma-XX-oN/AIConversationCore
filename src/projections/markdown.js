@@ -67,9 +67,7 @@ function renderWebCitation(citation) {
   const rendered = [];
   for (const source of citation.web?.sources ?? []) {
     rendered.push(renderSourceAnchor(source));
-    for (const supporting of source.supporting_sources ?? []) {
-      rendered.push(renderSourceAnchor(supporting));
-    }
+    for (const supporting of source.supporting_sources ?? []) rendered.push(renderSourceAnchor(supporting));
   }
   return `**(cite: ${rendered.join(', ')})**`;
 }
@@ -88,9 +86,7 @@ function retrievedLineLabel(citation) {
 }
 
 function renderCitation(citation) {
-  if (citation.citation_kind === 'file') {
-    return `\`${citation.file?.name ?? 'file'}\``;
-  }
+  if (citation.citation_kind === 'file') return `\`${citation.file?.name ?? 'file'}\``;
   if (citation.citation_kind === 'retrieved_file') {
     const file = citation.retrieved_file ?? {};
     if (!file.resolved || !file.url) return file.title ?? citation.matched_text ?? '';
@@ -103,25 +99,14 @@ function renderCitation(citation) {
 
 function textReplacements(event, partIndex) {
   const replacements = [];
-
   for (const replacement of event.display_replacements ?? []) {
     if (replacement?.text_range?.part_index !== partIndex) continue;
-    replacements.push({
-      start: replacement.text_range.start,
-      end: replacement.text_range.end,
-      text: replacement.display_text ?? ''
-    });
+    replacements.push({ start: replacement.text_range.start, end: replacement.text_range.end, text: replacement.display_text ?? '' });
   }
-
   for (const citation of event.citations ?? []) {
     if (citation?.text_range?.part_index !== partIndex) continue;
-    replacements.push({
-      start: citation.text_range.start,
-      end: citation.text_range.end,
-      text: renderCitation(citation)
-    });
+    replacements.push({ start: citation.text_range.start, end: citation.text_range.end, text: renderCitation(citation) });
   }
-
   return replacements.sort((a, b) => b.start - a.start || b.end - a.end);
 }
 
@@ -136,9 +121,7 @@ function renderTextBlock(event, block, partIndex) {
 function renderMessageBlocks(event) {
   return (event.blocks ?? []).map((block, blockIndex) => {
     if (block.type === 'text') {
-      const partIndex = Number.isInteger(block?.source?.part_index)
-        ? block.source.part_index
-        : blockIndex;
+      const partIndex = Number.isInteger(block?.source?.part_index) ? block.source.part_index : blockIndex;
       return renderTextBlock(event, block, partIndex);
     }
     if (block.type === 'image') return renderImageBlock(event, block);
@@ -174,9 +157,7 @@ function inferredToolLanguage(block) {
 function relatedRetrievedFile(events, sourceRecordId) {
   for (const event of events) {
     for (const citation of event.citations ?? []) {
-      if (citation.citation_kind === 'retrieved_file' &&
-          citation.retrieved_file?.source_record_id === sourceRecordId &&
-          citation.retrieved_file?.resolved) return citation.retrieved_file;
+      if (citation.citation_kind === 'retrieved_file' && citation.retrieved_file?.source_record_id === sourceRecordId && citation.retrieved_file?.resolved) return citation.retrieved_file;
     }
   }
   return null;
@@ -184,16 +165,11 @@ function relatedRetrievedFile(events, sourceRecordId) {
 
 function renderMultimodalToolOutput(event, block, events) {
   const values = Array.isArray(block.output) ? block.output : [];
-  const visible = values.filter(value =>
-    typeof value === 'string' &&
-    !value.startsWith('Make sure to include ')
-  ).map(value => value.trim());
-
+  const visible = values.filter(value => typeof value === 'string' && !value.startsWith('Make sure to include ')).map(value => value.trim());
   const retrieved = relatedRetrievedFile(events, event.source_record_id);
   if (retrieved?.url) {
     for (let index = 0; index < visible.length; index += 1) {
-      if (!visible[index].startsWith('Citation Marker:')) continue;
-      visible[index] = `Citation Marker: <a href="${htmlEscape(retrieved.url)}">${htmlEscape(retrieved.title ?? 'file')}</a>`;
+      if (visible[index].startsWith('Citation Marker:')) visible[index] = `Citation Marker: <a href="${htmlEscape(retrieved.url)}">${htmlEscape(retrieved.title ?? 'file')}</a>`;
     }
   }
   return visible.join('\n\n');
@@ -202,25 +178,19 @@ function renderMultimodalToolOutput(event, block, events) {
 function renderChatGPTToolBlock(event, block, events) {
   if (block.type === 'tool_call') {
     const language = inferredToolLanguage(block);
-    const fence = `\`\`\`${language}`;
-    return details(`${block.name ?? 'tool'} code`, `${fence}\n${block.input ?? ''}\n\`\`\``);
+    return details(`${block.name ?? 'tool'} code`, `\`\`\`${language}\n${block.input ?? ''}\n\`\`\``);
   }
-
   if (block.type === 'tool_result') {
     let output = block.output ?? '';
-    if (block.output_format === 'multimodal_text') {
-      output = renderMultimodalToolOutput(event, block, events);
-    } else if (block.output_format === 'tether_browsing_display') {
-      output = [block.output?.summary, block.output?.result].filter(Boolean).join('\n\n');
-    }
+    if (block.output_format === 'multimodal_text') output = renderMultimodalToolOutput(event, block, events);
+    else if (block.output_format === 'tether_browsing_display') output = [block.output?.summary, block.output?.result].filter(Boolean).join('\n\n');
     return details(`${block.name ?? 'tool'} output`, `\`\`\`\n${output}\n\`\`\``);
   }
   return '';
 }
 
 function renderChatGPTToolEvent(event, events) {
-  return (event.blocks ?? []).map(block => renderChatGPTToolBlock(event, block, events))
-    .filter(Boolean).join('\n\n');
+  return (event.blocks ?? []).map(block => renderChatGPTToolBlock(event, block, events)).filter(Boolean).join('\n\n');
 }
 
 function renderUser(event) {
@@ -237,8 +207,7 @@ function renderChatGPTCommentarySegment(reasoningEvents, commentaryEvents) {
     const text = renderMessageBlocks(event);
     if (text) body.push(quoteMarkdown(text));
   }
-  if (!body.length) return null;
-  return `## ChatGPT Commentary\n\n${body.join('\n\n')}`;
+  return body.length ? `## ChatGPT Commentary\n\n${body.join('\n\n')}` : null;
 }
 
 function renderChatGPTAssistantSegment(segment, events) {
@@ -247,31 +216,17 @@ function renderChatGPTAssistantSegment(segment, events) {
   const tools = segment.filter(event => event.kind === 'tool_call' || event.kind === 'tool_result');
   const messages = segment.filter(event => event.kind === 'message' && event.role === 'assistant');
   const sections = [];
-
   if (commentary.length) {
-    const commentarySection = renderChatGPTCommentarySegment(reasoning, commentary);
-    if (commentarySection) sections.push(commentarySection);
+    const section = renderChatGPTCommentarySegment(reasoning, commentary);
+    if (section) sections.push(section);
   }
-
-  const assistantBody = [];
-  const thoughtItems = [];
-  if (!commentary.length) {
-    for (const event of reasoning) {
-      const text = reasoningBody(event);
-      if (text) thoughtItems.push(text);
-    }
-  }
-  for (const event of tools) {
-    const text = renderChatGPTToolEvent(event, events);
-    if (text) thoughtItems.push(text);
-  }
-  if (thoughtItems.length) assistantBody.push(details('Thoughts', thoughtItems.join('\n\n')));
-  for (const event of messages) {
-    const text = renderMessageBlocks(event);
-    if (text) assistantBody.push(quoteMarkdown(text));
-  }
-
-  if (assistantBody.length) sections.push(`## ChatGPT\n\n${assistantBody.join('\n\n')}`);
+  const body = [];
+  const thoughts = [];
+  if (!commentary.length) for (const event of reasoning) { const text = reasoningBody(event); if (text) thoughts.push(text); }
+  for (const event of tools) { const text = renderChatGPTToolEvent(event, events); if (text) thoughts.push(text); }
+  if (thoughts.length) body.push(details('Thoughts', thoughts.join('\n\n')));
+  for (const event of messages) { const text = renderMessageBlocks(event); if (text) body.push(quoteMarkdown(text)); }
+  if (body.length) sections.push(`## ChatGPT\n\n${body.join('\n\n')}`);
   return sections;
 }
 
@@ -281,11 +236,7 @@ function toolCallId(event) {
 
 function toolResultByCallId(segment) {
   const results = new Map();
-  for (const event of segment) {
-    if (event.kind !== 'tool_result') continue;
-    const callId = toolCallId(event);
-    if (callId) results.set(callId, event);
-  }
+  for (const event of segment) if (event.kind === 'tool_result' && toolCallId(event)) results.set(toolCallId(event), event);
   return results;
 }
 
@@ -293,92 +244,137 @@ function toolOutput(event) {
   const block = event?.blocks?.find(item => item.type === 'tool_result');
   if (!block) return '';
   if (typeof block.output === 'string') return block.output;
-  if (Array.isArray(block.output)) {
-    return block.output
-      .filter(item => item?.type === 'text' && typeof item.text === 'string')
-      .map(item => item.text)
-      .join('\n');
-  }
+  if (Array.isArray(block.output)) return block.output.filter(item => item?.type === 'text' && typeof item.text === 'string').map(item => item.text).join('\n');
   return String(block.output ?? '');
 }
 
 function renderClaudeToolThought(callEvent, resultEvent) {
   const block = callEvent?.blocks?.find(item => item.type === 'tool_call');
-  if (!block) return '';
-
-  if (block.name === 'Bash') {
-    const command = typeof block.input?.command === 'string' ? block.input.command : '';
-    const summary = typeof block.input?.description === 'string' && block.input.description
-      ? block.input.description
-      : 'Bash';
-    const output = resultEvent ? toolOutput(resultEvent) : '';
-    const body = [
-      `\`\`\`bash\n${command}\n\`\`\``,
-      `**OUT**\n\n\`\`\`\n${output}\n\`\`\``
-    ].join('\n\n');
-    return details(summary, body);
-  }
-
-  return '';
+  if (!block || block.name !== 'Bash') return '';
+  const command = typeof block.input?.command === 'string' ? block.input.command : '';
+  const summary = typeof block.input?.description === 'string' && block.input.description ? block.input.description : 'Bash';
+  const output = resultEvent ? toolOutput(resultEvent) : '';
+  return details(summary, [`\`\`\`bash\n${command}\n\`\`\``, `**OUT**\n\n\`\`\`\n${output}\n\`\`\``].join('\n\n'));
 }
 
 function renderSubagentEvent(event) {
   const block = event?.blocks?.find(item => item.type === 'subagent');
   if (!block?.agent_id) return '';
-  const label = providerLabel(event.provider);
   const body = [];
   if (block.description) body.push(quoteMarkdown(`**${block.description}**`));
   if (block.output) body.push(quoteMarkdown(block.output));
-  return `## ${label} Sub-agent ${block.agent_id}\n\n${body.join('\n\n')}`;
+  return `## ${providerLabel(event.provider)} Sub-agent ${block.agent_id}\n\n${body.join('\n\n')}`;
+}
+
+function renderClaudeQuestionBlock(block) {
+  const questions = block?.ask_user_question?.questions ?? [];
+  const chunks = [];
+  questions.forEach((question, index) => {
+    const lines = [];
+    if (question.question) lines.push(`**${question.question}**`);
+    for (const option of question.options ?? []) {
+      if (!option?.label) continue;
+      lines.push(`- ${option.label}${option.description ? ` - ${option.description}` : ''}`);
+    }
+    chunks.push(`### Question ${index + 1}\n\n${quoteMarkdown(lines.join('\n'))}`);
+  });
+  return chunks.join('\n\n');
+}
+
+function renderClaudePlanBlock(block) {
+  const plan = block?.exit_plan?.plan;
+  if (typeof plan !== 'string' || !plan.trim()) return '';
+  return quoteMarkdown(`### Plan\n\n${quoteMarkdown(plan.trim())}`);
+}
+
+function renderClaudePlanApproval(block) {
+  const response = block?.exit_plan_response;
+  if (!response) return '';
+  const parts = [];
+  if (response.intro) parts.push(quoteMarkdown(response.intro));
+  if (response.approved_plan) parts.push(quoteMarkdown(details('Approved Plan', response.approved_plan)));
+  return `## User\n\n${parts.join('\n\n')}`;
 }
 
 function renderClaudeAssistantSegment(segment) {
   const sections = [];
-  const thoughtItems = [];
-  const toolResults = toolResultByCallId(segment);
+  const subagents = segment.filter(event => event.kind === 'subagent');
+  const results = toolResultByCallId(segment);
+  const consumedResults = new Set();
+  let body = [];
+  let thoughts = [];
+
+  const flushThoughts = () => {
+    if (!thoughts.length) return;
+    body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
+    thoughts = [];
+  };
+  const flushClaude = () => {
+    flushThoughts();
+    if (!body.length) return;
+    sections.push(`## Claude\n\n${body.join('\n\n')}`);
+    body = [];
+  };
 
   for (const event of segment) {
+    if (event.kind === 'subagent') continue;
     if (event.kind === 'reasoning_summary') {
       const text = reasoningBody(event);
-      if (text) thoughtItems.push(text);
+      if (text) thoughts.push(text);
       continue;
     }
-    if (event.kind !== 'tool_call') continue;
-    const callId = toolCallId(event);
-    const result = callId ? toolResults.get(callId) : null;
-    const rendered = renderClaudeToolThought(event, result);
-    if (rendered) thoughtItems.push(rendered);
+    if (event.kind === 'tool_call') {
+      const block = event.blocks?.find(item => item.type === 'tool_call');
+      const result = toolCallId(event) ? results.get(toolCallId(event)) : null;
+      if (block?.name === 'Bash') {
+        const rendered = renderClaudeToolThought(event, result);
+        if (rendered) thoughts.push(rendered);
+        if (result) consumedResults.add(result.id);
+      } else if (block?.name === 'AskUserQuestion') {
+        flushThoughts();
+        const rendered = renderClaudeQuestionBlock(block);
+        if (rendered) body.push(rendered);
+      } else if (block?.name === 'ExitPlanMode') {
+        flushThoughts();
+        const rendered = renderClaudePlanBlock(block);
+        if (rendered) body.push(rendered);
+      }
+      continue;
+    }
+    if (event.kind === 'tool_result') {
+      if (consumedResults.has(event.id)) continue;
+      const block = event.blocks?.find(item => item.type === 'tool_result');
+      if (block?.name === 'AskUserQuestion') {
+        flushClaude();
+        const text = block.ask_user_question_response?.text ?? toolOutput(event);
+        if (text) sections.push(`## User\n\n${quoteMarkdown(text)}`);
+      } else if (block?.name === 'ExitPlanMode') {
+        flushClaude();
+        const rendered = renderClaudePlanApproval(block);
+        if (rendered) sections.push(rendered);
+      }
+      continue;
+    }
+    if (event.kind === 'message' && event.role === 'assistant') {
+      flushThoughts();
+      const text = renderMessageBlocks(event);
+      if (text) body.push(quoteMarkdown(text));
+    }
   }
-
-  const mainBody = [];
-  if (thoughtItems.length) {
-    const thoughtBody = thoughtItems.join('\n\n***\n\n');
-    mainBody.push(quoteMarkdown(details(thoughtSummary(thoughtItems.length), thoughtBody)));
-  }
-  for (const event of segment) {
-    if (event.kind !== 'message' || event.role !== 'assistant') continue;
-    const text = renderMessageBlocks(event);
-    if (text) mainBody.push(quoteMarkdown(text));
-  }
-  if (mainBody.length) sections.push(`## Claude\n\n${mainBody.join('\n\n')}`);
-
-  for (const event of segment) {
-    if (event.kind !== 'subagent') continue;
+  flushClaude();
+  for (const event of subagents) {
     const rendered = renderSubagentEvent(event);
     if (rendered) sections.push(rendered);
   }
-
   return sections;
 }
 
 function codexRequestBlock(event) {
-  return event?.blocks?.find(block =>
-    block.type === 'tool_call' && block.name === 'request_user_input');
+  return event?.blocks?.find(block => block.type === 'tool_call' && block.name === 'request_user_input');
 }
 
 function codexResponseBlock(event) {
-  return event?.blocks?.find(block =>
-    block.type === 'tool_result' && block.request_user_input_response);
+  return event?.blocks?.find(block => block.type === 'tool_result' && block.request_user_input_response);
 }
 
 function renderCodexRequestSections(callEvent, resultEvent, state) {
@@ -387,27 +383,17 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
   const response = codexResponseBlock(resultEvent);
   const questions = call.request_user_input?.questions ?? [];
   if (!questions.length) return [];
-
   const questionParts = [];
   const answerLines = [];
   for (const question of questions) {
     state.codexQuestionNumber += 1;
     const lines = [];
     if (question.question) lines.push(`**${question.question}**`);
-    for (const option of question.options ?? []) {
-      if (!option?.label) continue;
-      const description = option.description ? ` - ${option.description}` : '';
-      lines.push(`- ${option.label}${description}`);
-    }
+    for (const option of question.options ?? []) if (option?.label) lines.push(`- ${option.label}${option.description ? ` - ${option.description}` : ''}`);
     questionParts.push(`### Question ${state.codexQuestionNumber}\n\n${quoteMarkdown(lines.join('\n'))}`);
-
     const selected = response?.request_user_input_response?.answers?.[question.id] ?? [];
-    if (question.question && selected.length) {
-      const renderedAnswers = selected.map(value => `"${value}"`).join(', ');
-      answerLines.push(`**${question.question}** → ${renderedAnswers}`);
-    }
+    if (question.question && selected.length) answerLines.push(`**${question.question}** → ${selected.map(value => `"${value}"`).join(', ')}`);
   }
-
   const sections = [`## Codex\n\n${questionParts.join('\n\n')}`];
   if (answerLines.length) sections.push(`## User\n\n${quoteMarkdown(answerLines.join('\n'))}`);
   return sections;
@@ -417,73 +403,46 @@ function renderCodexFileChanges(segment) {
   const patches = [];
   for (const event of segment) {
     if (event.kind !== 'tool_call') continue;
-    const block = event.blocks?.find(item =>
-      item.type === 'tool_call' && item.name === 'apply_patch' && item.file_change?.patch);
+    const block = event.blocks?.find(item => item.type === 'tool_call' && item.name === 'apply_patch' && item.file_change?.patch);
     if (block) patches.push(block.file_change.patch);
   }
   if (!patches.length) return null;
-
-  const fileCount = patches.reduce((count, patch) =>
-    count + (patch.match(/^\*\*\* (?:Update|Add|Delete) File:/gm)?.length ?? 0), 0);
-  const summary = `${fileCount || patches.length} file change${(fileCount || patches.length) === 1 ? '' : 's'}`;
-  const body = patches.map(patch => quoteMarkdown(`\`\`\`diff\n${patch}\n\`\`\``)).join('\n\n');
-  return details(summary, body);
+  const fileCount = patches.reduce((count, patch) => count + (patch.match(/^\*\*\* (?:Update|Add|Delete) File:/gm)?.length ?? 0), 0);
+  const n = fileCount || patches.length;
+  return details(`${n} file change${n === 1 ? '' : 's'}`, patches.map(patch => quoteMarkdown(`\`\`\`diff\n${patch}\n\`\`\``)).join('\n\n'));
 }
 
 function renderCodexMainResponse(segment) {
-  const thoughtItems = [];
-  const finalMessages = [];
-
+  const thoughts = [];
+  const finals = [];
   for (const event of segment) {
-    if (event.kind === 'reasoning_summary') {
-      const text = reasoningBody(event);
-      if (text) thoughtItems.push(text);
-      continue;
-    }
-    if (event.kind === 'commentary') {
-      const text = renderMessageBlocks(event);
-      if (text) thoughtItems.push(text);
-      continue;
-    }
-    if (event.kind === 'message' && event.role === 'assistant') {
-      const text = renderMessageBlocks(event);
-      if (text) finalMessages.push(text);
-    }
+    if (event.kind === 'reasoning_summary') { const text = reasoningBody(event); if (text) thoughts.push(text); }
+    else if (event.kind === 'commentary') { const text = renderMessageBlocks(event); if (text) thoughts.push(text); }
+    else if (event.kind === 'message' && event.role === 'assistant') { const text = renderMessageBlocks(event); if (text) finals.push(text); }
   }
-
-  if (!thoughtItems.length && !finalMessages.length) return null;
+  if (!thoughts.length && !finals.length) return null;
   const body = [];
-  if (thoughtItems.length) {
-    body.push(quoteMarkdown(details(
-      thoughtSummary(thoughtItems.length),
-      thoughtItems.join('\n\n***\n\n')
-    )));
-  }
-  for (const text of finalMessages) body.push(quoteMarkdown(text));
+  if (thoughts.length) body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
+  for (const text of finals) body.push(quoteMarkdown(text));
   return `## Codex\n\n${body.join('\n\n')}`;
 }
 
 function renderCodexAssistantSegment(segment, state) {
   const sections = [];
   const results = toolResultByCallId(segment);
-  const requestEventIds = new Set();
-
+  const requestIds = new Set();
   for (const event of segment) {
-    const request = codexRequestBlock(event);
-    if (!request) continue;
-    const callId = toolCallId(event);
-    const result = callId ? results.get(callId) : null;
+    if (!codexRequestBlock(event)) continue;
+    const result = toolCallId(event) ? results.get(toolCallId(event)) : null;
     sections.push(...renderCodexRequestSections(event, result, state));
-    requestEventIds.add(event.id);
-    if (result) requestEventIds.add(result.id);
+    requestIds.add(event.id);
+    if (result) requestIds.add(result.id);
   }
-
-  const mainSegment = segment.filter(event => !requestEventIds.has(event.id));
+  const mainSegment = segment.filter(event => !requestIds.has(event.id));
   const main = renderCodexMainResponse(mainSegment);
   if (main) sections.push(main);
-
-  const fileChanges = renderCodexFileChanges(mainSegment);
-  if (fileChanges) sections.push(fileChanges);
+  const changes = renderCodexFileChanges(mainSegment);
+  if (changes) sections.push(changes);
   return sections;
 }
 
@@ -494,13 +453,16 @@ function renderAssistantSegment(segment, events, state) {
   return renderChatGPTAssistantSegment(segment, events);
 }
 
+function renderNotice(event) {
+  const text = renderMessageBlocks(event);
+  return text ? `> *(system: ${text})*` : '';
+}
+
 export function renderCanonicalMarkdown(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
-
   const sections = [];
   const state = { codexQuestionNumber: 0 };
   let assistantSegment = [];
-
   const flushAssistant = () => {
     if (!assistantSegment.length) return;
     sections.push(...renderAssistantSegment(assistantSegment, events, state));
@@ -509,21 +471,22 @@ export function renderCanonicalMarkdown(events) {
 
   for (const event of events) {
     if (event?.visibility === 'hidden' || event?.kind === 'system_context') continue;
-
+    if (event?.kind === 'notice') {
+      flushAssistant();
+      const rendered = renderNotice(event);
+      if (rendered) sections.push(rendered);
+      continue;
+    }
     if (event?.role === 'user' && event?.kind === 'message') {
       flushAssistant();
       sections.push(renderUser(event));
       continue;
     }
-
-    const isAssistantActivity = event?.role === 'assistant' ||
-      event?.kind === 'tool_call' || event?.kind === 'tool_result' || event?.kind === 'subagent';
+    const isAssistantActivity = event?.role === 'assistant' || event?.kind === 'tool_call' || event?.kind === 'tool_result' || event?.kind === 'subagent';
     if (!isAssistantActivity) continue;
-
     assistantSegment.push(event);
-    if (event?.role === 'assistant' && event?.kind === 'message') flushAssistant();
+    if (event?.role === 'assistant' && event?.kind === 'message' && event?.provider !== 'claude') flushAssistant();
   }
-
   flushAssistant();
   return sections.join('\n\n') + '\n\n';
 }
