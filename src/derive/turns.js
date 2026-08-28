@@ -14,9 +14,6 @@ function sourceRecord(event) {
   return {
     record_id: recordId,
     record_index: sourceIndex,
-    record_number: Number.isInteger(source.record_number)
-      ? source.record_number
-      : Number.isInteger(sourceIndex) ? sourceIndex + 1 : null,
     turn_id: source.turn_id ?? recordId,
     create_time: source.create_time ?? null,
     update_time: source.update_time ?? null,
