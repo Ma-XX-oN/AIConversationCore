@@ -21,7 +21,7 @@
   "goldens": [
     {
       "path": "tests/golden/claude/claude-rich-subagent.canonical.md",
-      "sha256": "5b73c36a99e70533a768c985d93f127714ef2804d799e4c361891a29d8b523a0",
+      "sha256": "2d00fd6b7a3424a2e1c02287274622bda6f177fba43b9380d8a99e91f611e4f2",
       "options": ["--color=never"],
       "purpose": "base semantic rendering"
     },
