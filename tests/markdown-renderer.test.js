@@ -18,12 +18,22 @@ const claudeQuestionsGoldenUrl = new URL('./golden/claude/claude-questions.canon
 const claudeExitPlanFixtureUrl = new URL('./fixtures/claude/claude-exit-plan.jsonl', import.meta.url);
 const claudeExitPlanGoldenUrl = new URL('./golden/claude/claude-exit-plan.canonical.md', import.meta.url);
 const claudeNoticeFixtureUrl = new URL('./fixtures/claude/claude-notice.jsonl', import.meta.url);
+const claudeAdaptiveFixtureUrl = new URL('./fixtures/claude/adaptive-fence.jsonl', import.meta.url);
+const claudeAdaptiveBaselineUrl = new URL('./baseline/ai-transcript-current/claude-adaptive-fence.md', import.meta.url);
 const codexFixtureUrl = new URL('./fixtures/codex/codex-rich.jsonl', import.meta.url);
 const codexGoldenUrl = new URL('./golden/codex/codex-rich.canonical.md', import.meta.url);
+const codexOrphanFixtureUrl = new URL('./fixtures/codex/codex-orphan-patch.jsonl', import.meta.url);
+const codexOrphanBaselineUrl = new URL('./baseline/ai-transcript-current/codex-orphan-patch.md', import.meta.url);
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
+}
+
+function transcriptBody(text) {
+  const start = text.indexOf('## ');
+  assert.notEqual(start, -1, 'Expected transcript body heading.');
+  return text.slice(start);
 }
 
 test('canonical Markdown renderer reproduces the established rich ChatGPT golden exactly', async () => {
@@ -52,9 +62,21 @@ test('canonical Markdown renderer preserves Claude synthetic notices as system n
     '## User\n\n> Hello.\n\n## Claude\n\n> Hi there!\n\n> *(system: Context limit reached.)*\n\n## User\n\n> Continue.\n\n');
 });
 
+test('canonical Markdown renderer preserves Claude adaptive code fences', async () => {
+  const records = await loadJsonl(claudeAdaptiveFixtureUrl);
+  const expected = transcriptBody(await readFile(claudeAdaptiveBaselineUrl, 'utf8'));
+  assert.equal(renderCanonicalMarkdown(adaptClaudeRecords(records)), expected);
+});
+
 test('canonical Markdown renderer reproduces the established Codex golden exactly', async () => {
   const records = await loadJsonl(codexFixtureUrl);
   assert.equal(renderCanonicalMarkdown(adaptCodexRecords(records)), await readFile(codexGoldenUrl, 'utf8'));
+});
+
+test('canonical Markdown renderer preserves Codex orphan apply_patch output', async () => {
+  const records = await loadJsonl(codexOrphanFixtureUrl);
+  const expected = transcriptBody(await readFile(codexOrphanBaselineUrl, 'utf8'));
+  assert.equal(renderCanonicalMarkdown(adaptCodexRecords(records)), expected);
 });
 
 test('canonical Markdown renderer consumes normalized events, not provider-native records', () => {
