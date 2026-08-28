@@ -35,10 +35,46 @@ function reasoningBlock(record, sourceIndex, block, blockIndex) {
   };
 }
 
+function normalizedAskUserQuestion(input) {
+  if (!Array.isArray(input?.questions)) return null;
+  return {
+    questions: input.questions.map(question => ({
+      question: typeof question?.question === 'string' ? question.question : null,
+      header: typeof question?.header === 'string' ? question.header : null,
+      multi_select: Boolean(question?.multiSelect),
+      options: Array.isArray(question?.options)
+        ? question.options.map(option => ({
+            label: typeof option?.label === 'string' ? option.label : null,
+            description: typeof option?.description === 'string' ? option.description : null
+          }))
+        : []
+    }))
+  };
+}
+
 function toolCallEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
   const callId = typeof block.id === 'string' ? block.id : null;
+  const canonicalBlock = {
+    id: `claude:${sourceIdentity}:tool_call:${blockIndex}:block`,
+    type: 'tool_call',
+    call_id: callId,
+    name: block?.name ?? null,
+    input: block?.input ?? null,
+    input_format: 'object',
+    caller: block?.caller ?? null,
+    source
+  };
+  if (block?.name === 'AskUserQuestion') {
+    canonicalBlock.ask_user_question = normalizedAskUserQuestion(block?.input) ?? { questions: [] };
+  }
+  if (block?.name === 'ExitPlanMode') {
+    canonicalBlock.exit_plan = {
+      plan: typeof block?.input?.plan === 'string' ? block.input.plan : null,
+      plan_file_path: typeof block?.input?.planFilePath === 'string' ? block.input.planFilePath : null
+    };
+  }
   return {
     id: `claude:${sourceIdentity}:tool_call:${blockIndex}`,
     provider: 'claude',
@@ -49,27 +85,43 @@ function toolCallEvent(record, sourceIndex, block, blockIndex) {
     channel: null,
     visibility: 'visible',
     content_type: 'tool_use',
-    blocks: [{
-      id: `claude:${sourceIdentity}:tool_call:${blockIndex}:block`,
-      type: 'tool_call',
-      call_id: callId,
-      name: block?.name ?? null,
-      input: block?.input ?? null,
-      input_format: 'object',
-      caller: block?.caller ?? null,
-      source
-    }],
-    relationships: {
-      tool_call_id: callId
-    },
+    blocks: [canonicalBlock],
+    relationships: { tool_call_id: callId },
     source
   };
 }
 
-function toolResultEvent(record, sourceIndex, block, blockIndex) {
+function normalizeExitPlanResponse(text) {
+  if (typeof text !== 'string') return null;
+  const marker = '\n\n## Approved Plan (edited by user):\n';
+  const index = text.indexOf(marker);
+  if (index < 0) return { intro: text.trim(), approved_plan: null };
+  return {
+    intro: text.slice(0, index).trim(),
+    approved_plan: text.slice(index + 2).trim()
+  };
+}
+
+function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
   const callId = typeof block.tool_use_id === 'string' ? block.tool_use_id : null;
+  const canonicalBlock = {
+    id: `claude:${sourceIdentity}:tool_result:${blockIndex}:block`,
+    type: 'tool_result',
+    call_id: callId,
+    name: callName,
+    output: block?.content ?? null,
+    output_format: Array.isArray(block?.content) ? 'blocks' : typeof block?.content,
+    is_error: block?.is_error ?? null,
+    source
+  };
+  if (callName === 'AskUserQuestion') {
+    canonicalBlock.ask_user_question_response = { text: textFromToolResult(block?.content) };
+  }
+  if (callName === 'ExitPlanMode') {
+    canonicalBlock.exit_plan_response = normalizeExitPlanResponse(textFromToolResult(block?.content));
+  }
   return {
     id: `claude:${sourceIdentity}:tool_result:${blockIndex}`,
     provider: 'claude',
@@ -80,19 +132,8 @@ function toolResultEvent(record, sourceIndex, block, blockIndex) {
     channel: null,
     visibility: 'visible',
     content_type: 'tool_result',
-    blocks: [{
-      id: `claude:${sourceIdentity}:tool_result:${blockIndex}:block`,
-      type: 'tool_result',
-      call_id: callId,
-      name: null,
-      output: block?.content ?? null,
-      output_format: Array.isArray(block?.content) ? 'blocks' : typeof block?.content,
-      is_error: block?.is_error ?? null,
-      source
-    }],
-    relationships: {
-      tool_call_id: callId
-    },
+    blocks: [canonicalBlock],
+    relationships: { tool_call_id: callId },
     source
   };
 }
@@ -139,13 +180,32 @@ function reasoningEvent(record, sourceIndex, block, blockIndex) {
   };
 }
 
+function noticeEvent(record, sourceIndex, block, blockIndex) {
+  const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
+  const source = baseSource(record, sourceIndex, blockIndex);
+  return {
+    id: `claude:${sourceIdentity}:notice:${blockIndex}`,
+    provider: 'claude',
+    source_record_id: source.record_id,
+    source_index: sourceIndex,
+    kind: 'notice',
+    role: 'system',
+    channel: null,
+    visibility: 'visible',
+    content_type: 'synthetic_notice',
+    blocks: [{ id: `claude:${sourceIdentity}:notice:${blockIndex}:block`, type: 'text', text: block.text, source }],
+    citations: [],
+    resources: [],
+    relationships: { tool_call_id: null },
+    source
+  };
+}
+
 function textFromToolResult(content) {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';
-  return content
-    .filter(block => block?.type === 'text' && typeof block.text === 'string')
-    .map(block => block.text)
-    .join('\n');
+  return content.filter(block => block?.type === 'text' && typeof block.text === 'string')
+    .map(block => block.text).join('\n');
 }
 
 function agentIdFromResult(text) {
@@ -156,11 +216,9 @@ function agentIdFromResult(text) {
 
 function cleanAgentResult(text) {
   if (typeof text !== 'string') return '';
-  return text
-    .split('\n')
+  return text.split('\n')
     .filter(line => !/^agentId:\s*[^\s]+\s*\(internal ID - do not mention to user\.\)$/.test(line))
-    .join('\n')
-    .trim();
+    .join('\n').trim();
 }
 
 function subagentEvent(record, sourceIndex, agentId, description, output, callId, sourceBlockIndex = null) {
@@ -168,28 +226,10 @@ function subagentEvent(record, sourceIndex, agentId, description, output, callId
   const source = baseSource(record, sourceIndex, sourceBlockIndex);
   return {
     id: `claude:${sourceIdentity}:subagent:${agentId}`,
-    provider: 'claude',
-    source_record_id: source.record_id,
-    source_index: sourceIndex,
-    kind: 'subagent',
-    role: 'assistant',
-    channel: null,
-    visibility: 'visible',
-    content_type: 'subagent',
-    blocks: [{
-      id: `claude:${sourceIdentity}:subagent:${agentId}:block`,
-      type: 'subagent',
-      agent_id: agentId,
-      description,
-      output,
-      source
-    }],
-    citations: [],
-    resources: [],
-    relationships: {
-      tool_call_id: callId ?? null
-    },
-    source
+    provider: 'claude', source_record_id: source.record_id, source_index: sourceIndex,
+    kind: 'subagent', role: 'assistant', channel: null, visibility: 'visible', content_type: 'subagent',
+    blocks: [{ id: `claude:${sourceIdentity}:subagent:${agentId}:block`, type: 'subagent', agent_id: agentId, description, output, source }],
+    citations: [], resources: [], relationships: { tool_call_id: callId ?? null }, source
   };
 }
 
@@ -201,108 +241,74 @@ function xmlTag(content, name) {
 
 function queueSubagentEvent(record, sourceIndex) {
   if (record?.type !== 'queue-operation' || typeof record?.content !== 'string') return null;
-  if (!record.content.includes('<task-notification>')) return null;
-  if (xmlTag(record.content, 'status') !== 'completed') return null;
-
+  if (!record.content.includes('<task-notification>') || xmlTag(record.content, 'status') !== 'completed') return null;
   const taskId = xmlTag(record.content, 'task-id');
   const summary = xmlTag(record.content, 'summary');
   const result = xmlTag(record.content, 'result');
   if (!taskId || !result) return null;
-
   const descriptionMatch = summary?.match(/^Agent\s+"([\s\S]+)"\s+came to rest$/);
-  const description = descriptionMatch?.[1] ?? summary ?? null;
-  return subagentEvent(
-    record,
-    sourceIndex,
-    taskId,
-    description,
-    result,
-    xmlTag(record.content, 'tool-use-id')
-  );
+  return subagentEvent(record, sourceIndex, taskId,
+    descriptionMatch?.[1] ?? summary ?? null, result, xmlTag(record.content, 'tool-use-id'));
 }
 
 export function adaptClaudeToolEvents(records) {
   if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
-
   const events = [];
-
   records.forEach((record, sourceIndex) => {
     const content = record?.message?.content;
     if (!Array.isArray(content)) return;
-
     content.forEach((block, blockIndex) => {
       if (!block || typeof block !== 'object') return;
       if (block.type === 'tool_use') events.push(toolCallEvent(record, sourceIndex, block, blockIndex));
       if (block.type === 'tool_result') events.push(toolResultEvent(record, sourceIndex, block, blockIndex));
     });
   });
-
   return events;
 }
 
 export function adaptClaudeRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
-
   const events = [];
   const agentCalls = new Map();
+  const toolNames = new Map();
 
   records.forEach((record, sourceIndex) => {
     const queuedSubagent = queueSubagentEvent(record, sourceIndex);
-    if (queuedSubagent) {
-      events.push(queuedSubagent);
-      return;
-    }
-
+    if (queuedSubagent) { events.push(queuedSubagent); return; }
     const content = record?.message?.content;
     if (!Array.isArray(content)) return;
 
+    if (record?.type === 'assistant' && record?.message?.model === '<synthetic>') {
+      content.forEach((block, blockIndex) => {
+        if (block?.type === 'text' && typeof block.text === 'string') events.push(noticeEvent(record, sourceIndex, block, blockIndex));
+      });
+      return;
+    }
+
     content.forEach((block, blockIndex) => {
       if (!block || typeof block !== 'object') return;
-
-      if (block.type === 'text' && typeof block.text === 'string') {
-        events.push(messageEvent(record, sourceIndex, block, blockIndex));
-        return;
-      }
-
-      if (block.type === 'thinking' && typeof block.thinking === 'string') {
-        events.push(reasoningEvent(record, sourceIndex, block, blockIndex));
-        return;
-      }
-
+      if (block.type === 'text' && typeof block.text === 'string') { events.push(messageEvent(record, sourceIndex, block, blockIndex)); return; }
+      if (block.type === 'thinking' && typeof block.thinking === 'string') { events.push(reasoningEvent(record, sourceIndex, block, blockIndex)); return; }
       if (block.type === 'tool_use') {
+        if (typeof block.id === 'string') toolNames.set(block.id, block.name ?? null);
         if (block.name === 'Agent' && typeof block.id === 'string') {
-          agentCalls.set(block.id, {
-            description: typeof block?.input?.description === 'string' ? block.input.description : null,
-            source_index: sourceIndex,
-            block_index: blockIndex
-          });
+          agentCalls.set(block.id, { description: typeof block?.input?.description === 'string' ? block.input.description : null });
           return;
         }
         events.push(toolCallEvent(record, sourceIndex, block, blockIndex));
         return;
       }
-
       if (block.type !== 'tool_result') return;
       const callId = typeof block.tool_use_id === 'string' ? block.tool_use_id : null;
       const agentCall = callId ? agentCalls.get(callId) : null;
-      if (!agentCall) {
-        events.push(toolResultEvent(record, sourceIndex, block, blockIndex));
+      if (agentCall) {
+        const rawOutput = textFromToolResult(block.content);
+        events.push(subagentEvent(record, sourceIndex, agentIdFromResult(rawOutput) ?? callId,
+          agentCall.description, cleanAgentResult(rawOutput), callId, blockIndex));
         return;
       }
-
-      const rawOutput = textFromToolResult(block.content);
-      const agentId = agentIdFromResult(rawOutput) ?? callId;
-      events.push(subagentEvent(
-        record,
-        sourceIndex,
-        agentId,
-        agentCall.description,
-        cleanAgentResult(rawOutput),
-        callId,
-        blockIndex
-      ));
+      events.push(toolResultEvent(record, sourceIndex, block, blockIndex, callId ? toolNames.get(callId) : null));
     });
   });
-
   return events;
 }
