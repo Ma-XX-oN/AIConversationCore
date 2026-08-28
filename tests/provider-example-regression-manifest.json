@@ -13,7 +13,7 @@
     "goldens": [
       {
         "path": "tests/golden/claude/claude-questions.canonical.md",
-        "sha256": "34985502aff70d7ecd190e3780d2a335e8d2082c1fee5f5f7e57f9bb1e123011",
+        "sha256": "c900e5a116caff4ffa9ec45d2dc6226192c6678a135135a4a2af5ced47cebb30",
         "options": ["--color=never"]
       },
       {
@@ -37,7 +37,7 @@
     "goldens": [
       {
         "path": "tests/golden/claude/claude-exit-plan.canonical.md",
-        "sha256": "7d91386b6a7191fc301011c7a623e861da50e1b6fedfcdb2b243052e640a972d",
+        "sha256": "a54171463e771158b5732531c6566e1e83c0091225a127606b53a9d6b10076a5",
         "options": ["--color=never"]
       },
       {
