@@ -21,12 +21,6 @@ async function loadJsonl(url) {
   return text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
 }
 
-function transcriptBody(text) {
-  const start = text.indexOf('## User\n');
-  assert.notEqual(start, -1, 'Expected transcript body to start with a User heading.');
-  return text.slice(start);
-}
-
 test('canonical Markdown renderer reproduces the established rich ChatGPT golden exactly', async () => {
   const records = await loadJsonl(chatgptFixtureUrl);
   const events = adaptChatGPTRecords(records);
@@ -35,18 +29,18 @@ test('canonical Markdown renderer reproduces the established rich ChatGPT golden
   assert.equal(renderCanonicalMarkdown(events), expected);
 });
 
-test('canonical Markdown renderer reproduces the established Claude transcript body exactly', async () => {
+test('canonical Markdown renderer reproduces the established Claude golden exactly', async () => {
   const records = await loadJsonl(claudeFixtureUrl);
   const events = adaptClaudeRecords(records);
-  const expected = transcriptBody(await readFile(claudeGoldenUrl, 'utf8'));
+  const expected = await readFile(claudeGoldenUrl, 'utf8');
 
   assert.equal(renderCanonicalMarkdown(events), expected);
 });
 
-test('canonical Markdown renderer reproduces the established Codex transcript body exactly', async () => {
+test('canonical Markdown renderer reproduces the established Codex golden exactly', async () => {
   const records = await loadJsonl(codexFixtureUrl);
   const events = adaptCodexRecords(records);
-  const expected = transcriptBody(await readFile(codexGoldenUrl, 'utf8'));
+  const expected = await readFile(codexGoldenUrl, 'utf8');
 
   assert.equal(renderCanonicalMarkdown(events), expected);
 });
