@@ -88,10 +88,13 @@ concrete Phase 3 semantic blocker. Issue #34 (streamed response events for live
 reading) is a future incremental-input capability, not a requirement for the
 persisted-record ChatGPT adapter completed in Phase 3.
 
-**Phase 4 is next.** Build the canonical Markdown renderer from canonical data only,
-using the decided migration behaviour and evidence-backed ChatGPT exceptions. Do
-not teach the renderer to inspect ChatGPT-native JSON to recover semantics that
-belong in the adapter.
+**Phase 4 is complete.** The canonical Markdown renderer now renders the established
+ChatGPT, Claude, and Codex transcript bodies from canonical data only. Exact
+regressions cover the rich provider goldens plus provider-specific behaviours such
+as Claude AskUserQuestion, ExitPlanMode, synthetic notices, adaptive code fences,
+and Codex orphan apply_patch output. The Phase 4 follow-up for generated-file
+artifact links (#42) is also resolved. Phase 5 DownloadConversation integration is
+now the active migration phase.
 
 ## Working principles
 
@@ -191,22 +194,27 @@ core.
 
 ## Phase 4 — Canonical Markdown renderer
 
-Create one shared Markdown renderer whose migration target is the decided canonical
-behaviour across all supported providers: current `AI-transcript.py` by default,
-plus explicitly recorded evidence-backed exceptions such as ChatGPT citations and
-image/resource semantics.
+**Status: COMPLETE.**
 
-It must cover at least:
+The shared Markdown renderer consumes canonical events/turns/blocks rather than
+provider-native records and reproduces the decided canonical transcript behaviour
+for ChatGPT, Claude, and Codex.
 
-- escaping
-- code-fence language mapping
-- tool-call/tool-result formatting
-- commentary/reasoning formatting
-- citations
-- attachments/images/artifacts
-- `sandbox:` conversion
-- provider file-pointer handling such as `sediment://`
-- canonical whitespace/newline rules
+Verified Phase 4 coverage includes:
+
+- escaping and HTML-safe citation/link presentation;
+- code-fence language mapping and adaptive fence sizing;
+- tool-call/tool-result formatting;
+- commentary and exposed reasoning formatting;
+- citations and citation tooltip/favicon presentation;
+- attachments, images, and generated artifacts;
+- generated `sandbox:` file-link conversion through canonical resource metadata;
+- provider file-pointer handling such as `sediment://` unavailable-image links;
+- canonical whitespace/newline behaviour through exact golden comparisons.
+
+The primary completion work is tracked by #37. The later generated-file renderer
+gap discovered during Phase 5 was resolved separately by #42 without reopening
+provider normalization, chronology, grouping, or turn derivation.
 
 `DownloadConversation`, `AI-transcript.py`, and later consumers must converge on
 that shared canonical transcript body except for explicitly documented
