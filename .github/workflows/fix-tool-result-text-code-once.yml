@@ -23,11 +23,9 @@ jobs:
         run: python scripts/fix-tool-result-text-code.py
       - name: Focused regression
         run: node --test tests/chatgpt-tool-language.test.js
-      - name: Full core tests
-        run: npm test
       - name: Build browser bundle
         run: npm run build:browser
-      - name: Re-run full core tests
+      - name: Full core tests
         run: npm test
       - name: Verify scoped diff
         run: |
