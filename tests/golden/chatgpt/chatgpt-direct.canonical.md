@@ -19,8 +19,6 @@ I will run a tiny python snippet before answering.
 
 > I am checking a tiny python snippet before the final answer.
 
-## ChatGPT
-
 <details>
 <summary>Thoughts</summary>
 
@@ -79,6 +77,8 @@ Waiting for sources.
 </details>
 
 </details>
+
+## ChatGPT
 
 > Morris Plotkin checked uploaded file `notes.txt`. I also reviewed <a href="https://example.com/AI-transcript.py">AI-transcript.py L1-L2</a>. The final answer includes the python result. **(cite: <a href="https://docs.python.org/3/tutorial/index.html" title="The Python Tutorial&#10;&#10;Official Python tutorial." style="display:inline-block;white-space:nowrap;"><img alt="" src="https://www.google.com/s2/favicons?domain=https://docs.python.org&amp;sz=32" width="15" height="15" title="The Python Tutorial&#10;&#10;Official Python tutorial." style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">Python Docs</a>, <a href="https://example.com/python-note" title="Python note&#10;&#10;Supporting note for the transcript fixture." style="display:inline-block;white-space:nowrap;"><img alt="" src="https://www.google.com/s2/favicons?domain=https://example.com&amp;sz=32" width="15" height="15" title="Python note&#10;&#10;Supporting note for the transcript fixture." style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">Example</a>)** **(memory: <a href="https://chatgpt.com/c/fixture-memory-1" title="Prior design note&#10;&#10;Earlier design decision for the transcript fixture." style="display:inline-block;white-space:nowrap;"><img alt="" src="https://www.google.com/s2/favicons?domain=https://chatgpt.com&amp;sz=32" width="15" height="15" title="Prior design note&#10;&#10;Earlier design decision for the transcript fixture." style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">Prior design note</a>, <a href="file://my_files/file_fixture_plan" title="transcript-plan.md&#10;&#10;Checklist for transcript work." style="display:inline-block;white-space:nowrap;"><img alt="" src="https://www.google.com/s2/favicons?domain=file://my_files&amp;sz=32" width="15" height="15" title="transcript-plan.md&#10;&#10;Checklist for transcript work." style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">transcript-plan.md</a>)**
 

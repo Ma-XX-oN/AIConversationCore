@@ -1192,16 +1192,32 @@
       return `## User\n\n${quoteMarkdown(renderMessageBlocks(event))}`;
     }
     
-    function renderChatGPTCommentarySegment(reasoningEvents, commentaryEvents) {
+    function renderChatGPTCommentarySegment(segment, events) {
       const body = [];
-      for (const event of reasoningEvents) {
-        const text = reasoningBody(event);
-        if (text) body.push(details('Thoughts', text));
+      let thoughts = [];
+      const flushThoughts = () => {
+        if (!thoughts.length) return;
+        body.push(details('Thoughts', thoughts.join('\n\n')));
+        thoughts = [];
+      };
+      for (const event of segment) {
+        if (event.kind === 'reasoning_summary') {
+          const text = reasoningBody(event);
+          if (text) thoughts.push(text);
+          continue;
+        }
+        if (event.kind === 'tool_call' || event.kind === 'tool_result') {
+          const text = renderChatGPTToolEvent(event, events);
+          if (text) thoughts.push(text);
+          continue;
+        }
+        if (event.kind === 'commentary') {
+          flushThoughts();
+          const text = renderMessageBlocks(event);
+          if (text) body.push(quoteMarkdown(text));
+        }
       }
-      for (const event of commentaryEvents) {
-        const text = renderMessageBlocks(event);
-        if (text) body.push(quoteMarkdown(text));
-      }
+      flushThoughts();
       return body.length ? `## ChatGPT Commentary\n\n${body.join('\n\n')}` : null;
     }
     
@@ -1212,13 +1228,15 @@
       const messages = segment.filter(event => event.kind === 'message' && event.role === 'assistant');
       const sections = [];
       if (commentary.length) {
-        const section = renderChatGPTCommentarySegment(reasoning, commentary);
+        const section = renderChatGPTCommentarySegment(segment, events);
         if (section) sections.push(section);
       }
       const body = [];
       const thoughts = [];
-      if (!commentary.length) for (const event of reasoning) { const text = reasoningBody(event); if (text) thoughts.push(text); }
-      for (const event of tools) { const text = renderChatGPTToolEvent(event, events); if (text) thoughts.push(text); }
+      if (!commentary.length) {
+        for (const event of reasoning) { const text = reasoningBody(event); if (text) thoughts.push(text); }
+        for (const event of tools) { const text = renderChatGPTToolEvent(event, events); if (text) thoughts.push(text); }
+      }
       if (thoughts.length) body.push(details('Thoughts', thoughts.join('\n\n')));
       for (const event of messages) { const text = renderMessageBlocks(event); if (text) body.push(quoteMarkdown(text)); }
       if (body.length) sections.push(`## ChatGPT\n\n${body.join('\n\n')}`);
