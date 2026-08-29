@@ -102,7 +102,14 @@
     function toolResultBlocks(record, sourceRecordId, sourceIndex) {
       const contentType = record?.content?.content_type ?? null;
       let output = null;
-      if (contentType === 'execution_output') output = record?.content?.text ?? null;
+      if (contentType === 'execution_output' || contentType === 'code') {
+        output = record?.content?.text ?? record?.content?.content ?? null;
+      }
+      if (contentType === 'text') {
+        output = Array.isArray(record?.content?.parts)
+          ? record.content.parts.filter(part => typeof part === 'string').join('\n\n')
+          : record?.content?.text ?? null;
+      }
       if (contentType === 'multimodal_text') output = Array.isArray(record?.content?.parts)
         ? [...record.content.parts]
         : null;
@@ -135,8 +142,8 @@
     
     function isToolResult(record) {
       if (record?.author?.role !== 'tool') return false;
-      return record?.content?.content_type === 'execution_output' ||
-        record?.content?.content_type === 'multimodal_text';
+      return ['execution_output', 'multimodal_text', 'text', 'code']
+        .includes(record?.content?.content_type);
     }
     
     function eventKind(record) {

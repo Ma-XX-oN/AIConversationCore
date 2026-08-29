@@ -83,3 +83,60 @@ test('api_tool does not relabel invalid JSON merely because of the recipient', (
   assert.equal(block.language, 'python3');
   assert.equal(block.source_language, 'python3');
 });
+
+
+function toolRecord(id, content) {
+  return {
+    id,
+    author: { role: 'tool', name: 'example_tool', metadata: {} },
+    content,
+    metadata: {},
+    recipient: 'all',
+    channel: 'commentary'
+  };
+}
+
+test('tool-role text records normalize as tool_result without guessing unsupported shapes', () => {
+  const record = toolRecord('tool-text', {
+    content_type: 'text',
+    parts: ['first line', 'second line']
+  });
+  const [event] = adaptChatGPTRecords([record]);
+  assert.equal(event.kind, 'tool_result');
+  assert.equal(event.source_record_id, 'tool-text');
+  assert.equal(event.source_index, 0);
+  assert.equal(event.blocks[0].type, 'tool_result');
+  assert.equal(event.blocks[0].output_format, 'text');
+  assert.equal(event.blocks[0].output, 'first line\n\nsecond line');
+
+  const markdown = renderCanonicalMarkdown([event]);
+  assert.match(markdown, /<summary>example_tool output<\/summary>/);
+  assert.match(markdown, /first line\n\nsecond line/);
+});
+
+test('tool-role code records normalize as tool_result and preserve source content type', () => {
+  const record = toolRecord('tool-code', {
+    content_type: 'code',
+    language: 'json',
+    text: '{"ok":true}'
+  });
+  const [event] = adaptChatGPTRecords([record]);
+  assert.equal(event.kind, 'tool_result');
+  assert.equal(event.source_record_id, 'tool-code');
+  assert.equal(event.source_index, 0);
+  assert.equal(event.blocks[0].type, 'tool_result');
+  assert.equal(event.blocks[0].output_format, 'code');
+  assert.equal(event.blocks[0].output, '{"ok":true}');
+
+  const markdown = renderCanonicalMarkdown([event]);
+  assert.match(markdown, /<summary>example_tool output<\/summary>/);
+  assert.match(markdown, /\{"ok":true\}/);
+});
+
+test('unknown tool-role content types are not guessed into tool_result', () => {
+  const [event] = adaptChatGPTRecords([toolRecord('tool-unknown', {
+    content_type: 'unsupported_tool_payload',
+    text: 'opaque'
+  })]);
+  assert.equal(event.kind, 'message');
+});
