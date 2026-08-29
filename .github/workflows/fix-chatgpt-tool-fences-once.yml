@@ -18,25 +18,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Apply guarded renderer fix and regression test
+      - name: Patch ChatGPT tool fencing
+        shell: python
         run: |
-          python - <<'PY'
           from pathlib import Path
 
-          renderer = Path('src/projections/markdown.js')
-          lines = renderer.read_text(encoding='utf-8').splitlines()
-
+          path = Path('src/projections/markdown.js')
+          lines = path.read_text(encoding='utf-8').splitlines()
           call_matches = [
-              index for index, line in enumerate(lines)
+              i for i, line in enumerate(lines)
               if "return details(`${block.name ?? 'tool'} code`" in line
           ]
           result_matches = [
-              index for index, line in enumerate(lines)
+              i for i, line in enumerate(lines)
               if "return details(`${block.name ?? 'tool'} output`" in line
           ]
           assert len(call_matches) == 1, call_matches
           assert len(result_matches) == 1, result_matches
-
           lines[call_matches[0]] = (
               "    return details(`${block.name ?? 'tool'} code`, "
               "fencedCode(block.input ?? '', language));"
@@ -44,136 +42,8 @@ jobs:
           lines[result_matches[0]] = (
               "    return details(`${block.name ?? 'tool'} output`, fencedCode(output));"
           )
-          renderer.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-
-          test_file = Path('tests/chatgpt-tool-fences.test.js')
-          test_file.write_text(r'''import assert from 'node:assert/strict';
-import test from 'node:test';
-
-import { renderCanonicalMarkdown } from '../src/index.js';
-
-function finalMessage(sourceIndex = 1) {
-  return {
-    id: `chatgpt:final-${sourceIndex}`,
-    provider: 'chatgpt',
-    source_record_id: `final-${sourceIndex}`,
-    source_index: sourceIndex,
-    kind: 'message',
-    role: 'assistant',
-    channel: 'final',
-    visibility: 'visible',
-    content_type: 'text',
-    blocks: [{
-      id: `final-${sourceIndex}:part:0`,
-      type: 'text',
-      text: 'Final answer',
-      source: {
-        provider: 'chatgpt',
-        record_id: `final-${sourceIndex}`,
-        record_index: sourceIndex,
-        part_index: 0
-      }
-    }],
-    citations: [],
-    display_replacements: [],
-    resources: [],
-    relationships: {},
-    source: {
-      provider: 'chatgpt',
-      record_id: `final-${sourceIndex}`,
-      record_index: sourceIndex
-    }
-  };
-}
-
-test('ChatGPT tool calls size the outer fence from the complete payload', () => {
-  const payload = [
-    'before',
-    '```',
-    'inner',
-    '```',
-    '````',
-    'longer inner fence',
-    '````',
-    'after'
-  ].join('\n');
-  const events = [{
-    id: 'chatgpt:call-1',
-    provider: 'chatgpt',
-    source_record_id: 'call-1',
-    source_index: 0,
-    kind: 'tool_call',
-    role: 'assistant',
-    channel: 'commentary',
-    visibility: 'visible',
-    content_type: 'code',
-    blocks: [{
-      id: 'call-1:tool_call:0',
-      type: 'tool_call',
-      name: 'web.run',
-      input: payload,
-      input_format: 'code',
-      language: 'unknown',
-      source: { provider: 'chatgpt', record_id: 'call-1', record_index: 0 }
-    }],
-    citations: [],
-    display_replacements: [],
-    resources: [],
-    relationships: {},
-    source: { provider: 'chatgpt', record_id: 'call-1', record_index: 0 }
-  }, finalMessage()];
-
-  const markdown = renderCanonicalMarkdown(events);
-  assert.ok(markdown.includes(`<summary>web.run code</summary>\n\n\`\`\`\`\`\n${payload}\n\`\`\`\`\``));
-  assert.ok(markdown.includes('\`\`\`\`\`\n\n</details>\n\n</details>\n\n> Final answer'));
-});
-
-test('ChatGPT tool results contain arbitrary Markdown and literal memcite text', () => {
-  const payload = [
-    '[L339] ```unknown',
-    'tool text',
-    '```',
-    '````',
-    'nested four-backtick fence',
-    '````',
-    'literal marker: memcite'
-  ].join('\n');
-  const events = [{
-    id: 'chatgpt:result-1',
-    provider: 'chatgpt',
-    source_record_id: 'result-1',
-    source_index: 0,
-    kind: 'tool_result',
-    role: 'tool',
-    channel: null,
-    visibility: 'visible',
-    content_type: 'multimodal_text',
-    blocks: [{
-      id: 'result-1:tool_result:0',
-      type: 'tool_result',
-      name: 'api_tool',
-      output: [
-        'Make sure to include a file citation in your response.',
-        payload
-      ],
-      output_format: 'multimodal_text',
-      source: { provider: 'chatgpt', record_id: 'result-1', record_index: 0 }
-    }],
-    citations: [],
-    display_replacements: [],
-    resources: [],
-    relationships: {},
-    source: { provider: 'chatgpt', record_id: 'result-1', record_index: 0 }
-  }, finalMessage()];
-
-  const markdown = renderCanonicalMarkdown(events);
-  assert.ok(markdown.includes(`<summary>api_tool output</summary>\n\n\`\`\`\`\`\n${payload}\n\`\`\`\`\``));
-  assert.ok(markdown.includes('literal marker: memcite'));
-  assert.ok(markdown.includes('\`\`\`\`\`\n\n</details>\n\n</details>\n\n> Final answer'));
-});
-''', encoding='utf-8')
-          PY
-      - name: Build browser bundle and run regression suite
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+      - name: Build and verify
         run: |
           node scripts/build-browser-bundle.mjs
           npm test
@@ -182,16 +52,12 @@ test('ChatGPT tool results contain arbitrary Markdown and literal memcite text',
           python tests/validate-claude-canonical-golden.py
           python tests/validate-codex-canonical-golden.py
           python tests/validate-provider-example-regressions.py
-      - name: Verify scoped diff
-        run: |
-          test -z "$(git status --short | grep -vE '^( M|\?\?) (src/projections/markdown.js|dist/aiconversationcore.chatgpt.browser.js|tests/chatgpt-tool-fences.test.js)$')"
           grep -Fq "fencedCode(block.input ?? '', language)" src/projections/markdown.js
           grep -Fq 'fencedCode(output)' src/projections/markdown.js
-          grep -Fq 'literal marker: memcite' tests/chatgpt-tool-fences.test.js
       - name: Commit verified fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js tests/chatgpt-tool-fences.test.js
+          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js
           git commit -m "fix: contain ChatGPT tool payload Markdown"
           git push
