@@ -1,0 +1,226 @@
+name: Fix ChatGPT tool language once
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-chatgpt-tool-language-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply guarded normalization and regression patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          adapter = Path('src/adapters/chatgpt-base.js')
+          text = adapter.read_text(encoding='utf-8')
+          old = '''function toolCallBlocks(record, sourceRecordId, sourceIndex) {
+  return [{
+    id: `${sourceRecordId}:tool_call:0`,
+    type: 'tool_call',
+    call_id: null,
+    name: record?.recipient ?? null,
+    input: record?.content?.text ?? null,
+    input_format: 'code',
+    language: record?.content?.language ?? null,
+    source: {
+      provider: 'chatgpt',
+      record_id: sourceRecordId,
+      record_index: sourceIndex
+    }
+  }];
+}
+'''
+          new = '''function parsedJson(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function launcherToken(value) {
+  if (typeof value !== 'string') return null;
+  const match = value.trimStart().match(/^([A-Za-z0-9_./+-]+)/);
+  return match?.[1]?.split('/').at(-1)?.toLowerCase() ?? null;
+}
+
+function normalizedToolCallPresentation(record) {
+  const name = record?.recipient ?? null;
+  const sourceInput = record?.content?.text ?? null;
+  const sourceLanguage = record?.content?.language ?? null;
+  let input = sourceInput;
+  let inputFormat = 'code';
+  let language = sourceLanguage;
+
+  // ChatGPT currently labels api_tool call arguments as python3 even when the
+  // payload is a serialized JSON object.  The recipient plus successful JSON
+  // parse is stronger semantic evidence than that provider presentation label.
+  if (typeof name === 'string' && name.startsWith('api_tool.') && parsedJson(sourceInput) !== null) {
+    inputFormat = 'json';
+    language = 'json';
+  } else if (name === 'container.exec' && typeof sourceInput === 'string') {
+    const launcher = launcherToken(sourceInput);
+    if (launcher === 'bash') language = 'bash';
+    else if (launcher === 'sh') language = 'sh';
+    else if (['python', 'python3', 'py'].includes(launcher)) {
+      const command = sourceInput.trimStart();
+      const pythonCommand = command.match(/^[A-Za-z0-9_./+-]+\s+-c(?:\s+|$)/);
+      if (pythonCommand) {
+        // The persisted ChatGPT record has already flattened the argv boundary
+        // around Python's -c program.  Do not invent shell quoting.  Preserve
+        // the source string separately and render the program itself as Python.
+        input = command.slice(pythonCommand[0].length);
+        language = 'python';
+      }
+    }
+  }
+
+  return { input, inputFormat, language, sourceInput, sourceLanguage };
+}
+
+function toolCallBlocks(record, sourceRecordId, sourceIndex) {
+  const presentation = normalizedToolCallPresentation(record);
+  return [{
+    id: `${sourceRecordId}:tool_call:0`,
+    type: 'tool_call',
+    call_id: null,
+    name: record?.recipient ?? null,
+    input: presentation.input,
+    input_format: presentation.inputFormat,
+    language: presentation.language,
+    source_input: presentation.sourceInput,
+    source_language: presentation.sourceLanguage,
+    source: {
+      provider: 'chatgpt',
+      record_id: sourceRecordId,
+      record_index: sourceIndex
+    }
+  }];
+}
+'''
+          assert text.count(old) == 1, 'Expected toolCallBlocks implementation exactly once.'
+          adapter.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test = Path('tests/chatgpt-tool-language.test.js')
+          test.write_text(r'''import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { adaptChatGPTRecords, renderCanonicalMarkdown } from '../src/index.js';
+
+function codeRecord(id, recipient, language, text, sourceIndex = 0) {
+  return {
+    id,
+    author: { role: 'assistant', name: null, metadata: {} },
+    content: { content_type: 'code', language, text },
+    metadata: {},
+    recipient,
+    channel: null,
+    __sourceIndex: sourceIndex
+  };
+}
+
+function adaptOne(record) {
+  const events = adaptChatGPTRecords([record]);
+  assert.equal(events.length, 1);
+  return events[0].blocks[0];
+}
+
+test('api_tool structured JSON arguments override the misleading provider python3 label', () => {
+  const source = '{"path":"/files/list","args":{"surface":"conversation","limit":20}}';
+  const block = adaptOne(codeRecord('api-call', 'api_tool.call_tool', 'python3', source));
+
+  assert.equal(block.input, source);
+  assert.equal(block.input_format, 'json');
+  assert.equal(block.language, 'json');
+  assert.equal(block.source_input, source);
+  assert.equal(block.source_language, 'python3');
+
+  const markdown = renderCanonicalMarkdown(adaptChatGPTRecords([
+    codeRecord('api-call', 'api_tool.call_tool', 'python3', source)
+  ]));
+  assert.match(markdown, /<summary>api_tool\.call_tool code<\/summary>\n\n```json\n/);
+});
+
+test('container.exec infers Bash from a persisted bash launcher when language is unknown', () => {
+  const source = 'bash -lc grep -n -F "browser packaging" file.md | head -5';
+  const block = adaptOne(codeRecord('bash-call', 'container.exec', 'unknown', source));
+
+  assert.equal(block.input, source);
+  assert.equal(block.language, 'bash');
+  assert.equal(block.source_input, source);
+  assert.equal(block.source_language, 'unknown');
+
+  const markdown = renderCanonicalMarkdown(adaptChatGPTRecords([
+    codeRecord('bash-call', 'container.exec', 'unknown', source)
+  ]));
+  assert.match(markdown, /<summary>container\.exec code<\/summary>\n\n```bash\n/);
+});
+
+test('container.exec Python -c preserves raw source but renders the persisted program without fake argv quoting', () => {
+  const source = [
+    'python -c from pathlib import Path',
+    "p=Path('/mnt/data/H1 Heading.jsonl')",
+    "print(p.read_text(encoding='utf-8', errors='replace')[:12000])"
+  ].join('\n');
+  const expectedProgram = [
+    'from pathlib import Path',
+    "p=Path('/mnt/data/H1 Heading.jsonl')",
+    "print(p.read_text(encoding='utf-8', errors='replace')[:12000])"
+  ].join('\n');
+  const block = adaptOne(codeRecord('python-call', 'container.exec', 'unknown', source));
+
+  assert.equal(block.input, expectedProgram);
+  assert.equal(block.language, 'python');
+  assert.equal(block.source_input, source);
+  assert.equal(block.source_language, 'unknown');
+
+  const markdown = renderCanonicalMarkdown(adaptChatGPTRecords([
+    codeRecord('python-call', 'container.exec', 'unknown', source)
+  ]));
+  assert.match(markdown, /<summary>container\.exec code<\/summary>\n\n```python\nfrom pathlib import Path\n/);
+  assert.equal(markdown.includes('python -c from pathlib import Path'), false);
+});
+
+test('api_tool does not relabel invalid JSON merely because of the recipient', () => {
+  const source = 'not-json()';
+  const block = adaptOne(codeRecord('api-non-json', 'api_tool.call_tool', 'python3', source));
+  assert.equal(block.input, source);
+  assert.equal(block.language, 'python3');
+  assert.equal(block.source_language, 'python3');
+});
+''', encoding='utf-8')
+      - name: Rebuild browser bundle
+        run: npm run build:browser
+      - name: Full core tests
+        run: npm test
+      - name: Phase 2 and provider regression validators
+        run: |
+          python tests/validate-phase2-baseline.py
+          python tests/validate-canonical-golden.py
+          python tests/validate-claude-canonical-golden.py
+          python tests/validate-codex-canonical-golden.py
+          python tests/validate-provider-example-regressions.py
+      - name: Verify scoped diff
+        run: |
+          git status --short
+          test -z "$(git status --short | grep -vE '^( M|\?\?) (src/adapters/chatgpt-base.js|dist/aiconversationcore.chatgpt.browser.js|tests/chatgpt-tool-language.test.js)$')"
+      - name: Commit verified fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/adapters/chatgpt-base.js dist/aiconversationcore.chatgpt.browser.js tests/chatgpt-tool-language.test.js
+          git commit -m "fix: normalize ChatGPT tool call languages"
+          git push
