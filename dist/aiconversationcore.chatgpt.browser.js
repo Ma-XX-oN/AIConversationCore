@@ -1173,13 +1173,13 @@
     function renderChatGPTToolBlock(event, block, events) {
       if (block.type === 'tool_call') {
         const language = inferredToolLanguage(block);
-        return details(`${block.name ?? 'tool'} code`, `\`\`\`${language}\n${block.input ?? ''}\n\`\`\``);
+        return details(`${block.name ?? 'tool'} code`, fencedCode(block.input ?? '', language));
       }
       if (block.type === 'tool_result') {
         let output = block.output ?? '';
         if (block.output_format === 'multimodal_text') output = renderMultimodalToolOutput(event, block, events);
         else if (block.output_format === 'tether_browsing_display') output = [block.output?.summary, block.output?.result].filter(Boolean).join('\n\n');
-        return details(`${block.name ?? 'tool'} output`, `\`\`\`\n${output}\n\`\`\``);
+        return details(`${block.name ?? 'tool'} output`, fencedCode(output));
       }
       return '';
     }
