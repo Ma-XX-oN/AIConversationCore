@@ -73,11 +73,11 @@ test('tool-role text records normalize as tool_result without guessing unsupport
   assert.equal(event.source_index, 0);
   assert.equal(event.blocks[0].type, 'tool_result');
   assert.equal(event.blocks[0].output_format, 'text');
-  assert.equal(event.blocks[0].output, 'first line\\n\\nsecond line');
+  assert.equal(event.blocks[0].output, 'first line\n\nsecond line');
 
   const markdown = renderCanonicalMarkdown([event]);
-  assert.match(markdown, /<summary>example_tool output<\\/summary>/);
-  assert.match(markdown, /first line\\n\\nsecond line/);
+  assert.match(markdown, /<summary>example_tool output<\/summary>/);
+  assert.match(markdown, /first line\n\nsecond line/);
 });
 
 test('tool-role code records normalize as tool_result and preserve source content type', () => {
@@ -95,8 +95,8 @@ test('tool-role code records normalize as tool_result and preserve source conten
   assert.equal(event.blocks[0].output, '{"ok":true}');
 
   const markdown = renderCanonicalMarkdown([event]);
-  assert.match(markdown, /<summary>example_tool output<\\/summary>/);
-  assert.match(markdown, /\\{"ok":true\\}/);
+  assert.match(markdown, /<summary>example_tool output<\/summary>/);
+  assert.match(markdown, /\{"ok":true\}/);
 });
 
 test('unknown tool-role content types are not guessed into tool_result', () => {
