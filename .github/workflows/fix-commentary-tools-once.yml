@@ -182,21 +182,51 @@ jobs:
           });
           '''
           tests.write_text(test_text, encoding='utf-8')
-      - name: Build and run full core preflight
+      - name: Rebuild browser bundle and evidenced ChatGPT golden
         run: |
           npm run build:browser
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          import { adaptChatGPTRecords, renderCanonicalMarkdown } from './src/index.js';
+          const fixture = await readFile('tests/fixtures/chatgpt/chatgpt-direct.jsonl', 'utf8');
+          const records = fixture.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
+          await writeFile('tests/golden/chatgpt/chatgpt-direct.canonical.md',
+            renderCanonicalMarkdown(adaptChatGPTRecords(records)), 'utf8');
+          NODE
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          golden = Path('tests/golden/chatgpt/chatgpt-direct.canonical.md')
+          manifest_path = Path('tests/canonical-golden-manifest.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          entry = next(item for item in manifest['goldens'] if item['provider'] == 'chatgpt')
+          entry['golden_sha256'] = hashlib.sha256(golden.read_bytes()).hexdigest()
+          semantic = 'chatgpt_commentary_tool_segmentation'
+          assert not any(item.get('semantic') == semantic for item in entry['decisions'])
+          entry['decisions'].append({
+            'semantic': semantic,
+            'choice': 'Tool calls/results occurring in a ChatGPT commentary sequence stay in that ChatGPT Commentary section; a later true final Assistant message remains a separate ChatGPT section. Arbitrary tool payload Markdown is contained with adaptive fences rather than repaired.',
+            'authority': 'live DownloadConversation v0.6.142 export evidence and user-approved fix 2026-08-29'
+          })
+          manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+          PY
+      - name: Run full core preflight
+        run: |
           npm test
-          python tests/validate-phase2.py
-          python tests/validate-chatgpt-canonical-golden.py
+          python tests/validate-phase2-baseline.py
+          python tests/validate-canonical-golden.py
           python tests/validate-claude-canonical-golden.py
           python tests/validate-codex-canonical-golden.py
+          python tests/validate-provider-example-regressions.py
       - name: Verify scoped diff
         run: |
-          test -z "$(git status --short | grep -vE '^( M|\?\?) (src/projections/markdown.js|dist/aiconversationcore.chatgpt.browser.js|tests/chatgpt-tool-fences.test.js)$')"
+          test -z "$(git status --short | grep -vE '^( M|\?\?) (src/projections/markdown.js|dist/aiconversationcore.chatgpt.browser.js|tests/chatgpt-tool-fences.test.js|tests/golden/chatgpt/chatgpt-direct.canonical.md|tests/canonical-golden-manifest.json)$')"
       - name: Commit verified core fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js tests/chatgpt-tool-fences.test.js
+          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js tests/chatgpt-tool-fences.test.js tests/golden/chatgpt/chatgpt-direct.canonical.md tests/canonical-golden-manifest.json
           git commit -m "fix: keep ChatGPT tools with commentary"
           git push
