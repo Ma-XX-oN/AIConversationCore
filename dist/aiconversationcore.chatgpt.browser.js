@@ -30,15 +30,67 @@
       }));
     }
     
+    function parsedJson(value) {
+      if (typeof value !== 'string' || !value.trim()) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    }
+    
+    function launcherToken(value) {
+      if (typeof value !== 'string') return null;
+      const match = value.trimStart().match(/^([A-Za-z0-9_./+-]+)/);
+      return match?.[1]?.split('/').at(-1)?.toLowerCase() ?? null;
+    }
+    
+    function normalizedToolCallPresentation(record) {
+      const name = record?.recipient ?? null;
+      const sourceInput = record?.content?.text ?? null;
+      const sourceLanguage = record?.content?.language ?? null;
+      let input = sourceInput;
+      let inputFormat = 'code';
+      let language = sourceLanguage;
+    
+      // ChatGPT currently labels api_tool call arguments as python3 even when the
+      // payload is a serialized JSON object.  The recipient plus successful JSON
+      // parse is stronger semantic evidence than that provider presentation label.
+      if (typeof name === 'string' && name.startsWith('api_tool.') && parsedJson(sourceInput) !== null) {
+        inputFormat = 'json';
+        language = 'json';
+      } else if (name === 'container.exec' && typeof sourceInput === 'string') {
+        const launcher = launcherToken(sourceInput);
+        if (launcher === 'bash') language = 'bash';
+        else if (launcher === 'sh') language = 'sh';
+        else if (['python', 'python3', 'py'].includes(launcher)) {
+          const command = sourceInput.trimStart();
+          const pythonCommand = command.match(/^[A-Za-z0-9_./+-]+\s+-c(?:\s+|$)/);
+          if (pythonCommand) {
+            // The persisted ChatGPT record has already flattened the argv boundary
+            // around Python's -c program.  Do not invent shell quoting.  Preserve
+            // the source string separately and render the program itself as Python.
+            input = command.slice(pythonCommand[0].length);
+            language = 'python';
+          }
+        }
+      }
+    
+      return { input, inputFormat, language, sourceInput, sourceLanguage };
+    }
+    
     function toolCallBlocks(record, sourceRecordId, sourceIndex) {
+      const presentation = normalizedToolCallPresentation(record);
       return [{
         id: `${sourceRecordId}:tool_call:0`,
         type: 'tool_call',
         call_id: null,
         name: record?.recipient ?? null,
-        input: record?.content?.text ?? null,
-        input_format: 'code',
-        language: record?.content?.language ?? null,
+        input: presentation.input,
+        input_format: presentation.inputFormat,
+        language: presentation.language,
+        source_input: presentation.sourceInput,
+        source_language: presentation.sourceLanguage,
         source: {
           provider: 'chatgpt',
           record_id: sourceRecordId,
