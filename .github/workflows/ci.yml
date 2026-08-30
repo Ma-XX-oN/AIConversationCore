@@ -29,6 +29,9 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Check production JSDoc coverage
+        run: node scripts/check-jsdoc.mjs
+
       - name: Run core tests
         run: npm test
 
