@@ -27,6 +27,8 @@ jobs:
         run: |
           python scripts/apply-phase6-projection-options.py
           python scripts/fix-phase6-projection-jsdoc.py
+      - name: Rebuild deterministic browser bundle
+        run: node scripts/build-browser-bundle.mjs
       - name: Documentation contract
         run: node scripts/check-jsdoc.mjs
       - name: Core tests
@@ -47,6 +49,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/projections/markdown.js
+          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js
           git commit -m "phase6: support consumer transcript projection metadata"
           git push
