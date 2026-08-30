@@ -34,6 +34,11 @@ SPECIAL = {
     '- `multimodal_text` -> source parts preserved as an ordered array.',
     'The original ChatGPT content type is retained as `output_format`.'
   ],
+  'adaptChatGPTRecords': [
+    'Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.'
+  ],
+  'normalizedUrl': ['Normalizes a URL for stable citation/search-result lookup.'],
+  'parsedJson': ['Parses a JSON string when valid, otherwise returns no parsed value.'],
   'inferredToolLanguage': [
     'Selects the Markdown fence language from canonical tool-call semantics.',
     '',
@@ -43,32 +48,50 @@ SPECIAL = {
     'Renders a canonical ChatGPT tool block into the Markdown details/fence representation.',
     '',
     'The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.'
-  ]
+  ],
+  'renderChatGPTToolEvent': ['Renders all canonical tool blocks belonging to one ChatGPT tool event.'],
+  'renderChatGPTCommentarySegment': ['Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.'],
+  'renderChatGPTAssistantSegment': ['Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.']
 }
 
 PREFIXES = [
-  ('render', 'Renders'), ('normalize', 'Normalizes'), ('normalized', 'Normalizes'),
-  ('build', 'Builds'), ('create', 'Creates'), ('derive', 'Derives'),
-  ('parse', 'Parses'), ('parsed', 'Parses'), ('collect', 'Collects'),
-  ('fetch', 'Fetches'), ('find', 'Finds'), ('locate', 'Locates'),
-  ('get', 'Gets'), ('set', 'Sets'), ('reset', 'Resets'), ('configure', 'Configures'),
-  ('is', 'Checks whether'), ('has', 'Checks whether'), ('can', 'Checks whether'),
-  ('test', 'Tests'), ('read', 'Reads'), ('write', 'Writes'), ('map', 'Maps'),
-  ('adapt', 'Adapts'), ('convert', 'Converts'), ('extract', 'Extracts'),
-  ('quote', 'Quotes'), ('format', 'Formats'), ('apply', 'Applies')
+  ('normalized', 'Normalizes'), ('normalize', 'Normalizes'),
+  ('parsed', 'Parses'), ('parse', 'Parses'),
+  ('render', 'Renders'), ('build', 'Builds'), ('create', 'Creates'),
+  ('derive', 'Derives'), ('collect', 'Collects'), ('fetch', 'Fetches'),
+  ('find', 'Finds'), ('locate', 'Locates'), ('get', 'Gets'), ('set', 'Sets'),
+  ('reset', 'Resets'), ('configure', 'Configures'), ('is', 'Checks whether'),
+  ('has', 'Checks whether'), ('can', 'Checks whether'), ('test', 'Tests'),
+  ('read', 'Reads'), ('write', 'Writes'), ('map', 'Maps'), ('adapt', 'Adapts'),
+  ('convert', 'Converts'), ('extract', 'Extracts'), ('quote', 'Quotes'),
+  ('format', 'Formats'), ('apply', 'Applies'), ('remap', 'Remaps')
 ]
 
 def words(name):
   value = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', name)
-  value = value.replace('_', ' ').replace('$', '')
-  return value.strip().lower()
+  value = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', value)
+  value = value.replace('_', ' ').replace('$', '').strip().lower()
+  replacements = {
+    'chat gpt': 'ChatGPT',
+    'json': 'JSON',
+    'url': 'URL',
+    'id': 'ID',
+    'html': 'HTML',
+    'ansi': 'ANSI',
+    'markdown': 'Markdown',
+    'codex': 'Codex',
+    'claude': 'Claude'
+  }
+  for old, new in replacements.items():
+    value = re.sub(rf'\b{re.escape(old)}\b', new, value)
+  return value
 
 def summary(name):
   for prefix, verb in PREFIXES:
     if name.startswith(prefix) and len(name) > len(prefix):
       rest = words(name[len(prefix):])
       return f'{verb} {rest}.'
-  return f'Handles {words(name)}.'
+  return f'Implements `{name}`.'
 
 def jsdoc(indent, name):
   lines = SPECIAL.get(name, [summary(name)])
@@ -80,8 +103,7 @@ def jsdoc(indent, name):
 
 def has_jsdoc_before(text, start):
   prefix = text[:start]
-  match = re.search(r'/\*\*[\s\S]*?\*/\s*$', prefix)
-  return bool(match)
+  return bool(re.search(r'/\*\*[\s\S]*?\*/\s*$', prefix))
 
 DECL = re.compile(
   r'(?m)^(?P<indent>[ \t]*)(?:(?:export\s+)?(?:async\s+)?function\*?\s+(?P<name>[A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{)'
