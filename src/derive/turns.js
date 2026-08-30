@@ -8,7 +8,7 @@ function isVisibleTurnEvent(event) {
 }
 
 /**
- * Implements `sourceRecord`.
+ * Handles source record.
  */
 function sourceRecord(event) {
   const source = event?.source && typeof event.source === 'object' ? event.source : {};
@@ -29,7 +29,7 @@ function sourceRecord(event) {
 }
 
 /**
- * Implements `appendEvent`.
+ * Handles append event.
  */
 function appendEvent(turn, event) {
   turn.event_ids.push(event.id);
@@ -38,7 +38,7 @@ function appendEvent(turn, event) {
 }
 
 /**
- * Implements `newTurn`.
+ * Handles new turn.
  */
 function newTurn(event, turnIndex) {
   return {

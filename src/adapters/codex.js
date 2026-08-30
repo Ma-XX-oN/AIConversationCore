@@ -1,12 +1,12 @@
 /**
- * Implements `sourceIdentity`.
+ * Returns the stable source identity used to derive Codex canonical IDs.
  */
 function sourceIdentity(record, sourceIndex) {
   return record?.payload?.call_id ?? `record:${sourceIndex}`;
 }
 
 /**
- * Implements `source`.
+ * Builds canonical source provenance for a Codex source record.
  */
 function source(record, sourceIndex) {
   return {
@@ -78,7 +78,7 @@ function normalizedAnswers(outputText) {
 }
 
 /**
- * Implements `toolCallEvent`.
+ * Builds a canonical tool-call event from the provider-specific tool-call source record/block.
  */
 function toolCallEvent(record, sourceIndex) {
   const payload = record.payload;
@@ -124,7 +124,7 @@ function toolCallEvent(record, sourceIndex) {
 }
 
 /**
- * Implements `toolResultEvent`.
+ * Builds a canonical tool-result event from the provider-specific tool-result source record/block.
  */
 function toolResultEvent(record, sourceIndex) {
   const payload = record.payload;
@@ -164,7 +164,7 @@ function toolResultEvent(record, sourceIndex) {
 }
 
 /**
- * Implements `messageEvent`.
+ * Builds a canonical message/commentary event from provider-specific message content.
  */
 function messageEvent(record, sourceIndex, role, kind, channel, text, contentType) {
   const sourceInfo = source(record, sourceIndex);

@@ -10,7 +10,7 @@ const PROVIDER_LABELS = Object.freeze({
 });
 
 /**
- * Implements `htmlEscape`.
+ * Escapes text for safe insertion into generated HTML fragments.
  */
 function htmlEscape(text) {
   return String(text)
@@ -22,7 +22,7 @@ function htmlEscape(text) {
 }
 
 /**
- * Implements `headingLabel`.
+ * Handles heading label.
  */
 function headingLabel(turn) {
   if (turn?.role === 'user') return 'User';

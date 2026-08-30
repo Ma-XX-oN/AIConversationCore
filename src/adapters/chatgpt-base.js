@@ -1,5 +1,5 @@
 /**
- * Implements `textParts`.
+ * Returns the string-valued text parts from a ChatGPT source record in source order.
  */
 function textParts(record) {
   const parts = record?.content?.parts;
@@ -8,7 +8,7 @@ function textParts(record) {
 }
 
 /**
- * Implements `reasoningBlocks`.
+ * Builds canonical reasoning-summary blocks from a ChatGPT `thoughts` record.
  */
 function reasoningBlocks(record, sourceRecordId, sourceIndex) {
   const thoughts = record?.content?.thoughts;
@@ -43,7 +43,7 @@ function parsedJson(value) {
 }
 
 /**
- * Implements `launcherToken`.
+ * Extracts the normalized executable/launcher token from the start of a persisted command string.
  */
 function launcherToken(value) {
   if (typeof value !== 'string') return null;
@@ -159,7 +159,7 @@ function toolResultBlocks(record, sourceRecordId, sourceIndex) {
 }
 
 /**
- * Implements `eventVisibility`.
+ * Returns whether a ChatGPT source record is canonically visible or hidden.
  */
 function eventVisibility(record) {
   return record?.metadata?.is_visually_hidden_from_conversation ? 'hidden' : 'visible';
@@ -185,7 +185,7 @@ function isToolResult(record) {
 }
 
 /**
- * Implements `eventKind`.
+ * Classifies a ChatGPT source record into its canonical event kind.
  */
 function eventKind(record) {
   if (isToolCall(record)) return 'tool_call';
@@ -198,7 +198,7 @@ function eventKind(record) {
 }
 
 /**
- * Implements `eventBlocks`.
+ * Builds the canonical content blocks for one classified ChatGPT source record.
  */
 function eventBlocks(record, sourceRecordId, sourceIndex, kind) {
   if (kind === 'reasoning_summary') return reasoningBlocks(record, sourceRecordId, sourceIndex);
@@ -234,7 +234,7 @@ function normalizedUrl(value) {
 }
 
 /**
- * Implements `searchResultLookup`.
+ * Handles search result lookup.
  */
 function searchResultLookup(record) {
   const lookup = new Map();
@@ -252,7 +252,7 @@ function searchResultLookup(record) {
 }
 
 /**
- * Implements `retrievedFileLookup`.
+ * Handles retrieved file lookup.
  */
 function retrievedFileLookup(records) {
   const lookup = new Map();
@@ -272,7 +272,7 @@ function retrievedFileLookup(records) {
 }
 
 /**
- * Implements `fileMarkerKey`.
+ * Handles file marker key.
  */
 function fileMarkerKey(matchedText) {
   if (typeof matchedText !== 'string') return null;
@@ -302,7 +302,7 @@ function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 
 }
 
 /**
- * Implements `citationBase`.
+ * Handles citation base.
  */
 function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, range, kind) {
   return {
@@ -321,7 +321,7 @@ function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, ra
 }
 
 /**
- * Implements `webSource`.
+ * Handles web source.
  */
 function webSource(item, lookup) {
   const source = {
@@ -424,7 +424,7 @@ function normalizeCitation(reference, context) {
 }
 
 /**
- * Implements `eventCitations`.
+ * Handles event citations.
  */
 function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles) {
   const references = record?.metadata?.content_references;
@@ -456,7 +456,7 @@ function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFi
 }
 
 /**
- * Implements `conversationId`.
+ * Handles conversation ID.
  */
 function conversationId(records) {
   const metadata = records.find(record =>
@@ -474,7 +474,7 @@ function isConversationMetadata(record) {
 }
 
 /**
- * Implements `basename`.
+ * Handles basename.
  */
 function basename(path) {
   if (typeof path !== 'string') return null;
@@ -483,7 +483,7 @@ function basename(path) {
 }
 
 /**
- * Implements `sandboxPath`.
+ * Handles sandbox path.
  */
 function sandboxPath(pointer) {
   if (typeof pointer !== 'string') return null;
@@ -493,7 +493,7 @@ function sandboxPath(pointer) {
 }
 
 /**
- * Implements `sandboxDownloadUrl`.
+ * Handles sandbox download URL.
  */
 function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
   if (!path || !sourceRecordId || !chatgptConversationId) return null;
@@ -508,7 +508,7 @@ function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
 }
 
 /**
- * Implements `sandboxLinks`.
+ * Handles sandbox links.
  */
 function sandboxLinks(text) {
   if (typeof text !== 'string' || !text) return [];
@@ -562,7 +562,7 @@ function sandboxLinks(text) {
 }
 
 /**
- * Implements `citationResources`.
+ * Handles citation resources.
  */
 function citationResources(citations, sourceRecordId, sourceIndex) {
   const resources = [];
@@ -612,7 +612,7 @@ function citationResources(citations, sourceRecordId, sourceIndex) {
 }
 
 /**
- * Implements `sandboxResources`.
+ * Handles sandbox resources.
  */
 function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId) {
   const resources = [];
@@ -657,7 +657,7 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
 }
 
 /**
- * Implements `eventResources`.
+ * Handles event resources.
  */
 function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
                         chatgptConversationId) {

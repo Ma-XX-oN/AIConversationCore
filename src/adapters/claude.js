@@ -1,12 +1,12 @@
 /**
- * Implements `sourceRecordIdentity`.
+ * Returns the stable source-record identity used to derive Claude canonical IDs.
  */
 function sourceRecordIdentity(record, sourceIndex) {
   return record?.uuid ?? record?.message?.id ?? `record:${sourceIndex}`;
 }
 
 /**
- * Implements `baseSource`.
+ * Builds canonical source provenance for a Claude record or content block.
  */
 function baseSource(record, sourceIndex, blockIndex = null) {
   const source = {
@@ -19,7 +19,7 @@ function baseSource(record, sourceIndex, blockIndex = null) {
 }
 
 /**
- * Implements `textBlock`.
+ * Builds a canonical text block from one provider text content block.
  */
 function textBlock(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -32,7 +32,7 @@ function textBlock(record, sourceIndex, block, blockIndex) {
 }
 
 /**
- * Implements `reasoningBlock`.
+ * Builds a canonical reasoning-summary block from one provider reasoning block.
  */
 function reasoningBlock(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -68,7 +68,7 @@ function normalizedAskUserQuestion(input) {
 }
 
 /**
- * Implements `toolCallEvent`.
+ * Builds a canonical tool-call event from the provider-specific tool-call source record/block.
  */
 function toolCallEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -124,7 +124,7 @@ function normalizeExitPlanResponse(text) {
 }
 
 /**
- * Implements `toolResultEvent`.
+ * Builds a canonical tool-result event from the provider-specific tool-result source record/block.
  */
 function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -163,7 +163,7 @@ function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null
 }
 
 /**
- * Implements `messageEvent`.
+ * Builds a canonical message/commentary event from provider-specific message content.
  */
 function messageEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -187,7 +187,7 @@ function messageEvent(record, sourceIndex, block, blockIndex) {
 }
 
 /**
- * Implements `reasoningEvent`.
+ * Builds a canonical reasoning-summary event from provider-specific reasoning content.
  */
 function reasoningEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -211,7 +211,7 @@ function reasoningEvent(record, sourceIndex, block, blockIndex) {
 }
 
 /**
- * Implements `noticeEvent`.
+ * Builds a canonical notice event from provider-specific synthetic notice content.
  */
 function noticeEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -235,7 +235,7 @@ function noticeEvent(record, sourceIndex, block, blockIndex) {
 }
 
 /**
- * Implements `textFromToolResult`.
+ * Extracts displayable text from a Claude tool-result string or text-block array.
  */
 function textFromToolResult(content) {
   if (typeof content === 'string') return content;
@@ -245,7 +245,7 @@ function textFromToolResult(content) {
 }
 
 /**
- * Implements `agentIdFromResult`.
+ * Extracts the internal Claude subagent ID embedded in an Agent tool result.
  */
 function agentIdFromResult(text) {
   if (typeof text !== 'string') return null;
@@ -254,7 +254,7 @@ function agentIdFromResult(text) {
 }
 
 /**
- * Implements `cleanAgentResult`.
+ * Removes the internal Agent-ID control line from Claude subagent output.
  */
 function cleanAgentResult(text) {
   if (typeof text !== 'string') return '';
@@ -264,7 +264,7 @@ function cleanAgentResult(text) {
 }
 
 /**
- * Implements `subagentEvent`.
+ * Builds a canonical subagent event from Claude Agent completion data.
  */
 function subagentEvent(record, sourceIndex, agentId, description, output, callId, sourceBlockIndex = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -279,7 +279,7 @@ function subagentEvent(record, sourceIndex, agentId, description, output, callId
 }
 
 /**
- * Implements `xmlTag`.
+ * Returns the trimmed contents of one named XML-like tag from Claude queue-operation text.
  */
 function xmlTag(content, name) {
   if (typeof content !== 'string') return null;
@@ -288,7 +288,7 @@ function xmlTag(content, name) {
 }
 
 /**
- * Implements `queueSubagentEvent`.
+ * Converts a completed Claude queue-operation task notification into a canonical subagent event.
  */
 function queueSubagentEvent(record, sourceIndex) {
   if (record?.type !== 'queue-operation' || typeof record?.content !== 'string') return null;

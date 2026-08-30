@@ -1,5 +1,5 @@
 /**
- * Implements `htmlEscape`.
+ * Escapes text for safe insertion into generated HTML fragments.
  */
 function htmlEscape(value) {
   return String(value ?? '')
@@ -18,7 +18,7 @@ function quoteMarkdown(text) {
 }
 
 /**
- * Implements `providerLabel`.
+ * Returns the human-readable transcript speaker label for a canonical provider.
  */
 function providerLabel(provider) {
   if (provider === 'claude') return 'Claude';
@@ -27,7 +27,7 @@ function providerLabel(provider) {
 }
 
 /**
- * Implements `resourceById`.
+ * Finds one canonical event resource by resource ID.
  */
 function resourceById(event, resourceId) {
   return event.resources?.find(resource => resource.id === resourceId) ?? null;
@@ -48,7 +48,7 @@ function renderImageBlock(event, block) {
 }
 
 /**
- * Implements `faviconDomain`.
+ * Returns the origin used for a citation-source favicon lookup.
  */
 function faviconDomain(url) {
   if (typeof url !== 'string' || !url) return '';
@@ -61,7 +61,7 @@ function faviconDomain(url) {
 }
 
 /**
- * Implements `sourceTooltip`.
+ * Builds citation-source tooltip text from the source title and snippet.
  */
 function sourceTooltip(source) {
   const title = source?.title ?? '';
@@ -71,7 +71,7 @@ function sourceTooltip(source) {
 }
 
 /**
- * Implements `sourceLabel`.
+ * Returns the preferred visible label for a citation source.
  */
 function sourceLabel(source, fallback = '') {
   return source?.attribution || source?.title || fallback;
@@ -112,7 +112,7 @@ function renderMemoryCitation(citation) {
 }
 
 /**
- * Implements `retrievedLineLabel`.
+ * Extracts and normalizes a retrieved-file line-range label from citation marker text.
  */
 function retrievedLineLabel(citation) {
   const matched = citation?.matched_text;
@@ -137,7 +137,7 @@ function renderCitation(citation) {
 }
 
 /**
- * Implements `textReplacements`.
+ * Collects display replacements, citations, and generated-file links that apply to one text part.
  */
 function textReplacements(event, partIndex) {
   const replacements = [];
@@ -190,7 +190,7 @@ function renderMessageBlocks(event) {
 }
 
 /**
- * Implements `reasoningBody`.
+ * Builds the Markdown body for canonical reasoning-summary blocks in one event.
  */
 function reasoningBody(event) {
   return (event.blocks ?? []).map(block => {
@@ -203,21 +203,21 @@ function reasoningBody(event) {
 }
 
 /**
- * Implements `details`.
+ * Wraps a summary and body in the HTML `details` structure used by Markdown output.
  */
 function details(summary, body) {
   return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
 }
 
 /**
- * Implements `thoughtSummary`.
+ * Returns the singular/plural human-readable summary for a count of thoughts.
  */
 function thoughtSummary(count) {
   return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
 }
 
 /**
- * Implements `fencedCode`.
+ * Wraps literal content in an adaptive Markdown code fence that cannot collide with backtick runs in the payload.
  */
 function fencedCode(content, language = '') {
   const text = String(content ?? '');
@@ -240,7 +240,7 @@ function inferredToolLanguage(block) {
 }
 
 /**
- * Implements `relatedRetrievedFile`.
+ * Handles related retrieved file.
  */
 function relatedRetrievedFile(events, sourceRecordId) {
   for (const event of events) {
@@ -360,14 +360,14 @@ function renderChatGPTAssistantSegment(segment, events) {
 }
 
 /**
- * Implements `toolCallId`.
+ * Handles tool call ID.
  */
 function toolCallId(event) {
   return event?.relationships?.tool_call_id ?? event?.blocks?.[0]?.call_id ?? null;
 }
 
 /**
- * Implements `toolResultByCallId`.
+ * Handles tool result by call ID.
  */
 function toolResultByCallId(segment) {
   const results = new Map();
@@ -376,7 +376,7 @@ function toolResultByCallId(segment) {
 }
 
 /**
- * Implements `toolOutput`.
+ * Handles tool output.
  */
 function toolOutput(event) {
   const block = event?.blocks?.find(item => item.type === 'tool_result');
@@ -532,14 +532,14 @@ function renderClaudeAssistantSegment(segment) {
 }
 
 /**
- * Implements `codexRequestBlock`.
+ * Handles codex request block.
  */
 function codexRequestBlock(event) {
   return event?.blocks?.find(block => block.type === 'tool_call' && block.name === 'request_user_input');
 }
 
 /**
- * Implements `codexResponseBlock`.
+ * Handles codex response block.
  */
 function codexResponseBlock(event) {
   return event?.blocks?.find(block => block.type === 'tool_result' && block.request_user_input_response);

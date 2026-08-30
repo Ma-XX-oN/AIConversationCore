@@ -27,7 +27,7 @@ const DEFAULT_THEME = Object.freeze({
 let configuredTheme = cloneTheme(DEFAULT_THEME);
 
 /**
- * Implements `cloneTheme`.
+ * Handles clone theme.
  */
 function cloneTheme(theme) {
   return {
@@ -37,7 +37,7 @@ function cloneTheme(theme) {
 }
 
 /**
- * Implements `mergeTheme`.
+ * Handles merge theme.
  */
 function mergeTheme(base, overrides) {
   return {
@@ -70,7 +70,7 @@ export function resetProjectionTheme() {
 }
 
 /**
- * Implements `resolveProjectionTheme`.
+ * Handles resolve projection theme.
  */
 export function resolveProjectionTheme(overrides = null) {
   return mergeTheme(configuredTheme, overrides);

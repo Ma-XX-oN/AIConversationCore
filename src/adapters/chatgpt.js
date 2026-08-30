@@ -1,7 +1,7 @@
 import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.js';
 
 /**
- * Implements `imagePointerSource`.
+ * Returns the first usable image asset pointer exposed by a ChatGPT multimodal part.
  */
 function imagePointerSource(part) {
   if (!part || typeof part !== 'object') return null;
@@ -13,7 +13,7 @@ function imagePointerSource(part) {
 }
 
 /**
- * Implements `sedimentDownloadUrl`.
+ * Converts a ChatGPT `sediment://file_*` pointer into its authenticated download URL.
  */
 function sedimentDownloadUrl(source) {
   if (typeof source !== 'string' || !source.startsWith('sediment://')) return null;
@@ -23,7 +23,7 @@ function sedimentDownloadUrl(source) {
 }
 
 /**
- * Implements `imageResource`.
+ * Builds the canonical conversation-image resource for one ChatGPT image-pointer part.
  */
 function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
   const sourcePointer = imagePointerSource(part);
@@ -171,7 +171,7 @@ function normalizeMultimodalImages(event, record) {
 }
 
 /**
- * Implements `sourceFor`.
+ * Builds canonical ChatGPT source provenance for a derived event/block object.
  */
 function sourceFor(event, extra = {}) {
   return {
