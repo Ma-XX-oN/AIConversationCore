@@ -40,6 +40,8 @@ JSDoc indentation is part of the code style contract.  The opening `/**` and clo
 
 Types must describe what the implementation actually accepts and returns.  Do not use broad placeholder unions or guessed types merely to satisfy the audit.
 
+Every top-level production `const`, `let`, and `var` declaration that is not itself a documented function-valued declaration must have an immediately associated explanatory comment stating what the value represents, controls, or preserves.  Local variables also require explanatory comments when their meaning is not self-evident from the identifier and immediate expression, especially state/lifecycle variables, caches and lookup maps, cursor/index/ordinal state, source-record correlation, grouping/classification state, resource/citation maps, pending buffers, and ordering invariants.  Trivial loop counters and direct one-use derived values need not be commented merely to add noise.  Variable comments must describe semantics or invariants rather than restating the identifier name, and must preserve the surrounding indentation.
+
 Do not rely on ordinary `//` comments as the function-level documentation marker.  Inline comments remain appropriate for local algorithm details and evidence/rationale inside a documented function.  Anonymous inline callbacks do not require a separate JSDoc block unless they are promoted to a named reusable function.
 
 ## Documentation
