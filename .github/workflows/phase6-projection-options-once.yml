@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/phase6-projection-options-once.yml
       - scripts/apply-phase6-projection-options.py
+      - scripts/fix-phase6-projection-jsdoc.py
 
 permissions:
   contents: write
@@ -23,7 +24,9 @@ jobs:
         with:
           python-version: '3.x'
       - name: Apply projection metadata support
-        run: python scripts/apply-phase6-projection-options.py
+        run: |
+          python scripts/apply-phase6-projection-options.py
+          python scripts/fix-phase6-projection-jsdoc.py
       - name: Documentation contract
         run: node scripts/check-jsdoc.mjs
       - name: Core tests
