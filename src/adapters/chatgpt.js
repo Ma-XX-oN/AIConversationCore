@@ -3,7 +3,7 @@ import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.j
 /**
  * Returns the first usable image asset pointer exposed by a ChatGPT multimodal part.
  *
- * @param {Object<string, *>} part - The part value used by this operation.
+ * @param {Object<string, *>} part - The ChatGPT multimodal source part being normalized.
  * @returns {string|null} The first usable image asset pointer exposed by the multimodal part, or null when none is present.
  */
 function imagePointerSource(part) {
@@ -18,7 +18,7 @@ function imagePointerSource(part) {
 /**
  * Converts a ChatGPT `sediment://file_*` pointer into its authenticated download URL.
  *
- * @param {string} source - The source value used by this operation.
+ * @param {string} source - The source descriptor or provider pointer being normalized or rendered.
  * @returns {string|null} The authenticated ChatGPT file-download URL for a sediment file pointer, or null for another pointer form.
  */
 function sedimentDownloadUrl(source) {
@@ -31,7 +31,7 @@ function sedimentDownloadUrl(source) {
 /**
  * Builds the canonical conversation-image resource for one ChatGPT image-pointer part.
  *
- * @param {Object<string, *>} part - The part value used by this operation.
+ * @param {Object<string, *>} part - The ChatGPT multimodal source part being normalized.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {number} partIndex - The zero-based content-part index.
@@ -89,7 +89,7 @@ function remapTextRange(range, textOrdinalToPartIndex) {
 /**
  * Remaps citation.
  *
- * @param {Object<string, *>} citation - The citation value used by this operation.
+ * @param {Object<string, *>} citation - The canonical citation being rendered or remapped.
  * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
  * @returns {Object<string, *>} A copy of the canonical citation whose text range uses the original multimodal part index.
  */
@@ -104,7 +104,7 @@ function remapCitation(citation, textOrdinalToPartIndex) {
 /**
  * Remaps display replacement.
  *
- * @param {Object<string, *>} replacement - The replacement value used by this operation.
+ * @param {Object<string, *>} replacement - The canonical display-replacement object whose part indexes are being remapped.
  * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
  * @returns {Object<string, *>} A copy of the display replacement whose text range uses the original multimodal part index.
  */
@@ -119,7 +119,7 @@ function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
 /**
  * Remaps existing resource.
  *
- * @param {Object<string, *>} resource - The resource value used by this operation.
+ * @param {Object<string, *>} resource - The canonical resource whose source/text part indexes are being remapped.
  * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
  * @returns {Object<string, *>} A copy of the canonical resource with text/source part indexes remapped to original multimodal indexes when applicable.
  */
@@ -141,7 +141,7 @@ function remapExistingResource(resource, textOrdinalToPartIndex) {
 /**
  * Normalizes multimodal images.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} The canonical event with source-order image blocks/resources inserted, or the original event when no image pointers are present.
  */
@@ -207,8 +207,8 @@ function normalizeMultimodalImages(event, record) {
 /**
  * Builds canonical ChatGPT source provenance for a derived event/block object.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @param {Object<string, *>} extra - The extra value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} extra - Additional source-provenance fields to merge with the event source object.
  * @returns {Object<string, *>} Canonical ChatGPT source provenance extended with any supplied block/reference fields.
  */
 function sourceFor(event, extra = {}) {
@@ -250,7 +250,7 @@ function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 
 /**
  * Normalizes display replacements.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} The canonical event with normalized alt-text display replacements appended, or the original event when none apply.
  */
@@ -305,7 +305,7 @@ function normalizeDisplayReplacements(event, record) {
 /**
  * Normalizes tether assets.
  *
- * @param {Object<string, *>|Array<Object<string, *>>|null} assets - The assets value used by this operation.
+ * @param {Object<string, *>|Array<Object<string, *>>|null} assets - The provider tether-browsing asset object/array, or null when absent.
  * @returns {Array<Object<string, *>>|null} Normalized tether asset descriptors in source order, or null when the source assets field is absent.
  */
 function normalizedTetherAssets(assets) {
@@ -323,7 +323,7 @@ function normalizedTetherAssets(assets) {
 /**
  * Normalizes tether browsing display.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} A canonical tool-result event for tether browsing display content, or the original event when the source shape does not match.
  */
@@ -356,7 +356,7 @@ function normalizeTetherBrowsingDisplay(event, record) {
 /**
  * Normalizes reasoning recap.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} A canonical reasoning-summary event for reasoning recap content, or the original event when the source shape does not match.
  */
@@ -383,7 +383,7 @@ function normalizeReasoningRecap(event, record) {
 /**
  * Normalizes model editable context.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} A canonical system-context event for model editable context content, or the original event when the source shape does not match.
  */
@@ -414,7 +414,7 @@ function normalizeModelEditableContext(event, record) {
 /**
  * Normalizes non parts content.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} The canonical event after applying supported non-parts ChatGPT content normalizers.
  */
@@ -427,9 +427,9 @@ function normalizeNonPartsContent(event, record) {
 /**
  * Normalizes source footnotes.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeSourceFootnotes`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with sources-footnote citations appended, or the original event when none are present.
  */
 function normalizeSourceFootnotes(event, record) {
   const references = record?.metadata?.content_references;
@@ -468,10 +468,10 @@ function normalizeSourceFootnotes(event, record) {
 /**
  * Normalizes parent relationship.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @param {Object} knownRecordIds - The known record ids value used by this operation.
- * @returns {Object|null} The value produced by `normalizeParentRelationship`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @param {Set<string>} knownRecordIds - Set of stable source record IDs used to validate parent-event linkage.
+ * @returns {Object<string, *>} The canonical event with parent source/event relationship fields derived from provider metadata.
  */
 function normalizeParentRelationship(event, record, knownRecordIds) {
   const parentRecordId = typeof record?.metadata?.parent_id === 'string' &&
@@ -494,9 +494,9 @@ function normalizeParentRelationship(event, record, knownRecordIds) {
 /**
  * Normalizes source provenance.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeSourceProvenance`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with stable ChatGPT record identity, indexes, timestamps, and turn-linkage provenance.
  */
 function normalizeSourceProvenance(event, record) {
   const sourceIndex = Number.isInteger(event.source_index) ? event.source_index : null;

@@ -28,8 +28,8 @@ function htmlEscape(text) {
 /**
  * Handles heading label.
  *
- * @param {Object} turn - The turn value used by this operation.
- * @returns {string} The text representation produced by `headingLabel`.
+ * @param {Object<string, *>} turn - The derived canonical turn whose identity or header is being projected.
+ * @returns {string} The User label or human-readable Assistant provider label for the canonical turn.
  */
 function headingLabel(turn) {
   if (turn?.role === 'user') return 'User';
@@ -40,9 +40,9 @@ function headingLabel(turn) {
 /**
  * Builds turn header components.
  *
- * @param {Object} turn - The turn value used by this operation.
- * @param {Object} options - The options value used by this operation.
- * @returns {Object} The structured value produced by `buildTurnHeaderComponents`.
+ * @param {Object<string, *>} turn - The derived canonical turn whose identity or header is being projected.
+ * @param {Object<string, *>} options - Turn-header rendering options such as timestamp, record number, turn ID visibility, format, and theme.
+ * @returns {Array<Object<string, string>>} Ordered speaker/timestamp/record-number/turn-ID components used to render the turn header.
  */
 export function buildTurnHeaderComponents(turn, options = {}) {
   if (!turn?.id) throw new Error('Turn header projection requires a canonical turn id.');
@@ -85,8 +85,8 @@ export function buildTurnHeaderComponents(turn, options = {}) {
 /**
  * Renders plain.
  *
- * @param {Object} components - The components value used by this operation.
- * @returns {string} The text representation produced by `renderPlain`.
+ * @param {Array<Object<string, string>>} components - The ordered turn-header components to render.
+ * @returns {string} Plain-text turn header assembled from the ordered components.
  */
 function renderPlain(components) {
   return components.map(component => component.text).join(' ');
@@ -95,9 +95,9 @@ function renderPlain(components) {
 /**
  * Renders ANSI.
  *
- * @param {Object} components - The components value used by this operation.
- * @param {Object} theme - The theme value used by this operation.
- * @returns {string} The text representation produced by `renderAnsi`.
+ * @param {Array<Object<string, string>>} components - The ordered turn-header components to render.
+ * @param {Object<string, *>} theme - The projection theme containing ANSI and HTML style-role mappings.
+ * @returns {string} ANSI-styled turn header assembled from the ordered components and theme.
  */
 function renderAnsi(components, theme) {
   const reset = theme.ansi.reset ?? '\u001b[0m';
@@ -110,9 +110,9 @@ function renderAnsi(components, theme) {
 /**
  * Renders HTML.
  *
- * @param {Object} components - The components value used by this operation.
- * @param {Object} theme - The theme value used by this operation.
- * @returns {string} The text representation produced by `renderHtml`.
+ * @param {Array<Object<string, string>>} components - The ordered turn-header components to render.
+ * @param {Object<string, *>} theme - The projection theme containing ANSI and HTML style-role mappings.
+ * @returns {string} HTML h2 turn header with role-specific classes from the projection theme.
  */
 function renderHtml(components, theme) {
   return `<h2>${components.map(component => {
@@ -127,9 +127,9 @@ function renderHtml(components, theme) {
 /**
  * Renders turn header.
  *
- * @param {Object} turn - The turn value used by this operation.
- * @param {Object} options - The options value used by this operation.
- * @returns {string} The text representation produced by `renderTurnHeader`.
+ * @param {Object<string, *>} turn - The derived canonical turn whose identity or header is being projected.
+ * @param {Object<string, *>} options - Turn-header rendering options such as timestamp, record number, turn ID visibility, format, and theme.
+ * @returns {string|Array<Object<string, string>>} The requested plain/ANSI/HTML header string, or the component array when format is components.
  */
 export function renderTurnHeader(turn, options = {}) {
   const components = buildTurnHeaderComponents(turn, options);

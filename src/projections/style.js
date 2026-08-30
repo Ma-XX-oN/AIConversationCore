@@ -32,7 +32,7 @@ let configuredTheme = cloneTheme(DEFAULT_THEME);
 /**
  * Handles clone theme.
  *
- * @param {Object<string, *>} theme - The theme value used by this operation.
+ * @param {Object<string, *>} theme - The projection theme containing ANSI and HTML style-role mappings.
  * @returns {Object<string, *>} A detached projection-theme object containing copied ANSI and HTML role maps.
  */
 function cloneTheme(theme) {
@@ -45,8 +45,8 @@ function cloneTheme(theme) {
 /**
  * Handles merge theme.
  *
- * @param {Object<string, *>} base - The base value used by this operation.
- * @param {Object<string, *>|null} overrides - The overrides value used by this operation.
+ * @param {Object<string, *>} base - The base projection theme on which overrides are applied.
+ * @param {Object<string, *>|null} overrides - Optional projection-theme role overrides to merge with the current/base theme.
  * @returns {Object<string, *>} A new projection theme formed by overlaying the supplied role maps on the base theme.
  */
 function mergeTheme(base, overrides) {
@@ -68,7 +68,7 @@ export function getDefaultProjectionTheme() {
 /**
  * Configures projection theme.
  *
- * @param {Object<string, *>} overrides - The overrides value used by this operation.
+ * @param {Object<string, *>} overrides - Optional projection-theme role overrides to merge with the current/base theme.
  * @returns {Object<string, *>} A detached copy of the newly configured projection theme.
  */
 export function configureProjectionTheme(overrides = {}) {
@@ -89,7 +89,7 @@ export function resetProjectionTheme() {
 /**
  * Handles resolve projection theme.
  *
- * @param {Object<string, *>|null} overrides - The overrides value used by this operation.
+ * @param {Object<string, *>|null} overrides - Optional projection-theme role overrides to merge with the current/base theme.
  * @returns {Object<string, *>} A new effective projection theme combining the configured theme with optional per-call overrides.
  */
 export function resolveProjectionTheme(overrides = null) {

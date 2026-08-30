@@ -399,7 +399,7 @@ function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, ra
 /**
  * Handles web source.
  *
- * @param {Object<string, *>} item - The item value used by this operation.
+ * @param {Object<string, *>} item - The provider/search-result item being converted to a canonical source descriptor.
  * @param {Map<string, Object<string, *>>} lookup - The lookup table used to resolve related source data.
  * @returns {Object<string, *>} A canonical web-source descriptor with any normalized supporting-source evidence.
  */
@@ -576,7 +576,7 @@ function isConversationMetadata(record) {
 /**
  * Handles basename.
  *
- * @param {string} path - The path value used by this operation.
+ * @param {string} path - The provider/sandbox path being reduced to its final path component.
  * @returns {string|null} The last non-empty path component, or null when the path has no component.
  */
 function basename(path) {
@@ -588,7 +588,7 @@ function basename(path) {
 /**
  * Handles sandbox path.
  *
- * @param {string} pointer - The pointer value used by this operation.
+ * @param {string} pointer - The provider sandbox pointer being converted to a /mnt/data-style path.
  * @returns {string|null} The /mnt/data-style path represented by a supported sandbox pointer, or null for unsupported pointer forms.
  */
 function sandboxPath(pointer) {
@@ -601,7 +601,7 @@ function sandboxPath(pointer) {
 /**
  * Handles sandbox download URL.
  *
- * @param {string} path - The path value used by this operation.
+ * @param {string} path - The provider/sandbox path being reduced to its final path component.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
  * @returns {string|null} The authenticated ChatGPT generated-file download URL, or null when required identity is unavailable.
@@ -679,7 +679,7 @@ function sandboxLinks(text) {
 /**
  * Handles citation resources.
  *
- * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} citations - The canonical citations associated with the event, in source order.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @returns {Array<Object<string, *>>} Canonical file resources derived from supported citation objects in citation order.
@@ -792,7 +792,7 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
- * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} citations - The canonical citations associated with the event, in source order.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
  * @returns {Array<Object<string, *>>} Canonical citation and generated-file resources for the source event.
  */

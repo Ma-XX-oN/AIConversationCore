@@ -27,7 +27,7 @@ function source(record, sourceIndex) {
 /**
  * Checks whether tool call.
  *
- * @param {Object<string, *>} payload - The payload value used by this operation.
+ * @param {Object<string, *>} payload - The provider payload object being classified as a tool call or tool result.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool call.
  */
 function isToolCall(payload) {
@@ -37,7 +37,7 @@ function isToolCall(payload) {
 /**
  * Checks whether tool result.
  *
- * @param {Object<string, *>} payload - The payload value used by this operation.
+ * @param {Object<string, *>} payload - The provider payload object being classified as a tool call or tool result.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool result.
  */
 function isToolResult(payload) {
@@ -48,7 +48,7 @@ function isToolResult(payload) {
  * Parses JSON object.
  *
  * @param {string} value - The input value to process.
- * @returns {Object|null} The value produced by `parseJsonObject`, or `null` when no value is available.
+ * @returns {Object<string, *>|null} The parsed non-array JSON object, or null when parsing fails or the value is not an object.
  */
 function parseJsonObject(value) {
   if (typeof value !== 'string') return null;
@@ -63,7 +63,7 @@ function parseJsonObject(value) {
 /**
  * Normalizes questions.
  *
- * @param {string} argumentsText - The arguments text value used by this operation.
+ * @param {string} argumentsText - The serialized Codex tool arguments to parse and normalize.
  * @returns {Array<Object<string, *>>|null} Normalized request-user-input questions, or null when the argument JSON has no questions array.
  */
 function normalizedQuestions(argumentsText) {
@@ -84,7 +84,7 @@ function normalizedQuestions(argumentsText) {
 /**
  * Normalizes answers.
  *
- * @param {string} outputText - The output text value used by this operation.
+ * @param {string} outputText - The serialized Codex tool output to parse and normalize.
  * @returns {Object<string, Array<string>>|null} Answers indexed by question ID, or null when the tool output has no answers object.
  */
 function normalizedAnswers(outputText) {
@@ -199,11 +199,11 @@ function toolResultEvent(record, sourceIndex) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {string} role - The role value used by this operation.
+ * @param {string} role - The canonical message role assigned to the generated event.
  * @param {string} kind - The canonical kind/category being processed.
- * @param {string|null} channel - The channel value used by this operation.
+ * @param {string|null} channel - The Codex message channel, or null when the source record has no channel.
  * @param {string} text - The text value to process.
- * @param {string} contentType - The content type value used by this operation.
+ * @param {string} contentType - The provider content-type label preserved in source provenance.
  * @returns {Object<string, *>} A canonical Codex message, commentary, or reasoning-summary event for the supplied provider text.
  */
 function messageEvent(record, sourceIndex, role, kind, channel, text, contentType) {

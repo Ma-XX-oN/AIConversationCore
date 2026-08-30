@@ -407,7 +407,7 @@ function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, ra
 /**
  * Handles web source.
  *
- * @param {Object<string, *>} item - The item value used by this operation.
+ * @param {Object<string, *>} item - The provider/search-result item being converted to a canonical source descriptor.
  * @param {Map<string, Object<string, *>>} lookup - The lookup table used to resolve related source data.
  * @returns {Object<string, *>} A canonical web-source descriptor with any normalized supporting-source evidence.
  */
@@ -584,7 +584,7 @@ function isConversationMetadata(record) {
 /**
  * Handles basename.
  *
- * @param {string} path - The path value used by this operation.
+ * @param {string} path - The provider/sandbox path being reduced to its final path component.
  * @returns {string|null} The last non-empty path component, or null when the path has no component.
  */
 function basename(path) {
@@ -596,7 +596,7 @@ function basename(path) {
 /**
  * Handles sandbox path.
  *
- * @param {string} pointer - The pointer value used by this operation.
+ * @param {string} pointer - The provider sandbox pointer being converted to a /mnt/data-style path.
  * @returns {string|null} The /mnt/data-style path represented by a supported sandbox pointer, or null for unsupported pointer forms.
  */
 function sandboxPath(pointer) {
@@ -609,7 +609,7 @@ function sandboxPath(pointer) {
 /**
  * Handles sandbox download URL.
  *
- * @param {string} path - The path value used by this operation.
+ * @param {string} path - The provider/sandbox path being reduced to its final path component.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
  * @returns {string|null} The authenticated ChatGPT generated-file download URL, or null when required identity is unavailable.
@@ -687,7 +687,7 @@ function sandboxLinks(text) {
 /**
  * Handles citation resources.
  *
- * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} citations - The canonical citations associated with the event, in source order.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @returns {Array<Object<string, *>>} Canonical file resources derived from supported citation objects in citation order.
@@ -800,7 +800,7 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
- * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} citations - The canonical citations associated with the event, in source order.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
  * @returns {Array<Object<string, *>>} Canonical citation and generated-file resources for the source event.
  */
@@ -877,7 +877,7 @@ function adaptBaseChatGPTRecords(records) {
 /**
  * Returns the first usable image asset pointer exposed by a ChatGPT multimodal part.
  *
- * @param {Object<string, *>} part - The part value used by this operation.
+ * @param {Object<string, *>} part - The ChatGPT multimodal source part being normalized.
  * @returns {string|null} The first usable image asset pointer exposed by the multimodal part, or null when none is present.
  */
 function imagePointerSource(part) {
@@ -892,7 +892,7 @@ function imagePointerSource(part) {
 /**
  * Converts a ChatGPT `sediment://file_*` pointer into its authenticated download URL.
  *
- * @param {string} source - The source value used by this operation.
+ * @param {string} source - The source descriptor or provider pointer being normalized or rendered.
  * @returns {string|null} The authenticated ChatGPT file-download URL for a sediment file pointer, or null for another pointer form.
  */
 function sedimentDownloadUrl(source) {
@@ -905,7 +905,7 @@ function sedimentDownloadUrl(source) {
 /**
  * Builds the canonical conversation-image resource for one ChatGPT image-pointer part.
  *
- * @param {Object<string, *>} part - The part value used by this operation.
+ * @param {Object<string, *>} part - The ChatGPT multimodal source part being normalized.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {number} partIndex - The zero-based content-part index.
@@ -963,7 +963,7 @@ function remapTextRange(range, textOrdinalToPartIndex) {
 /**
  * Remaps citation.
  *
- * @param {Object<string, *>} citation - The citation value used by this operation.
+ * @param {Object<string, *>} citation - The canonical citation being rendered or remapped.
  * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
  * @returns {Object<string, *>} A copy of the canonical citation whose text range uses the original multimodal part index.
  */
@@ -978,7 +978,7 @@ function remapCitation(citation, textOrdinalToPartIndex) {
 /**
  * Remaps display replacement.
  *
- * @param {Object<string, *>} replacement - The replacement value used by this operation.
+ * @param {Object<string, *>} replacement - The canonical display-replacement object whose part indexes are being remapped.
  * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
  * @returns {Object<string, *>} A copy of the display replacement whose text range uses the original multimodal part index.
  */
@@ -993,7 +993,7 @@ function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
 /**
  * Remaps existing resource.
  *
- * @param {Object<string, *>} resource - The resource value used by this operation.
+ * @param {Object<string, *>} resource - The canonical resource whose source/text part indexes are being remapped.
  * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
  * @returns {Object<string, *>} A copy of the canonical resource with text/source part indexes remapped to original multimodal indexes when applicable.
  */
@@ -1015,7 +1015,7 @@ function remapExistingResource(resource, textOrdinalToPartIndex) {
 /**
  * Normalizes multimodal images.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} The canonical event with source-order image blocks/resources inserted, or the original event when no image pointers are present.
  */
@@ -1081,8 +1081,8 @@ function normalizeMultimodalImages(event, record) {
 /**
  * Builds canonical ChatGPT source provenance for a derived event/block object.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @param {Object<string, *>} extra - The extra value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} extra - Additional source-provenance fields to merge with the event source object.
  * @returns {Object<string, *>} Canonical ChatGPT source provenance extended with any supplied block/reference fields.
  */
 function sourceFor(event, extra = {}) {
@@ -1124,7 +1124,7 @@ function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 
 /**
  * Normalizes display replacements.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} The canonical event with normalized alt-text display replacements appended, or the original event when none apply.
  */
@@ -1179,7 +1179,7 @@ function normalizeDisplayReplacements(event, record) {
 /**
  * Normalizes tether assets.
  *
- * @param {Object<string, *>|Array<Object<string, *>>|null} assets - The assets value used by this operation.
+ * @param {Object<string, *>|Array<Object<string, *>>|null} assets - The provider tether-browsing asset object/array, or null when absent.
  * @returns {Array<Object<string, *>>|null} Normalized tether asset descriptors in source order, or null when the source assets field is absent.
  */
 function normalizedTetherAssets(assets) {
@@ -1197,7 +1197,7 @@ function normalizedTetherAssets(assets) {
 /**
  * Normalizes tether browsing display.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} A canonical tool-result event for tether browsing display content, or the original event when the source shape does not match.
  */
@@ -1230,7 +1230,7 @@ function normalizeTetherBrowsingDisplay(event, record) {
 /**
  * Normalizes reasoning recap.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} A canonical reasoning-summary event for reasoning recap content, or the original event when the source shape does not match.
  */
@@ -1257,7 +1257,7 @@ function normalizeReasoningRecap(event, record) {
 /**
  * Normalizes model editable context.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} A canonical system-context event for model editable context content, or the original event when the source shape does not match.
  */
@@ -1288,7 +1288,7 @@ function normalizeModelEditableContext(event, record) {
 /**
  * Normalizes non parts content.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {Object<string, *>} The canonical event after applying supported non-parts ChatGPT content normalizers.
  */
@@ -1301,9 +1301,9 @@ function normalizeNonPartsContent(event, record) {
 /**
  * Normalizes source footnotes.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeSourceFootnotes`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with sources-footnote citations appended, or the original event when none are present.
  */
 function normalizeSourceFootnotes(event, record) {
   const references = record?.metadata?.content_references;
@@ -1342,10 +1342,10 @@ function normalizeSourceFootnotes(event, record) {
 /**
  * Normalizes parent relationship.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @param {Object} knownRecordIds - The known record ids value used by this operation.
- * @returns {Object|null} The value produced by `normalizeParentRelationship`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @param {Set<string>} knownRecordIds - Set of stable source record IDs used to validate parent-event linkage.
+ * @returns {Object<string, *>} The canonical event with parent source/event relationship fields derived from provider metadata.
  */
 function normalizeParentRelationship(event, record, knownRecordIds) {
   const parentRecordId = typeof record?.metadata?.parent_id === 'string' &&
@@ -1368,9 +1368,9 @@ function normalizeParentRelationship(event, record, knownRecordIds) {
 /**
  * Normalizes source provenance.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeSourceProvenance`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with stable ChatGPT record identity, indexes, timestamps, and turn-linkage provenance.
  */
 function normalizeSourceProvenance(event, record) {
   const sourceIndex = Number.isInteger(event.source_index) ? event.source_index : null;
@@ -1439,7 +1439,7 @@ function htmlEscape(value) {
  * Quotes Markdown.
  *
  * @param {string} text - The text value to process.
- * @returns {string} The text representation produced by `quoteMarkdown`.
+ * @returns {string} The supplied text rendered as Markdown blockquote lines.
  */
 function quoteMarkdown(text) {
   return String(text).split('\n').map(line => line ? `> ${line}` : '>').join('\n');
@@ -1448,8 +1448,8 @@ function quoteMarkdown(text) {
 /**
  * Returns the human-readable transcript speaker label for a canonical provider.
  *
- * @param {string} provider - The provider value used by this operation.
- * @returns {string} The text representation produced by `providerLabel`.
+ * @param {string} provider - The canonical provider identifier whose display label is requested.
+ * @returns {string} The human-readable provider name used in transcript headings.
  */
 function providerLabel(provider) {
   if (provider === 'claude') return 'Claude';
@@ -1460,7 +1460,7 @@ function providerLabel(provider) {
 /**
  * Finds one canonical event resource by resource ID.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {string} resourceId - The resource id.
  * @returns {Object<string, *>|null} The canonical resource with the requested ID, or null when the event has no matching resource.
  */
@@ -1471,9 +1471,9 @@ function resourceById(event, resourceId) {
 /**
  * Renders image block.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @param {Object<string, *>} block - The block value used by this operation.
- * @returns {string} The text representation produced by `renderImageBlock`.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
+ * @returns {string} Markdown for the canonical image resource, including available/missing/unavailable state.
  */
 function renderImageBlock(event, block) {
   const resource = resourceById(event, block.resource_id);
@@ -1490,7 +1490,7 @@ function renderImageBlock(event, block) {
  * Returns the origin used for a citation-source favicon lookup.
  *
  * @param {string} url - The URL value to process.
- * @returns {string} The text representation produced by `faviconDomain`.
+ * @returns {string} The hostname used for favicon lookup, or an empty string when the URL cannot be parsed.
  */
 function faviconDomain(url) {
   if (typeof url !== 'string' || !url) return '';
@@ -1505,8 +1505,8 @@ function faviconDomain(url) {
 /**
  * Builds citation-source tooltip text from the source title and snippet.
  *
- * @param {Object<string, *>} source - The source value used by this operation.
- * @returns {string} The text representation produced by `sourceTooltip`.
+ * @param {Object<string, *>} source - The source descriptor or provider pointer being normalized or rendered.
+ * @returns {string} Tooltip text assembled from the source title/snippet metadata.
  */
 function sourceTooltip(source) {
   const title = source?.title ?? '';
@@ -1518,9 +1518,9 @@ function sourceTooltip(source) {
 /**
  * Returns the preferred visible label for a citation source.
  *
- * @param {Object<string, *>} source - The source value used by this operation.
- * @param {string} fallback - The fallback value used by this operation.
- * @returns {string} The text representation produced by `sourceLabel`.
+ * @param {Object<string, *>} source - The source descriptor or provider pointer being normalized or rendered.
+ * @param {string} fallback - Fallback display label used when the source supplies no suitable label.
+ * @returns {string} The preferred visible source label, falling back to the supplied label/hostname.
  */
 function sourceLabel(source, fallback = '') {
   return source?.attribution || source?.title || fallback;
@@ -1529,10 +1529,10 @@ function sourceLabel(source, fallback = '') {
 /**
  * Renders source anchor.
  *
- * @param {Object<string, *>} source - The source value used by this operation.
- * @param {string} fallbackLabel - The fallback label value used by this operation.
- * @param {boolean} preferTitle - The prefer title value used by this operation.
- * @returns {string} The text representation produced by `renderSourceAnchor`.
+ * @param {Object<string, *>} source - The source descriptor or provider pointer being normalized or rendered.
+ * @param {string} fallbackLabel - Fallback link label used when the source supplies no suitable title/attribution.
+ * @param {boolean} preferTitle - Whether an available source title should be preferred over attribution/hostname.
+ * @returns {string} The HTML anchor (with optional favicon/tooltip) for the canonical web source.
  */
 function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
   const url = source?.url ?? '';
@@ -1547,8 +1547,8 @@ function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
 /**
  * Renders web citation.
  *
- * @param {Object<string, *>} citation - The citation value used by this operation.
- * @returns {string} The text representation produced by `renderWebCitation`.
+ * @param {Object<string, *>} citation - The canonical citation being rendered or remapped.
+ * @returns {string} Markdown/HTML rendering of the canonical web citation and its supporting sources.
  */
 function renderWebCitation(citation) {
   const rendered = [];
@@ -1562,8 +1562,8 @@ function renderWebCitation(citation) {
 /**
  * Renders memory citation.
  *
- * @param {Object<string, *>} citation - The citation value used by this operation.
- * @returns {string} The text representation produced by `renderMemoryCitation`.
+ * @param {Object<string, *>} citation - The canonical citation being rendered or remapped.
+ * @returns {string} Markdown/HTML rendering of the canonical memory citation sources.
  */
 function renderMemoryCitation(citation) {
   const rendered = (citation.memory?.sources ?? [])
@@ -1574,8 +1574,8 @@ function renderMemoryCitation(citation) {
 /**
  * Extracts and normalizes a retrieved-file line-range label from citation marker text.
  *
- * @param {Object<string, *>} citation - The citation value used by this operation.
- * @returns {string} The text representation produced by `retrievedLineLabel`.
+ * @param {Object<string, *>} citation - The canonical citation being rendered or remapped.
+ * @returns {string} Human-readable line/range label for a retrieved-file citation, or an empty string when no line metadata exists.
  */
 function retrievedLineLabel(citation) {
   const matched = citation?.matched_text;
@@ -1587,8 +1587,8 @@ function retrievedLineLabel(citation) {
 /**
  * Renders citation.
  *
- * @param {Object<string, *>} citation - The citation value used by this operation.
- * @returns {string} The text representation produced by `renderCitation`.
+ * @param {Object<string, *>} citation - The canonical citation being rendered or remapped.
+ * @returns {string} Rendered Markdown for the supported canonical citation kind.
  */
 function renderCitation(citation) {
   if (citation.citation_kind === 'file') return `\`${citation.file?.name ?? 'file'}\``;
@@ -1605,7 +1605,7 @@ function renderCitation(citation) {
 /**
  * Collects display replacements, citations, and generated-file links that apply to one text part.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {number} partIndex - The zero-based content-part index.
  * @returns {Array<Object<string, *>>} Text replacements for the requested part, sorted from highest to lowest character offset for safe in-place rewriting.
  */
@@ -1637,10 +1637,10 @@ function textReplacements(event, partIndex) {
 /**
  * Renders text block.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} partIndex - The zero-based content-part index.
- * @returns {string} The text representation produced by `renderTextBlock`.
+ * @returns {string} Canonical text block after applying ordered display/citation replacements.
  */
 function renderTextBlock(event, block, partIndex) {
   let text = block.text ?? '';
@@ -1653,7 +1653,7 @@ function renderTextBlock(event, block, partIndex) {
 /**
  * Renders message blocks.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {string} Visible canonical message/image blocks rendered as Markdown text in block order.
  */
 function renderMessageBlocks(event) {
@@ -1670,8 +1670,8 @@ function renderMessageBlocks(event) {
 /**
  * Builds the Markdown body for canonical reasoning-summary blocks in one event.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @returns {string} The text representation produced by `reasoningBody`.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {string} Visible reasoning-summary text joined from the event reasoning blocks.
  */
 function reasoningBody(event) {
   return (event.blocks ?? []).map(block => {
@@ -1686,8 +1686,8 @@ function reasoningBody(event) {
 /**
  * Wraps a summary and body in the HTML `details` structure used by Markdown output.
  *
- * @param {string} summary - The summary value used by this operation.
- * @param {string} body - The body value used by this operation.
+ * @param {string} summary - The summary label shown for the collapsible details block.
+ * @param {string} body - The body text placed inside the generated details block.
  * @returns {string} The HTML details/summary Markdown fragment containing the supplied body.
  */
 function details(summary, body) {
@@ -1697,8 +1697,8 @@ function details(summary, body) {
 /**
  * Returns the singular/plural human-readable summary for a count of thoughts.
  *
- * @param {number} count - The count value used by this operation.
- * @returns {string} The text representation produced by `thoughtSummary`.
+ * @param {number} count - The number of reasoning/thought items represented by the summary label.
+ * @returns {string} The singular/plural summary label for the requested number of thought items.
  */
 function thoughtSummary(count) {
   return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
@@ -1707,7 +1707,7 @@ function thoughtSummary(count) {
 /**
  * Wraps literal content in an adaptive Markdown code fence that cannot collide with backtick runs in the payload.
  *
- * @param {string} content - The content value used by this operation.
+ * @param {string} content - The provider/canonical content being converted to display text.
  * @param {string} language - The source or canonical language identifier.
  * @returns {string} The Markdown code-fence representation of the literal payload.
  */
@@ -1724,7 +1724,7 @@ function fencedCode(content, language = '') {
  *
  * A normalized non-`unknown` canonical language is emitted unchanged; the historical `container.exec` fallback emits `bash` only when no stronger normalized language is present.
  *
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @returns {string} The Markdown fence language selected from canonical tool semantics, or an empty string when no language is justified.
  */
 function inferredToolLanguage(block) {
@@ -1753,10 +1753,10 @@ function relatedRetrievedFile(events, sourceRecordId) {
 /**
  * Renders multimodal tool output.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
- * @returns {string} The text representation produced by `renderMultimodalToolOutput`.
+ * @returns {string} Rendered Markdown for a multimodal tool-result block and any related retrieved file.
  */
 function renderMultimodalToolOutput(event, block, events) {
   const values = Array.isArray(block.output) ? block.output : [];
@@ -1775,10 +1775,10 @@ function renderMultimodalToolOutput(event, block, events) {
  *
  * The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
- * @returns {string} The text representation produced by `renderChatGPTToolBlock`.
+ * @returns {string} Rendered Markdown details block for one ChatGPT tool call or result block.
  */
 function renderChatGPTToolBlock(event, block, events) {
   if (block.type === 'tool_call') {
@@ -1797,9 +1797,9 @@ function renderChatGPTToolBlock(event, block, events) {
 /**
  * Renders all canonical tool blocks belonging to one ChatGPT tool event.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
- * @returns {string} The text representation produced by `renderChatGPTToolEvent`.
+ * @returns {string} Rendered Markdown for all tool blocks in the canonical ChatGPT tool event.
  */
 function renderChatGPTToolEvent(event, events) {
   return (event.blocks ?? []).map(block => renderChatGPTToolBlock(event, block, events)).filter(Boolean).join('\n\n');
@@ -1808,8 +1808,8 @@ function renderChatGPTToolEvent(event, events) {
 /**
  * Renders user.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @returns {string} The text representation produced by `renderUser`.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {string} The complete User transcript section for the canonical event.
  */
 function renderUser(event) {
   return `## User\n\n${quoteMarkdown(renderMessageBlocks(event))}`;
@@ -1818,7 +1818,7 @@ function renderUser(event) {
 /**
  * Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.
  *
- * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
  * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
  * @returns {string|null} The ChatGPT Commentary Markdown section for the segment, or null when the segment produces no visible body.
  */
@@ -1859,7 +1859,7 @@ function renderChatGPTCommentarySegment(segment, events) {
 /**
  * Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.
  *
- * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
  * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
  * @returns {Array<string>} One or more ChatGPT Markdown sections produced from the Assistant segment.
  */
@@ -1888,7 +1888,7 @@ function renderChatGPTAssistantSegment(segment, events) {
 /**
  * Handles tool call ID.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {string|null} The canonical tool-call correlation ID, or null when the event carries no call ID.
  */
 function toolCallId(event) {
@@ -1898,7 +1898,7 @@ function toolCallId(event) {
 /**
  * Handles tool result by call ID.
  *
- * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
  * @returns {Map<string, Object<string, *>>} Tool-result events indexed by their non-null call IDs.
  */
 function toolResultByCallId(segment) {
@@ -1911,7 +1911,7 @@ function toolResultByCallId(segment) {
 /**
  * Handles tool output.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {string} Tool-result output flattened to displayable text.
  */
 function toolOutput(event) {
@@ -1925,9 +1925,9 @@ function toolOutput(event) {
 /**
  * Renders Claude tool thought.
  *
- * @param {Object<string, *>} callEvent - The call event value used by this operation.
- * @param {Object<string, *>|null} resultEvent - The result event value used by this operation.
- * @returns {string} The text representation produced by `renderClaudeToolThought`.
+ * @param {Object<string, *>} callEvent - The canonical tool-call event being paired/rendered.
+ * @param {Object<string, *>|null} resultEvent - The matching canonical tool-result event, or null when no result is available.
+ * @returns {string} Collapsed Markdown representation of a Claude tool call and its optional result.
  */
 function renderClaudeToolThought(callEvent, resultEvent) {
   const block = callEvent?.blocks?.find(item => item.type === 'tool_call');
@@ -1941,8 +1941,8 @@ function renderClaudeToolThought(callEvent, resultEvent) {
 /**
  * Renders subagent event.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
- * @returns {string} The text representation produced by `renderSubagentEvent`.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {string} Markdown blockquote representation of a Claude subagent completion event.
  */
 function renderSubagentEvent(event) {
   const block = event?.blocks?.find(item => item.type === 'subagent');
@@ -1956,8 +1956,8 @@ function renderSubagentEvent(event) {
 /**
  * Renders Claude question block.
  *
- * @param {Object<string, *>} block - The block value used by this operation.
- * @returns {string} The text representation produced by `renderClaudeQuestionBlock`.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
+ * @returns {string} Markdown question/options block for a normalized Claude AskUserQuestion call.
  */
 function renderClaudeQuestionBlock(block) {
   const questions = block?.ask_user_question?.questions ?? [];
@@ -1977,8 +1977,8 @@ function renderClaudeQuestionBlock(block) {
 /**
  * Renders Claude plan block.
  *
- * @param {Object<string, *>} block - The block value used by this operation.
- * @returns {string} The text representation produced by `renderClaudePlanBlock`.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
+ * @returns {string} Markdown details block containing a Claude exit-plan proposal.
  */
 function renderClaudePlanBlock(block) {
   const plan = block?.exit_plan?.plan;
@@ -1989,8 +1989,8 @@ function renderClaudePlanBlock(block) {
 /**
  * Renders Claude plan approval.
  *
- * @param {Object<string, *>} block - The block value used by this operation.
- * @returns {string} The text representation produced by `renderClaudePlanApproval`.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
+ * @returns {string} Markdown User response section for a Claude exit-plan approval result.
  */
 function renderClaudePlanApproval(block) {
   const response = block?.exit_plan_response;
@@ -2004,7 +2004,7 @@ function renderClaudePlanApproval(block) {
 /**
  * Renders Claude assistant segment.
  *
- * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
  * @returns {Array<string>} Claude/User/subagent Markdown sections produced from the Assistant segment.
  */
 function renderClaudeAssistantSegment(segment) {
@@ -2094,7 +2094,7 @@ function renderClaudeAssistantSegment(segment) {
 /**
  * Handles codex request block.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {Object<string, *>|undefined} The request_user_input tool-call block, or undefined when the event has no such block.
  */
 function codexRequestBlock(event) {
@@ -2104,7 +2104,7 @@ function codexRequestBlock(event) {
 /**
  * Handles codex response block.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {Object<string, *>|undefined} The request_user_input tool-result block, or undefined when the event has no such block.
  */
 function codexResponseBlock(event) {
@@ -2114,9 +2114,9 @@ function codexResponseBlock(event) {
 /**
  * Renders Codex request sections.
  *
- * @param {Object<string, *>} callEvent - The call event value used by this operation.
- * @param {Object<string, *>|null} resultEvent - The result event value used by this operation.
- * @param {Object<string, number>} state - The state value used by this operation.
+ * @param {Object<string, *>} callEvent - The canonical tool-call event being paired/rendered.
+ * @param {Object<string, *>|null} resultEvent - The matching canonical tool-result event, or null when no result is available.
+ * @param {Object<string, number>} state - Per-render mutable state used for numbering and other projection-local counters.
  * @returns {Array<string>} Codex question Markdown and, when answers exist, the corresponding User answer section.
  */
 function renderCodexRequestSections(callEvent, resultEvent, state) {
@@ -2144,7 +2144,7 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
 /**
  * Renders Codex file changes.
  *
- * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
  * @returns {string|null} The collapsed Codex file-change details section, or null when the segment has no apply_patch changes.
  */
 function renderCodexFileChanges(segment) {
@@ -2163,8 +2163,8 @@ function renderCodexFileChanges(segment) {
 /**
  * Renders Codex main response.
  *
- * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
- * @returns {string} The text representation produced by `renderCodexMainResponse`.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
+ * @returns {string|null} The main Codex transcript section for reasoning/commentary/final text, or null when the segment has no visible main response.
  */
 function renderCodexMainResponse(segment) {
   const thoughts = [];
@@ -2184,9 +2184,9 @@ function renderCodexMainResponse(segment) {
 /**
  * Renders Codex assistant segment.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @param {Object} state - The state value used by this operation.
- * @returns {string} The text representation produced by `renderCodexAssistantSegment`.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
+ * @param {Object<string, number>} state - Per-render mutable state used for numbering and other projection-local counters.
+ * @returns {Array<string>} Ordered Markdown sections for Codex request/answer, main response, and file-change content.
  */
 function renderCodexAssistantSegment(segment, state) {
   const sections = [];
@@ -2211,10 +2211,10 @@ function renderCodexAssistantSegment(segment, state) {
 /**
  * Renders assistant segment.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @param {Array<Object>} events - The ordered canonical events to process.
- * @param {Object} state - The state value used by this operation.
- * @returns {string} The text representation produced by `renderAssistantSegment`.
+ * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
+ * @param {Object<string, number>} state - Per-render mutable state used for numbering and other projection-local counters.
+ * @returns {Array<string>} Provider-specific Markdown sections produced from one ordered Assistant activity segment.
  */
 function renderAssistantSegment(segment, events, state) {
   const provider = segment.find(event => event?.provider)?.provider ?? 'chatgpt';
@@ -2226,8 +2226,8 @@ function renderAssistantSegment(segment, events, state) {
 /**
  * Renders notice.
  *
- * @param {Object} event - The event value used by this operation.
- * @returns {string} The text representation produced by `renderNotice`.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {string} Blockquoted system-notice Markdown, or an empty string when the notice has no visible text.
  */
 function renderNotice(event) {
   const text = renderMessageBlocks(event);

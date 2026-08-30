@@ -32,7 +32,7 @@ function baseSource(record, sourceIndex, blockIndex = null) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
  * @returns {Object<string, *>} A canonical text block derived from the Claude source block.
  */
@@ -51,7 +51,7 @@ function textBlock(record, sourceIndex, block, blockIndex) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
  * @returns {Object<string, *>} A canonical reasoning-summary block derived from the Claude thinking block.
  */
@@ -71,7 +71,7 @@ function reasoningBlock(record, sourceIndex, block, blockIndex) {
 /**
  * Normalizes ask user question.
  *
- * @param {Object<string, *>} input - The input value used by this operation.
+ * @param {Object<string, *>} input - The provider tool-input object being normalized.
  * @returns {Object<string, *>|null} Normalized AskUserQuestion question data, or null when the provider input has no questions array.
  */
 function normalizedAskUserQuestion(input) {
@@ -96,7 +96,7 @@ function normalizedAskUserQuestion(input) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
  * @returns {Object<string, *>} A canonical Claude tool-call event preserving source identity and call correlation.
  */
@@ -143,7 +143,7 @@ function toolCallEvent(record, sourceIndex, block, blockIndex) {
  * Normalizes exit plan response.
  *
  * @param {string} text - The text value to process.
- * @returns {Object|null} The value produced by `normalizeExitPlanResponse`, or `null` when no value is available.
+ * @returns {Object<string, *>|null} Normalized exit-plan approval metadata, or null when the provider output is not a recognizable approval response.
  */
 function normalizeExitPlanResponse(text) {
   if (typeof text !== 'string') return null;
@@ -161,9 +161,9 @@ function normalizeExitPlanResponse(text) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
- * @param {string|null} callName - The call name value used by this operation.
+ * @param {string|null} callName - The normalized provider tool name associated with the correlated call, or null when unavailable.
  * @returns {Object<string, *>} A canonical Claude tool-result event preserving source identity and call correlation.
  */
 function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null) {
@@ -207,7 +207,7 @@ function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
  * @returns {Object<string, *>} A canonical Claude message event for the provider text block.
  */
@@ -237,7 +237,7 @@ function messageEvent(record, sourceIndex, block, blockIndex) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
  * @returns {Object<string, *>} A canonical Claude reasoning-summary event for the provider thinking block.
  */
@@ -267,7 +267,7 @@ function reasoningEvent(record, sourceIndex, block, blockIndex) {
  *
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @param {number} blockIndex - The zero-based block index.
  * @returns {Object<string, *>} A canonical system notice event for the synthetic provider message.
  */
@@ -295,7 +295,7 @@ function noticeEvent(record, sourceIndex, block, blockIndex) {
 /**
  * Extracts displayable text from a Claude tool-result string or text-block array.
  *
- * @param {string|Array<Object<string, *>>} content - The content value used by this operation.
+ * @param {string|Array<Object<string, *>>} content - The provider/canonical content being converted to display text.
  * @returns {string} Displayable text extracted from a tool-result string or concatenated text blocks.
  */
 function textFromToolResult(content) {
@@ -336,8 +336,8 @@ function cleanAgentResult(text) {
  * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {string} agentId - The agent id.
- * @param {string|null} description - The description value used by this operation.
- * @param {string} output - The output value used by this operation.
+ * @param {string|null} description - The provider subagent description, or null when none was supplied.
+ * @param {string} output - The displayable provider tool/subagent output text.
  * @param {string|null} callId - The call id.
  * @param {number|null} sourceBlockIndex - The zero-based source block index.
  * @returns {Object<string, *>} A canonical Claude subagent completion event with source/tool-call provenance.
@@ -357,7 +357,7 @@ function subagentEvent(record, sourceIndex, agentId, description, output, callId
 /**
  * Returns the trimmed contents of one named XML-like tag from Claude queue-operation text.
  *
- * @param {string} content - The content value used by this operation.
+ * @param {string} content - The provider/canonical content being converted to display text.
  * @param {string} name - The name associated with the value being processed.
  * @returns {string|null} Trimmed contents of the named XML-like tag, or null when the tag is absent.
  */

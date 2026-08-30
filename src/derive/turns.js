@@ -1,7 +1,7 @@
 /**
  * Checks whether visible turn event.
  *
- * @param {Object<string, *>|null} event - The event value used by this operation.
+ * @param {Object<string, *>|null} event - The canonical event being inspected, normalized, or rendered.
  * @returns {boolean} Whether the canonical event is a visible User/Assistant turn event.
  */
 function isVisibleTurnEvent(event) {
@@ -13,7 +13,7 @@ function isVisibleTurnEvent(event) {
 /**
  * Handles source record.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {Object<string, *>} The normalized source-provenance record carried by a derived turn.
  */
 function sourceRecord(event) {
@@ -37,8 +37,8 @@ function sourceRecord(event) {
 /**
  * Handles append event.
  *
- * @param {Object<string, *>} turn - The turn value used by this operation.
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} turn - The derived canonical turn whose identity or header is being projected.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {void} No value is returned; the supplied turn is updated in place.
  */
 function appendEvent(turn, event) {
@@ -50,7 +50,7 @@ function appendEvent(turn, event) {
 /**
  * Handles new turn.
  *
- * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @param {number} turnIndex - The zero-based turn index.
  * @returns {Object<string, *>} A new derived turn initialized from the supplied canonical event.
  */
