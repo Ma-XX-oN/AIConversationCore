@@ -6,8 +6,11 @@ on:
       - .github/workflows/phase6-rendering-contract-once.yml
       - scripts/apply-phase6-rendering-contract.py
       - scripts/fix-phase6-rendering-details.py
+      - scripts/fix-phase6-rendering-scope.py
+      - scripts/fix-phase6-chatgpt-thought-count.py
       - scripts/finalize-phase6-rendering-contract.py
       - tests/phase6-rendering-contract.test.js
+      - tests/chatgpt-tool-fences.test.js
 
 permissions:
   contents: write
@@ -29,6 +32,8 @@ jobs:
         run: |
           python scripts/apply-phase6-rendering-contract.py
           python scripts/fix-phase6-rendering-details.py
+          python scripts/fix-phase6-rendering-scope.py
+          python scripts/fix-phase6-chatgpt-thought-count.py
       - name: Regenerate intentional ChatGPT golden
         run: |
           node --input-type=module <<'NODE'
