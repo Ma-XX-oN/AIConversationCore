@@ -44,7 +44,7 @@ export async function buildBrowserBundle() {
 
   const base = moduleBody(baseSource, {
     exportedFunction: 'adaptChatGPTRecords',
-    localFunction: 'adaptChatGPTRecords'
+    localFunction: 'adaptBaseChatGPTRecords'
   });
   const chatgpt = moduleBody(chatgptSource, {
     importLine: "import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.js';",
