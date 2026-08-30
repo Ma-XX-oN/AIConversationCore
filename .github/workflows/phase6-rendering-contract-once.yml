@@ -9,6 +9,7 @@ on:
       - scripts/fix-phase6-rendering-scope.py
       - scripts/fix-phase6-chatgpt-thought-count.py
       - scripts/fix-phase6-claude-projection.py
+      - scripts/fix-phase6-subagent-provenance.py
       - scripts/finalize-phase6-rendering-contract.py
       - tests/phase6-rendering-contract.test.js
       - tests/chatgpt-tool-fences.test.js
@@ -29,8 +30,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Apply Claude projection parity fixes
-        run: python scripts/fix-phase6-claude-projection.py
+      - name: Apply Claude subagent provenance fix
+        run: python scripts/fix-phase6-subagent-provenance.py
       - name: Rebuild deterministic browser bundle
         run: node scripts/build-browser-bundle.mjs
       - name: Documentation contract
@@ -49,10 +50,10 @@ jobs:
         run: python tests/validate-provider-example-regressions.py
       - name: Diff hygiene
         run: git diff --check
-      - name: Commit verified Claude projection fixes
+      - name: Commit verified Claude subagent provenance
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js
-          git commit -m "phase6: preserve Claude heading projection semantics"
+          git add src/adapters/claude.js dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "phase6: preserve Claude subagent call provenance"
           git push
