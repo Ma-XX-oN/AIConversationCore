@@ -1,0 +1,19 @@
+name: Type-check core JSDoc once
+
+on:
+  push:
+    paths:
+      - .github/workflows/typescript-jsdoc-audit-once.yml
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install temporary type checker
+        run: npm install --no-save --no-package-lock typescript @types/node
+      - name: Type-check production source JSDoc
+        run: npx tsc --allowJs --checkJs --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck src/**/*.js
