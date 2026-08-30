@@ -339,10 +339,12 @@ function cleanAgentResult(text) {
  * @param {string|null} description - The provider subagent description, or null when none was supplied.
  * @param {string} output - The displayable provider tool/subagent output text.
  * @param {string|null} callId - The call id.
- * @param {number|null} sourceBlockIndex - The zero-based source block index.
- * @returns {Object<string, *>} A canonical Claude subagent completion event with source/tool-call provenance.
+ * @param {number|null} sourceBlockIndex - The zero-based source block index of the completion record.
+ * @param {Object<string, *>|null} invocationSource - Canonical source provenance for the Agent invocation that produced this completion, or null when unavailable.
+ * @returns {Object<string, *>} A canonical Claude subagent completion event retaining both completion and invocation provenance.
  */
-function subagentEvent(record, sourceIndex, agentId, description, output, callId, sourceBlockIndex = null) {
+function subagentEvent(record, sourceIndex, agentId, description, output, callId,
+                       sourceBlockIndex = null, invocationSource = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, sourceBlockIndex);
   return {
@@ -350,7 +352,12 @@ function subagentEvent(record, sourceIndex, agentId, description, output, callId
     provider: 'claude', source_record_id: source.record_id, source_index: sourceIndex,
     kind: 'subagent', role: 'assistant', channel: null, visibility: 'visible', content_type: 'subagent',
     blocks: [{ id: `claude:${sourceIdentity}:subagent:${agentId}:block`, type: 'subagent', agent_id: agentId, description, output, source }],
-    citations: [], resources: [], relationships: { tool_call_id: callId ?? null }, source
+    citations: [], resources: [],
+    relationships: {
+      tool_call_id: callId ?? null,
+      invocation_source: invocationSource
+    },
+    source
   };
 }
 
@@ -443,7 +450,10 @@ export function adaptClaudeRecords(records) {
       if (block.type === 'tool_use') {
         if (typeof block.id === 'string') toolNames.set(block.id, block.name ?? null);
         if (block.name === 'Agent' && typeof block.id === 'string') {
-          agentCalls.set(block.id, { description: typeof block?.input?.description === 'string' ? block.input.description : null });
+          agentCalls.set(block.id, {
+            description: typeof block?.input?.description === 'string' ? block.input.description : null,
+            source: baseSource(record, sourceIndex, blockIndex)
+          });
           return;
         }
         events.push(toolCallEvent(record, sourceIndex, block, blockIndex));
@@ -454,8 +464,16 @@ export function adaptClaudeRecords(records) {
       const agentCall = callId ? agentCalls.get(callId) : null;
       if (agentCall) {
         const rawOutput = textFromToolResult(block.content);
-        events.push(subagentEvent(record, sourceIndex, agentIdFromResult(rawOutput) ?? callId,
-          agentCall.description, cleanAgentResult(rawOutput), callId, blockIndex));
+        events.push(subagentEvent(
+          record,
+          sourceIndex,
+          agentIdFromResult(rawOutput) ?? callId,
+          agentCall.description,
+          cleanAgentResult(rawOutput),
+          callId,
+          blockIndex,
+          agentCall.source
+        ));
         return;
       }
       events.push(toolResultEvent(record, sourceIndex, block, blockIndex, callId ? toolNames.get(callId) : null));

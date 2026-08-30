@@ -34,6 +34,8 @@ test('full Claude adapter preserves evidenced messages, reasoning, tools and sub
   assert.equal(successful.blocks[0].output,
     'Async agent launched successfully.\nThe agent is working in the background.\noutput_file: C:\\Temp\\agent-safe-1.output');
   assert.equal(successful.relationships.tool_call_id, 'toolu_agent_ok');
+  assert.equal(successful.relationships.invocation_source.record_index, 2);
+  assert.equal(successful.source_index, 3);
 
   const failed = events.find(event => event.kind === 'subagent' &&
     event.blocks[0]?.agent_id === 'toolu_agent_fail');
