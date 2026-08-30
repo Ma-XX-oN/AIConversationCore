@@ -11,6 +11,9 @@ const PROVIDER_LABELS = Object.freeze({
 
 /**
  * Escapes text for safe insertion into generated HTML fragments.
+  *
+ * @param {string} text - The text value to process.
+ * @returns {string} The HTML-escaped form of the supplied text.
  */
 function htmlEscape(text) {
   return String(text)
@@ -23,6 +26,9 @@ function htmlEscape(text) {
 
 /**
  * Handles heading label.
+  *
+ * @param {Object} turn - The turn value used by this operation.
+ * @returns {string} The text representation produced by `headingLabel`.
  */
 function headingLabel(turn) {
   if (turn?.role === 'user') return 'User';
@@ -32,6 +38,10 @@ function headingLabel(turn) {
 
 /**
  * Builds turn header components.
+  *
+ * @param {Object} turn - The turn value used by this operation.
+ * @param {Object} options - The options value used by this operation.
+ * @returns {Object} The structured value produced by `buildTurnHeaderComponents`.
  */
 export function buildTurnHeaderComponents(turn, options = {}) {
   if (!turn?.id) throw new Error('Turn header projection requires a canonical turn id.');
@@ -73,6 +83,9 @@ export function buildTurnHeaderComponents(turn, options = {}) {
 
 /**
  * Renders plain.
+  *
+ * @param {Object} components - The components value used by this operation.
+ * @returns {string} The text representation produced by `renderPlain`.
  */
 function renderPlain(components) {
   return components.map(component => component.text).join(' ');
@@ -80,6 +93,10 @@ function renderPlain(components) {
 
 /**
  * Renders ANSI.
+  *
+ * @param {Object} components - The components value used by this operation.
+ * @param {Object} theme - The theme value used by this operation.
+ * @returns {string} The text representation produced by `renderAnsi`.
  */
 function renderAnsi(components, theme) {
   const reset = theme.ansi.reset ?? '\u001b[0m';
@@ -91,6 +108,10 @@ function renderAnsi(components, theme) {
 
 /**
  * Renders HTML.
+  *
+ * @param {Object} components - The components value used by this operation.
+ * @param {Object} theme - The theme value used by this operation.
+ * @returns {string} The text representation produced by `renderHtml`.
  */
 function renderHtml(components, theme) {
   return `<h2>${components.map(component => {
@@ -104,6 +125,10 @@ function renderHtml(components, theme) {
 
 /**
  * Renders turn header.
+  *
+ * @param {Object} turn - The turn value used by this operation.
+ * @param {Object} options - The options value used by this operation.
+ * @returns {string} The text representation produced by `renderTurnHeader`.
  */
 export function renderTurnHeader(turn, options = {}) {
   const components = buildTurnHeaderComponents(turn, options);

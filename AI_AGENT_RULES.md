@@ -34,7 +34,7 @@ Distinguish facts established by tests or source inspection from assumptions, hy
 
 ## Code documentation standard
 
-Every named production JavaScript function, method, and function-valued constant must have an immediately preceding JSDoc documentation block using `/** ... */`.  The comment must state the function purpose; transformation/normalization functions must additionally state the actual source representation and the canonical/output representation when those differ.
+Every named production JavaScript function, method, and function-valued constant must have an immediately preceding JSDoc documentation block using `/** ... */`.  The comment must state the function purpose.  Every declared parameter must have an `@param` tag with the expected JSDoc type and a description of what the parameter represents.  Every function must have a typed `@returns` tag whose description states what the return value represents; functions with no meaningful return value use `@returns {void}`.  Transformation/normalization functions must additionally state the actual source representation and the canonical/output representation when those differ.
 
 Do not rely on ordinary `//` comments as the function-level documentation marker.  Inline comments remain appropriate for local algorithm details and evidence/rationale inside a documented function.  Anonymous inline callbacks do not require a separate JSDoc block unless they are promoted to a named reusable function.
 

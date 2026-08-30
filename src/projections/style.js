@@ -28,6 +28,9 @@ let configuredTheme = cloneTheme(DEFAULT_THEME);
 
 /**
  * Handles clone theme.
+  *
+ * @param {Object} theme - The theme value used by this operation.
+ * @returns {void} No value is returned.
  */
 function cloneTheme(theme) {
   return {
@@ -38,6 +41,10 @@ function cloneTheme(theme) {
 
 /**
  * Handles merge theme.
+  *
+ * @param {Object} base - The base value used by this operation.
+ * @param {Object} overrides - The overrides value used by this operation.
+ * @returns {void} No value is returned.
  */
 function mergeTheme(base, overrides) {
   return {
@@ -48,6 +55,8 @@ function mergeTheme(base, overrides) {
 
 /**
  * Gets default projection theme.
+  *
+ * @returns {Object|null} The value produced by `getDefaultProjectionTheme`, or `null` when no value is available.
  */
 export function getDefaultProjectionTheme() {
   return cloneTheme(configuredTheme);
@@ -55,6 +64,9 @@ export function getDefaultProjectionTheme() {
 
 /**
  * Configures projection theme.
+  *
+ * @param {Object} overrides - The overrides value used by this operation.
+ * @returns {void} No value is returned.
  */
 export function configureProjectionTheme(overrides = {}) {
   configuredTheme = mergeTheme(configuredTheme, overrides);
@@ -63,6 +75,8 @@ export function configureProjectionTheme(overrides = {}) {
 
 /**
  * Resets projection theme.
+  *
+ * @returns {void} No value is returned.
  */
 export function resetProjectionTheme() {
   configuredTheme = cloneTheme(DEFAULT_THEME);
@@ -71,6 +85,9 @@ export function resetProjectionTheme() {
 
 /**
  * Handles resolve projection theme.
+  *
+ * @param {Object|null} overrides - The overrides value used by this operation.
+ * @returns {void} No value is returned.
  */
 export function resolveProjectionTheme(overrides = null) {
   return mergeTheme(configuredTheme, overrides);

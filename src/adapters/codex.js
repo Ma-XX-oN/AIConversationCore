@@ -1,5 +1,9 @@
 /**
  * Returns the stable source identity used to derive Codex canonical IDs.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @returns {Object} The structured value produced by `sourceIdentity`.
  */
 function sourceIdentity(record, sourceIndex) {
   return record?.payload?.call_id ?? `record:${sourceIndex}`;
@@ -7,6 +11,10 @@ function sourceIdentity(record, sourceIndex) {
 
 /**
  * Builds canonical source provenance for a Codex source record.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @returns {Object} The structured value produced by `source`.
  */
 function source(record, sourceIndex) {
   return {
@@ -18,6 +26,9 @@ function source(record, sourceIndex) {
 
 /**
  * Checks whether tool call.
+  *
+ * @param {Object} payload - The payload value used by this operation.
+ * @returns {boolean} Whether the source record represents a supported ChatGPT tool call.
  */
 function isToolCall(payload) {
   return payload?.type === 'function_call' || payload?.type === 'custom_tool_call';
@@ -25,6 +36,9 @@ function isToolCall(payload) {
 
 /**
  * Checks whether tool result.
+  *
+ * @param {Object} payload - The payload value used by this operation.
+ * @returns {boolean} Whether the source record represents a supported ChatGPT tool result.
  */
 function isToolResult(payload) {
   return payload?.type === 'function_call_output' || payload?.type === 'custom_tool_call_output';
@@ -32,6 +46,9 @@ function isToolResult(payload) {
 
 /**
  * Parses JSON object.
+  *
+ * @param {string} value - The input value to process.
+ * @returns {Object|null} The value produced by `parseJsonObject`, or `null` when no value is available.
  */
 function parseJsonObject(value) {
   if (typeof value !== 'string') return null;
@@ -45,6 +62,9 @@ function parseJsonObject(value) {
 
 /**
  * Normalizes questions.
+  *
+ * @param {string} argumentsText - The arguments text value used by this operation.
+ * @returns {Object|null} The value produced by `normalizedQuestions`, or `null` when no value is available.
  */
 function normalizedQuestions(argumentsText) {
   const parsed = parseJsonObject(argumentsText);
@@ -63,6 +83,9 @@ function normalizedQuestions(argumentsText) {
 
 /**
  * Normalizes answers.
+  *
+ * @param {string} outputText - The output text value used by this operation.
+ * @returns {Object|null} The value produced by `normalizedAnswers`, or `null` when no value is available.
  */
 function normalizedAnswers(outputText) {
   const parsed = parseJsonObject(outputText);
@@ -79,6 +102,10 @@ function normalizedAnswers(outputText) {
 
 /**
  * Builds a canonical tool-call event from the provider-specific tool-call source record/block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @returns {void} No value is returned.
  */
 function toolCallEvent(record, sourceIndex) {
   const payload = record.payload;
@@ -125,6 +152,10 @@ function toolCallEvent(record, sourceIndex) {
 
 /**
  * Builds a canonical tool-result event from the provider-specific tool-result source record/block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @returns {void} No value is returned.
  */
 function toolResultEvent(record, sourceIndex) {
   const payload = record.payload;
@@ -165,6 +196,15 @@ function toolResultEvent(record, sourceIndex) {
 
 /**
  * Builds a canonical message/commentary event from provider-specific message content.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {string} role - The role value used by this operation.
+ * @param {string} kind - The canonical kind/category being processed.
+ * @param {Object} channel - The channel value used by this operation.
+ * @param {string} text - The text value to process.
+ * @param {Object} contentType - The content type value used by this operation.
+ * @returns {void} No value is returned.
  */
 function messageEvent(record, sourceIndex, role, kind, channel, text, contentType) {
   const sourceInfo = source(record, sourceIndex);
@@ -195,6 +235,9 @@ function messageEvent(record, sourceIndex, role, kind, channel, text, contentTyp
 
 /**
  * Adapts Codex tool events.
+  *
+ * @param {Array<Object>} records - The ordered provider/source records to process.
+ * @returns {Array<Object>} The ordered values produced by `adaptCodexToolEvents`.
  */
 export function adaptCodexToolEvents(records) {
   if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
@@ -214,6 +257,9 @@ export function adaptCodexToolEvents(records) {
 
 /**
  * Adapts Codex records.
+  *
+ * @param {Array<Object>} records - The ordered provider/source records to process.
+ * @returns {void} No value is returned.
  */
 export function adaptCodexRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');

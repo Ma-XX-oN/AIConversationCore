@@ -1,5 +1,9 @@
 /**
  * Returns the stable source-record identity used to derive Claude canonical IDs.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @returns {Object} The structured value produced by `sourceRecordIdentity`.
  */
 function sourceRecordIdentity(record, sourceIndex) {
   return record?.uuid ?? record?.message?.id ?? `record:${sourceIndex}`;
@@ -7,6 +11,11 @@ function sourceRecordIdentity(record, sourceIndex) {
 
 /**
  * Builds canonical source provenance for a Claude record or content block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {number|null} blockIndex - The zero-based block index.
+ * @returns {Object} The structured value produced by `baseSource`.
  */
 function baseSource(record, sourceIndex, blockIndex = null) {
   const source = {
@@ -20,6 +29,12 @@ function baseSource(record, sourceIndex, blockIndex = null) {
 
 /**
  * Builds a canonical text block from one provider text content block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @returns {void} No value is returned.
  */
 function textBlock(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -33,6 +48,12 @@ function textBlock(record, sourceIndex, block, blockIndex) {
 
 /**
  * Builds a canonical reasoning-summary block from one provider reasoning block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @returns {void} No value is returned.
  */
 function reasoningBlock(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -49,6 +70,9 @@ function reasoningBlock(record, sourceIndex, block, blockIndex) {
 
 /**
  * Normalizes ask user question.
+  *
+ * @param {Object} input - The input value used by this operation.
+ * @returns {Object|null} The value produced by `normalizedAskUserQuestion`, or `null` when no value is available.
  */
 function normalizedAskUserQuestion(input) {
   if (!Array.isArray(input?.questions)) return null;
@@ -69,6 +93,12 @@ function normalizedAskUserQuestion(input) {
 
 /**
  * Builds a canonical tool-call event from the provider-specific tool-call source record/block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @returns {void} No value is returned.
  */
 function toolCallEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -111,6 +141,9 @@ function toolCallEvent(record, sourceIndex, block, blockIndex) {
 
 /**
  * Normalizes exit plan response.
+  *
+ * @param {string} text - The text value to process.
+ * @returns {Object|null} The value produced by `normalizeExitPlanResponse`, or `null` when no value is available.
  */
 function normalizeExitPlanResponse(text) {
   if (typeof text !== 'string') return null;
@@ -125,6 +158,13 @@ function normalizeExitPlanResponse(text) {
 
 /**
  * Builds a canonical tool-result event from the provider-specific tool-result source record/block.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @param {string|null} callName - The call name value used by this operation.
+ * @returns {void} No value is returned.
  */
 function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -164,6 +204,12 @@ function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null
 
 /**
  * Builds a canonical message/commentary event from provider-specific message content.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @returns {void} No value is returned.
  */
 function messageEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -188,6 +234,12 @@ function messageEvent(record, sourceIndex, block, blockIndex) {
 
 /**
  * Builds a canonical reasoning-summary event from provider-specific reasoning content.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @returns {void} No value is returned.
  */
 function reasoningEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -212,6 +264,12 @@ function reasoningEvent(record, sourceIndex, block, blockIndex) {
 
 /**
  * Builds a canonical notice event from provider-specific synthetic notice content.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {Object} block - The block value used by this operation.
+ * @param {number} blockIndex - The zero-based block index.
+ * @returns {void} No value is returned.
  */
 function noticeEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -236,6 +294,9 @@ function noticeEvent(record, sourceIndex, block, blockIndex) {
 
 /**
  * Extracts displayable text from a Claude tool-result string or text-block array.
+  *
+ * @param {string} content - The content value used by this operation.
+ * @returns {void} No value is returned.
  */
 function textFromToolResult(content) {
   if (typeof content === 'string') return content;
@@ -246,6 +307,9 @@ function textFromToolResult(content) {
 
 /**
  * Extracts the internal Claude subagent ID embedded in an Agent tool result.
+  *
+ * @param {string} text - The text value to process.
+ * @returns {void} No value is returned.
  */
 function agentIdFromResult(text) {
   if (typeof text !== 'string') return null;
@@ -255,6 +319,9 @@ function agentIdFromResult(text) {
 
 /**
  * Removes the internal Agent-ID control line from Claude subagent output.
+  *
+ * @param {string} text - The text value to process.
+ * @returns {void} No value is returned.
  */
 function cleanAgentResult(text) {
   if (typeof text !== 'string') return '';
@@ -265,6 +332,15 @@ function cleanAgentResult(text) {
 
 /**
  * Builds a canonical subagent event from Claude Agent completion data.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @param {string} agentId - The agent id.
+ * @param {Object} description - The description value used by this operation.
+ * @param {Object} output - The output value used by this operation.
+ * @param {string} callId - The call id.
+ * @param {number|null} sourceBlockIndex - The zero-based source block index.
+ * @returns {void} No value is returned.
  */
 function subagentEvent(record, sourceIndex, agentId, description, output, callId, sourceBlockIndex = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
@@ -280,6 +356,10 @@ function subagentEvent(record, sourceIndex, agentId, description, output, callId
 
 /**
  * Returns the trimmed contents of one named XML-like tag from Claude queue-operation text.
+  *
+ * @param {string} content - The content value used by this operation.
+ * @param {string} name - The name associated with the value being processed.
+ * @returns {void} No value is returned.
  */
 function xmlTag(content, name) {
   if (typeof content !== 'string') return null;
@@ -289,6 +369,10 @@ function xmlTag(content, name) {
 
 /**
  * Converts a completed Claude queue-operation task notification into a canonical subagent event.
+  *
+ * @param {Object} record - The provider/source record to process.
+ * @param {number} sourceIndex - The zero-based index of the source record.
+ * @returns {void} No value is returned.
  */
 function queueSubagentEvent(record, sourceIndex) {
   if (record?.type !== 'queue-operation' || typeof record?.content !== 'string') return null;
@@ -304,6 +388,9 @@ function queueSubagentEvent(record, sourceIndex) {
 
 /**
  * Adapts Claude tool events.
+  *
+ * @param {Array<Object>} records - The ordered provider/source records to process.
+ * @returns {Array<Object>} The ordered values produced by `adaptClaudeToolEvents`.
  */
 export function adaptClaudeToolEvents(records) {
   if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
@@ -322,6 +409,9 @@ export function adaptClaudeToolEvents(records) {
 
 /**
  * Adapts Claude records.
+  *
+ * @param {Array<Object>} records - The ordered provider/source records to process.
+ * @returns {void} No value is returned.
  */
 export function adaptClaudeRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');

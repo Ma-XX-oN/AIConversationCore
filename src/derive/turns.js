@@ -1,5 +1,8 @@
 /**
  * Checks whether visible turn event.
+  *
+ * @param {Object} event - The event value used by this operation.
+ * @returns {boolean} Whether the isVisibleTurnEvent condition is satisfied.
  */
 function isVisibleTurnEvent(event) {
   return event?.visibility === 'visible' &&
@@ -9,6 +12,9 @@ function isVisibleTurnEvent(event) {
 
 /**
  * Handles source record.
+  *
+ * @param {Object} event - The event value used by this operation.
+ * @returns {Object} The structured value produced by `sourceRecord`.
  */
 function sourceRecord(event) {
   const source = event?.source && typeof event.source === 'object' ? event.source : {};
@@ -30,6 +36,10 @@ function sourceRecord(event) {
 
 /**
  * Handles append event.
+  *
+ * @param {Object} turn - The turn value used by this operation.
+ * @param {Object} event - The event value used by this operation.
+ * @returns {void} No value is returned.
  */
 function appendEvent(turn, event) {
   turn.event_ids.push(event.id);
@@ -39,6 +49,10 @@ function appendEvent(turn, event) {
 
 /**
  * Handles new turn.
+  *
+ * @param {Object} event - The event value used by this operation.
+ * @param {number} turnIndex - The zero-based turn index.
+ * @returns {void} No value is returned.
  */
 function newTurn(event, turnIndex) {
   return {
@@ -56,6 +70,9 @@ function newTurn(event, turnIndex) {
 
 /**
  * Derives turns.
+  *
+ * @param {Array<Object>} events - The ordered canonical events to process.
+ * @returns {void} No value is returned.
  */
 export function deriveTurns(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
