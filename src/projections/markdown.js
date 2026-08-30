@@ -35,6 +35,63 @@ function providerLabel(provider) {
   return 'ChatGPT';
 }
 
+
+/**
+ * Renders a transcript heading with optional consumer-supplied projection metadata.
+ *
+ * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
+ * @param {string} label - The canonical Markdown heading label before consumer decoration.
+ * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
+ */
+function projectedHeading(event, label) {
+  const projection = event?.projection ?? {};
+  const colors = projection.colors ?? {};
+  const color = label === '## User' ? colors.user : colors.ai;
+  const reset = colors.reset ?? '';
+  const heading = color ? `${color}${label}${reset}` : label;
+  return `${heading}${projection.heading_suffix ?? ''}`;
+}
+
+/**
+ * Renders a numbered thought heading with optional consumer projection metadata.
+ *
+ * @param {Object<string, *>} event - The canonical reasoning/tool event being headed.
+ * @param {number} number - The one-based thought number within the current Assistant section.
+ * @returns {string} The consumer-decorated thought heading.
+ */
+function projectedThoughtHeading(event, number) {
+  const projection = event?.projection ?? {};
+  const colors = projection.colors ?? {};
+  const label = `### Thought ${number}`;
+  const heading = colors.thought ? `${colors.thought}${label}${colors.reset ?? ''}` : label;
+  return `${heading}${projection.heading_suffix ?? ''}`;
+}
+
+/**
+ * Returns the optional source-record debug comment supplied by the consumer.
+ *
+ * @param {Object<string, *>} event - The canonical event whose projection metadata is being read.
+ * @param {boolean} quoted - Whether the comment must remain inside an existing Markdown blockquote.
+ * @returns {string} The record comment in plain or blockquoted form, or an empty string when disabled.
+ */
+function projectedComment(event, quoted = false) {
+  const comment = event?.projection?.record_comment ?? '';
+  if (!comment) return '';
+  return quoted ? quoteMarkdown(comment) : comment;
+}
+
+/**
+ * Prefixes a rendered section with the source-record debug comment when enabled.
+ *
+ * @param {Object<string, *>} event - The canonical event whose record comment identifies the section.
+ * @param {string} section - The already-rendered Markdown section.
+ * @returns {string} The section with its optional source-record comment prefix.
+ */
+function projectedSection(event, section) {
+  const comment = projectedComment(event);
+  return comment ? `${comment}\n\n${section}` : section;
+}
+
 /**
  * Finds one canonical event resource by resource ID.
  *
@@ -390,7 +447,7 @@ function renderChatGPTToolEvent(event, events) {
  * @returns {string} The complete User transcript section for the canonical event.
  */
 function renderUser(event) {
-  return `## User\n\n${quoteMarkdown(renderMessageBlocks(event))}`;
+  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
 }
 
 /**
@@ -431,7 +488,9 @@ function renderChatGPTCommentarySegment(segment, events) {
     }
   }
   flushThoughts();
-  return body.length ? `## ChatGPT Commentary\n\n${body.join('\n\n')}` : null;
+  if (!body.length) return null;
+  const headingEvent = segment.find(event => event.kind === 'commentary') ?? segment[0];
+  return projectedSection(headingEvent, `${projectedHeading(headingEvent, '## ChatGPT Commentary')}\n\n${body.join('\n\n')}`);
 }
 
 /**
@@ -459,7 +518,10 @@ function renderChatGPTAssistantSegment(segment, events) {
   }
   if (thoughts.length) body.push(details('Thoughts', thoughts.join('\n\n')));
   for (const event of messages) { const text = renderMessageBlocks(event); if (text) body.push(quoteMarkdown(text)); }
-  if (body.length) sections.push(`## ChatGPT\n\n${body.join('\n\n')}`);
+  if (body.length) {
+    const headingEvent = messages[0] ?? segment[0];
+    sections.push(projectedSection(headingEvent, `${projectedHeading(headingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`));
+  }
   return sections;
 }
 
@@ -528,7 +590,8 @@ function renderSubagentEvent(event) {
   const body = [];
   if (block.description) body.push(quoteMarkdown(`**${block.description}**`));
   if (block.output) body.push(quoteMarkdown(block.output));
-  return `## ${providerLabel(event.provider)} Sub-agent ${block.agent_id}\n\n${body.join('\n\n')}`;
+  const label = `## ${providerLabel(event.provider)} Sub-agent ${block.agent_id}`;
+  return projectedSection(event, `${projectedHeading(event, label)}\n\n${body.join('\n\n')}`);
 }
 
 /**
@@ -567,16 +630,17 @@ function renderClaudePlanBlock(block) {
 /**
  * Renders Claude plan approval.
  *
+ * @param {Object<string, *>} event - The canonical tool-result event supplying source projection metadata.
  * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
  * @returns {string} Markdown User response section for a Claude exit-plan approval result.
  */
-function renderClaudePlanApproval(block) {
+function renderClaudePlanApproval(event, block) {
   const response = block?.exit_plan_response;
   if (!response) return '';
   const parts = [];
   if (response.intro) parts.push(quoteMarkdown(response.intro));
   if (response.approved_plan) parts.push(quoteMarkdown(details('Approved Plan', response.approved_plan)));
-  return `## User\n\n${parts.join('\n\n')}`;
+  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${parts.join('\n\n')}`);
 }
 
 /**
@@ -593,6 +657,7 @@ function renderClaudeAssistantSegment(segment) {
   const consumedResults = new Set();
   let body = [];
   let thoughts = [];
+  const headingEvent = segment.find(event => event.kind === 'message' && event.role === 'assistant') ?? segment[0];
 
   /**
    * Implements `flushThoughts`.
@@ -601,7 +666,11 @@ function renderClaudeAssistantSegment(segment) {
    */
   const flushThoughts = () => {
     if (!thoughts.length) return;
-    body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
+    const separate = Boolean(headingEvent?.projection?.separate_thoughts);
+    const renderedThoughts = separate
+      ? thoughts.map((item, index) => `${quoteMarkdown(projectedThoughtHeading(item.event, index + 1))}\n>\n${quoteMarkdown(item.text)}`).join('\n>\n> ***\n>\n')
+      : thoughts.map(item => item.text).join('\n\n***\n\n');
+    body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), renderedThoughts)));
     thoughts = [];
   };
   /**
@@ -612,7 +681,7 @@ function renderClaudeAssistantSegment(segment) {
   const flushClaude = () => {
     flushThoughts();
     if (!body.length) return;
-    sections.push(`## Claude\n\n${body.join('\n\n')}`);
+    sections.push(projectedSection(headingEvent, `${projectedHeading(headingEvent, '## Claude')}\n\n${body.join('\n\n')}`));
     body = [];
   };
 
@@ -620,7 +689,7 @@ function renderClaudeAssistantSegment(segment) {
     if (event.kind === 'subagent') continue;
     if (event.kind === 'reasoning_summary') {
       const text = reasoningBody(event);
-      if (text) thoughts.push(text);
+      if (text) thoughts.push({ event, text });
       continue;
     }
     if (event.kind === 'tool_call') {
@@ -628,7 +697,7 @@ function renderClaudeAssistantSegment(segment) {
       const result = toolCallId(event) ? results.get(toolCallId(event)) : null;
       if (block?.name === 'Bash') {
         const rendered = renderClaudeToolThought(event, result);
-        if (rendered) thoughts.push(rendered);
+        if (rendered) thoughts.push({ event, text: rendered });
         if (result) consumedResults.add(result.id);
       } else if (block?.name === 'AskUserQuestion') {
         flushThoughts();
@@ -647,10 +716,10 @@ function renderClaudeAssistantSegment(segment) {
       if (block?.name === 'AskUserQuestion') {
         flushClaude();
         const text = block.ask_user_question_response?.text ?? toolOutput(event);
-        if (text) sections.push(`## User\n\n${quoteMarkdown(text)}`);
+        if (text) sections.push(projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(text)}`));
       } else if (block?.name === 'ExitPlanMode') {
         flushClaude();
-        const rendered = renderClaudePlanApproval(block);
+        const rendered = renderClaudePlanApproval(event, block);
         if (rendered) sections.push(rendered);
       }
       continue;
@@ -658,7 +727,15 @@ function renderClaudeAssistantSegment(segment) {
     if (event.kind === 'message' && event.role === 'assistant') {
       flushThoughts();
       const text = renderMessageBlocks(event);
-      if (text) body.push(quoteMarkdown(text));
+      if (text) {
+        if (event?.projection?.separate_thoughts) {
+          const inner = `${quoteMarkdown(projectedHeading(event, '## Claude'))}\n>\n${quoteMarkdown(text)}`;
+          const comment = projectedComment(event);
+          body.push(comment ? `${comment}\n\n${inner}` : inner);
+        } else {
+          body.push(quoteMarkdown(text));
+        }
+      }
     }
   }
   flushClaude();
@@ -714,8 +791,8 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
     const selected = response?.request_user_input_response?.answers?.[question.id] ?? [];
     if (question.question && selected.length) answerLines.push(`**${question.question}** → ${selected.map(value => `"${value}"`).join(', ')}`);
   }
-  const sections = [`## Codex\n\n${questionParts.join('\n\n')}`];
-  if (answerLines.length) sections.push(`## User\n\n${quoteMarkdown(answerLines.join('\n'))}`);
+  const sections = [projectedSection(callEvent, `${projectedHeading(callEvent, '## Codex')}\n\n${questionParts.join('\n\n')}`)];
+  if (answerLines.length) sections.push(projectedSection(resultEvent, `${projectedHeading(resultEvent, '## User')}\n\n${quoteMarkdown(answerLines.join('\n'))}`));
   return sections;
 }
 
@@ -756,7 +833,8 @@ function renderCodexMainResponse(segment) {
   const body = [];
   if (thoughts.length) body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
   for (const text of finals) body.push(quoteMarkdown(text));
-  return `## Codex\n\n${body.join('\n\n')}`;
+  const headingEvent = segment[0];
+  return projectedSection(headingEvent, `${projectedHeading(headingEvent, '## Codex')}\n\n${body.join('\n\n')}`);
 }
 
 /**
@@ -809,7 +887,9 @@ function renderAssistantSegment(segment, events, state) {
  */
 function renderNotice(event) {
   const text = renderMessageBlocks(event);
-  return text ? `> *(system: ${text})*` : '';
+  if (!text) return '';
+  const rendered = `> *(system: ${text})*`;
+  return projectedSection(event, rendered);
 }
 
 /**
