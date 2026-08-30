@@ -1,8 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Production source roots covered by the documentation contract.
 const roots = ['src', 'scripts'];
+// JavaScript modules whose named production functions and globals are audited.
 const files = [];
+// Generated filler phrases that do not explain a parameter or return value.
+const placeholderDescriptions = [
+  'value used by this operation',
+  'value required by this function',
+  'text representation produced by',
+  'structured value produced by',
+  'the value produced by'
+];
+
 for (const root of roots) {
   if (!fs.existsSync(root)) continue;
   const walk = directory => {
@@ -125,6 +136,11 @@ function topLevelVariablesIn(text, functionStarts) {
   return results;
 }
 
+function hasPlaceholderDescription(description) {
+  const normalized = description.toLowerCase();
+  return placeholderDescriptions.some(phrase => normalized.includes(phrase));
+}
+
 const failures = [];
 let functionCount = 0;
 let variableCount = 0;
@@ -145,11 +161,22 @@ for (const file of files.sort()) {
       failures.push(`${file}: ${fn.name}: expected ${fn.params.length} typed @param tags, found ${topLevelTags.length}`);
     }
     for (const tag of paramTags) {
-      if (!tag[1].trim() || !tag[3].trim()) failures.push(`${file}: ${fn.name}: incomplete @param ${tag[2]}`);
+      const type = tag[1].trim();
+      const description = tag[3].trim();
+      if (!type || !description) failures.push(`${file}: ${fn.name}: incomplete @param ${tag[2]}`);
+      if (type === 'Object') failures.push(`${file}: ${fn.name}: @param ${tag[2]} uses bare Object instead of the expected object shape`);
+      if (hasPlaceholderDescription(description)) failures.push(`${file}: ${fn.name}: @param ${tag[2]} uses a placeholder description`);
     }
     const returns = doc.match(/@returns?\s+\{([^}]+)\}\s+(.+)/);
-    if (!returns) failures.push(`${file}: ${fn.name}: missing typed/described @returns`);
-    else if (!returns[1].trim() || !returns[2].trim()) failures.push(`${file}: ${fn.name}: incomplete @returns`);
+    if (!returns) {
+      failures.push(`${file}: ${fn.name}: missing typed/described @returns`);
+    } else {
+      const type = returns[1].trim();
+      const description = returns[2].trim();
+      if (!type || !description) failures.push(`${file}: ${fn.name}: incomplete @returns`);
+      if (type === 'Object') failures.push(`${file}: ${fn.name}: @returns uses bare Object instead of the expected object shape`);
+      if (hasPlaceholderDescription(description)) failures.push(`${file}: ${fn.name}: @returns uses a placeholder description`);
+    }
   }
 
   for (const variable of topLevelVariablesIn(text, functionStarts)) {
