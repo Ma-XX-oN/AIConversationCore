@@ -49,6 +49,19 @@ jobs:
           PY
       - name: Finish semantic descriptions/types
         run: python scripts/finish-jsdoc-descriptions-once.py
+      - name: Correct bundle-builder option type
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/build-browser-bundle.mjs')
+          text = path.read_text()
+          old = '@param {Object} options - The export/import rewriting options for this module.'
+          new = '@param {Object<string, string|null>} options - Export/import rewriting options containing the optional import line plus exported and local function names.'
+          if old in text:
+            path.write_text(text.replace(old, new, 1))
+          elif new not in text:
+            raise SystemExit('moduleBody options JSDoc marker not found')
+          PY
       - name: Rebuild browser bundle
         run: node scripts/build-browser-bundle.mjs
       - name: Reject placeholder documentation
