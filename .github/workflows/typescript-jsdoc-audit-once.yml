@@ -17,3 +17,5 @@ jobs:
         run: npm install --no-save --no-package-lock typescript @types/node
       - name: Type-check production source JSDoc
         run: npx tsc --allowJs --checkJs --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck src/**/*.js
+      - name: Marker
+        run: echo semantic-docs-rerun
