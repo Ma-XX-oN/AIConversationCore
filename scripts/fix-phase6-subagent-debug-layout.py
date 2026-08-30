@@ -5,7 +5,7 @@ from pathlib import Path
 path = Path('src/projections/markdown.js')
 text = path.read_text(encoding='utf-8')
 
-old = '''  const headingEvent = relatedProjectionEvent(event, 'invocation_source');
+old = r'''  const headingEvent = relatedProjectionEvent(event, 'invocation_source');
   const body = [];
   const completionComment = headingEvent === event ? '' : projectedComment(event);
   if (completionComment) body.push(completionComment);
@@ -16,7 +16,7 @@ old = '''  const headingEvent = relatedProjectionEvent(event, 'invocation_source
     headingEvent,
     `${projectedHeading(headingEvent, label)}\n${body.length ? `\n${body.join('\n\n')}` : ''}`
   );'''
-new = '''  const headingEvent = relatedProjectionEvent(event, 'invocation_source');
+new = r'''  const headingEvent = relatedProjectionEvent(event, 'invocation_source');
   const body = [];
   const completionComment = headingEvent === event ? '' : projectedComment(event);
   if (block.description) body.push(quoteMarkdown(`**${block.description}**`));
