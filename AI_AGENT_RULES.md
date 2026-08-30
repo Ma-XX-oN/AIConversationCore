@@ -32,6 +32,12 @@ If complete verification cannot be performed, state exactly what was not verifie
 
 Distinguish facts established by tests or source inspection from assumptions, hypotheses, heuristics, and incomplete analysis.  Do not present an assumption as a proven conclusion.
 
+## Code documentation standard
+
+Every named production JavaScript function, method, and function-valued constant must have an immediately preceding JSDoc documentation block using `/** ... */`.  The comment must state the function purpose; transformation/normalization functions must additionally state the actual source representation and the canonical/output representation when those differ.
+
+Do not rely on ordinary `//` comments as the function-level documentation marker.  Inline comments remain appropriate for local algorithm details and evidence/rationale inside a documented function.  Anonymous inline callbacks do not require a separate JSDoc block unless they are promoted to a named reusable function.
+
 ## Documentation
 
 Architectural decisions and reversals belong in `DECISIONS.md`.  Stable design and invariants belong in `DESIGN.md`.  Current migration sequencing/state belongs in `ROADMAP.md`.  Test contracts belong in `TESTING.md`.  Durable normalization/rendering-shape rules belong in `NORMALIZATION_RULES.md`.

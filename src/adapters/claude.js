@@ -1,7 +1,13 @@
+/**
+ * Implements `sourceRecordIdentity`.
+ */
 function sourceRecordIdentity(record, sourceIndex) {
   return record?.uuid ?? record?.message?.id ?? `record:${sourceIndex}`;
 }
 
+/**
+ * Implements `baseSource`.
+ */
 function baseSource(record, sourceIndex, blockIndex = null) {
   const source = {
     provider: 'claude',
@@ -12,6 +18,9 @@ function baseSource(record, sourceIndex, blockIndex = null) {
   return source;
 }
 
+/**
+ * Implements `textBlock`.
+ */
 function textBlock(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   return {
@@ -22,6 +31,9 @@ function textBlock(record, sourceIndex, block, blockIndex) {
   };
 }
 
+/**
+ * Implements `reasoningBlock`.
+ */
 function reasoningBlock(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   return {
@@ -35,6 +47,9 @@ function reasoningBlock(record, sourceIndex, block, blockIndex) {
   };
 }
 
+/**
+ * Normalizes ask user question.
+ */
 function normalizedAskUserQuestion(input) {
   if (!Array.isArray(input?.questions)) return null;
   return {
@@ -52,6 +67,9 @@ function normalizedAskUserQuestion(input) {
   };
 }
 
+/**
+ * Implements `toolCallEvent`.
+ */
 function toolCallEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
@@ -91,6 +109,9 @@ function toolCallEvent(record, sourceIndex, block, blockIndex) {
   };
 }
 
+/**
+ * Normalizes exit plan response.
+ */
 function normalizeExitPlanResponse(text) {
   if (typeof text !== 'string') return null;
   const marker = '\n\n## Approved Plan (edited by user):\n';
@@ -102,6 +123,9 @@ function normalizeExitPlanResponse(text) {
   };
 }
 
+/**
+ * Implements `toolResultEvent`.
+ */
 function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
@@ -138,6 +162,9 @@ function toolResultEvent(record, sourceIndex, block, blockIndex, callName = null
   };
 }
 
+/**
+ * Implements `messageEvent`.
+ */
 function messageEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
@@ -159,6 +186,9 @@ function messageEvent(record, sourceIndex, block, blockIndex) {
   };
 }
 
+/**
+ * Implements `reasoningEvent`.
+ */
 function reasoningEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
@@ -180,6 +210,9 @@ function reasoningEvent(record, sourceIndex, block, blockIndex) {
   };
 }
 
+/**
+ * Implements `noticeEvent`.
+ */
 function noticeEvent(record, sourceIndex, block, blockIndex) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, blockIndex);
@@ -201,6 +234,9 @@ function noticeEvent(record, sourceIndex, block, blockIndex) {
   };
 }
 
+/**
+ * Implements `textFromToolResult`.
+ */
 function textFromToolResult(content) {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';
@@ -208,12 +244,18 @@ function textFromToolResult(content) {
     .map(block => block.text).join('\n');
 }
 
+/**
+ * Implements `agentIdFromResult`.
+ */
 function agentIdFromResult(text) {
   if (typeof text !== 'string') return null;
   const match = text.match(/^agentId:\s*([^\s]+)\s*\(internal ID - do not mention to user\.\)$/m);
   return match?.[1] ?? null;
 }
 
+/**
+ * Implements `cleanAgentResult`.
+ */
 function cleanAgentResult(text) {
   if (typeof text !== 'string') return '';
   return text.split('\n')
@@ -221,6 +263,9 @@ function cleanAgentResult(text) {
     .join('\n').trim();
 }
 
+/**
+ * Implements `subagentEvent`.
+ */
 function subagentEvent(record, sourceIndex, agentId, description, output, callId, sourceBlockIndex = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, sourceBlockIndex);
@@ -233,12 +278,18 @@ function subagentEvent(record, sourceIndex, agentId, description, output, callId
   };
 }
 
+/**
+ * Implements `xmlTag`.
+ */
 function xmlTag(content, name) {
   if (typeof content !== 'string') return null;
   const match = content.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`));
   return match ? match[1].trim() : null;
 }
 
+/**
+ * Implements `queueSubagentEvent`.
+ */
 function queueSubagentEvent(record, sourceIndex) {
   if (record?.type !== 'queue-operation' || typeof record?.content !== 'string') return null;
   if (!record.content.includes('<task-notification>') || xmlTag(record.content, 'status') !== 'completed') return null;
@@ -251,6 +302,9 @@ function queueSubagentEvent(record, sourceIndex) {
     descriptionMatch?.[1] ?? summary ?? null, result, xmlTag(record.content, 'tool-use-id'));
 }
 
+/**
+ * Adapts Claude tool events.
+ */
 export function adaptClaudeToolEvents(records) {
   if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
   const events = [];
@@ -266,6 +320,9 @@ export function adaptClaudeToolEvents(records) {
   return events;
 }
 
+/**
+ * Adapts Claude records.
+ */
 export function adaptClaudeRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
   const events = [];

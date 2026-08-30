@@ -1,9 +1,15 @@
+/**
+ * Checks whether visible turn event.
+ */
 function isVisibleTurnEvent(event) {
   return event?.visibility === 'visible' &&
     (event?.role === 'user' || event?.role === 'assistant') &&
     (event?.kind === 'message' || event?.kind === 'commentary' || event?.kind === 'reasoning_summary');
 }
 
+/**
+ * Implements `sourceRecord`.
+ */
 function sourceRecord(event) {
   const source = event?.source && typeof event.source === 'object' ? event.source : {};
   const sourceIndex = Number.isInteger(event?.source_index)
@@ -22,12 +28,18 @@ function sourceRecord(event) {
   };
 }
 
+/**
+ * Implements `appendEvent`.
+ */
 function appendEvent(turn, event) {
   turn.event_ids.push(event.id);
   turn.source.record_ids.push(event.source_record_id);
   turn.source.records.push(sourceRecord(event));
 }
 
+/**
+ * Implements `newTurn`.
+ */
 function newTurn(event, turnIndex) {
   return {
     id: `turn:${event.id}`,
@@ -42,6 +54,9 @@ function newTurn(event, turnIndex) {
   };
 }
 
+/**
+ * Derives turns.
+ */
 export function deriveTurns(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
 

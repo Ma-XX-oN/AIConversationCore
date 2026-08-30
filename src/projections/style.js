@@ -26,6 +26,9 @@ const DEFAULT_THEME = Object.freeze({
 
 let configuredTheme = cloneTheme(DEFAULT_THEME);
 
+/**
+ * Implements `cloneTheme`.
+ */
 function cloneTheme(theme) {
   return {
     ansi: { ...(theme?.ansi ?? {}) },
@@ -33,6 +36,9 @@ function cloneTheme(theme) {
   };
 }
 
+/**
+ * Implements `mergeTheme`.
+ */
 function mergeTheme(base, overrides) {
   return {
     ansi: { ...base.ansi, ...(overrides?.ansi ?? {}) },
@@ -40,20 +46,32 @@ function mergeTheme(base, overrides) {
   };
 }
 
+/**
+ * Gets default projection theme.
+ */
 export function getDefaultProjectionTheme() {
   return cloneTheme(configuredTheme);
 }
 
+/**
+ * Configures projection theme.
+ */
 export function configureProjectionTheme(overrides = {}) {
   configuredTheme = mergeTheme(configuredTheme, overrides);
   return getDefaultProjectionTheme();
 }
 
+/**
+ * Resets projection theme.
+ */
 export function resetProjectionTheme() {
   configuredTheme = cloneTheme(DEFAULT_THEME);
   return getDefaultProjectionTheme();
 }
 
+/**
+ * Implements `resolveProjectionTheme`.
+ */
 export function resolveProjectionTheme(overrides = null) {
   return mergeTheme(configuredTheme, overrides);
 }

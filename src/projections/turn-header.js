@@ -9,6 +9,9 @@ const PROVIDER_LABELS = Object.freeze({
   codex: 'Codex'
 });
 
+/**
+ * Implements `htmlEscape`.
+ */
 function htmlEscape(text) {
   return String(text)
     .replaceAll('&', '&amp;')
@@ -18,12 +21,18 @@ function htmlEscape(text) {
     .replaceAll("'", '&#39;');
 }
 
+/**
+ * Implements `headingLabel`.
+ */
 function headingLabel(turn) {
   if (turn?.role === 'user') return 'User';
   const provider = turn?.source?.provider ?? turn?.provider ?? null;
   return PROVIDER_LABELS[provider] ?? 'Assistant';
 }
 
+/**
+ * Builds turn header components.
+ */
 export function buildTurnHeaderComponents(turn, options = {}) {
   if (!turn?.id) throw new Error('Turn header projection requires a canonical turn id.');
 
@@ -62,10 +71,16 @@ export function buildTurnHeaderComponents(turn, options = {}) {
   return components;
 }
 
+/**
+ * Renders plain.
+ */
 function renderPlain(components) {
   return components.map(component => component.text).join(' ');
 }
 
+/**
+ * Renders ANSI.
+ */
 function renderAnsi(components, theme) {
   const reset = theme.ansi.reset ?? '\u001b[0m';
   return components.map(component => {
@@ -74,6 +89,9 @@ function renderAnsi(components, theme) {
   }).join(' ');
 }
 
+/**
+ * Renders HTML.
+ */
 function renderHtml(components, theme) {
   return `<h2>${components.map(component => {
     const className = theme.html[component.styleRole];
@@ -84,6 +102,9 @@ function renderHtml(components, theme) {
   }).join(' ')}</h2>`;
 }
 
+/**
+ * Renders turn header.
+ */
 export function renderTurnHeader(turn, options = {}) {
   const components = buildTurnHeaderComponents(turn, options);
   const format = options.format ?? 'plain';

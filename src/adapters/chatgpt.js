@@ -1,5 +1,8 @@
 import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.js';
 
+/**
+ * Implements `imagePointerSource`.
+ */
 function imagePointerSource(part) {
   if (!part || typeof part !== 'object') return null;
   const metadata = part?.metadata && typeof part.metadata === 'object' ? part.metadata : {};
@@ -9,6 +12,9 @@ function imagePointerSource(part) {
   return null;
 }
 
+/**
+ * Implements `sedimentDownloadUrl`.
+ */
 function sedimentDownloadUrl(source) {
   if (typeof source !== 'string' || !source.startsWith('sediment://')) return null;
   const assetId = source.slice('sediment://'.length).split(/[?#]/, 1)[0];
@@ -16,6 +22,9 @@ function sedimentDownloadUrl(source) {
   return `https://chatgpt.com/backend-api/files/download/${encodeURIComponent(assetId)}`;
 }
 
+/**
+ * Implements `imageResource`.
+ */
 function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
   const sourcePointer = imagePointerSource(part);
   const resource = {
@@ -51,6 +60,9 @@ function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
   return resource;
 }
 
+/**
+ * Remaps text range.
+ */
 function remapTextRange(range, textOrdinalToPartIndex) {
   if (!range || !Number.isInteger(range.part_index)) return range;
   const partIndex = textOrdinalToPartIndex.get(range.part_index);
@@ -58,6 +70,9 @@ function remapTextRange(range, textOrdinalToPartIndex) {
   return { ...range, part_index: partIndex };
 }
 
+/**
+ * Remaps citation.
+ */
 function remapCitation(citation, textOrdinalToPartIndex) {
   if (!citation || typeof citation !== 'object') return citation;
   return {
@@ -66,6 +81,9 @@ function remapCitation(citation, textOrdinalToPartIndex) {
   };
 }
 
+/**
+ * Remaps display replacement.
+ */
 function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
   if (!replacement || typeof replacement !== 'object') return replacement;
   return {
@@ -74,6 +92,9 @@ function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
   };
 }
 
+/**
+ * Remaps existing resource.
+ */
 function remapExistingResource(resource, textOrdinalToPartIndex) {
   if (!resource || typeof resource !== 'object') return resource;
   const remapped = { ...resource };
@@ -89,6 +110,9 @@ function remapExistingResource(resource, textOrdinalToPartIndex) {
   return remapped;
 }
 
+/**
+ * Normalizes multimodal images.
+ */
 function normalizeMultimodalImages(event, record) {
   const parts = record?.content?.parts;
   if (!Array.isArray(parts)) return event;
@@ -146,6 +170,9 @@ function normalizeMultimodalImages(event, record) {
   };
 }
 
+/**
+ * Implements `sourceFor`.
+ */
 function sourceFor(event, extra = {}) {
   return {
     provider: 'chatgpt',
@@ -155,6 +182,9 @@ function sourceFor(event, extra = {}) {
   };
 }
 
+/**
+ * Locates text range.
+ */
 function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
   if (typeof matchedText !== 'string' || !matchedText) return null;
   for (let partIndex = startPartIndex; partIndex < blocks.length; partIndex += 1) {
@@ -173,6 +203,9 @@ function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 
   return null;
 }
 
+/**
+ * Normalizes display replacements.
+ */
 function normalizeDisplayReplacements(event, record) {
   const references = record?.metadata?.content_references;
   if (!Array.isArray(references)) return event;
@@ -219,6 +252,9 @@ function normalizeDisplayReplacements(event, record) {
   };
 }
 
+/**
+ * Normalizes tether assets.
+ */
 function normalizedTetherAssets(assets) {
   if (assets == null) return null;
   const values = Array.isArray(assets) ? assets : [assets];
@@ -231,6 +267,9 @@ function normalizedTetherAssets(assets) {
   });
 }
 
+/**
+ * Normalizes tether browsing display.
+ */
 function normalizeTetherBrowsingDisplay(event, record) {
   if (record?.author?.role !== 'tool' ||
       record?.content?.content_type !== 'tether_browsing_display') return event;
@@ -257,6 +296,9 @@ function normalizeTetherBrowsingDisplay(event, record) {
   };
 }
 
+/**
+ * Normalizes reasoning recap.
+ */
 function normalizeReasoningRecap(event, record) {
   if (record?.author?.role !== 'assistant' ||
       record?.content?.content_type !== 'reasoning_recap') return event;
@@ -277,6 +319,9 @@ function normalizeReasoningRecap(event, record) {
   };
 }
 
+/**
+ * Normalizes model editable context.
+ */
 function normalizeModelEditableContext(event, record) {
   if (record?.author?.role !== 'assistant' ||
       record?.content?.content_type !== 'model_editable_context') return event;
@@ -301,12 +346,18 @@ function normalizeModelEditableContext(event, record) {
   };
 }
 
+/**
+ * Normalizes non parts content.
+ */
 function normalizeNonPartsContent(event, record) {
   let normalized = normalizeTetherBrowsingDisplay(event, record);
   normalized = normalizeReasoningRecap(normalized, record);
   return normalizeModelEditableContext(normalized, record);
 }
 
+/**
+ * Normalizes source footnotes.
+ */
 function normalizeSourceFootnotes(event, record) {
   const references = record?.metadata?.content_references;
   if (!Array.isArray(references)) return event;
@@ -341,6 +392,9 @@ function normalizeSourceFootnotes(event, record) {
   };
 }
 
+/**
+ * Normalizes parent relationship.
+ */
 function normalizeParentRelationship(event, record, knownRecordIds) {
   const parentRecordId = typeof record?.metadata?.parent_id === 'string' &&
       record.metadata.parent_id.trim()
@@ -359,6 +413,9 @@ function normalizeParentRelationship(event, record, knownRecordIds) {
   };
 }
 
+/**
+ * Normalizes source provenance.
+ */
 function normalizeSourceProvenance(event, record) {
   const sourceIndex = Number.isInteger(event.source_index) ? event.source_index : null;
   const recordId = typeof record?.id === 'string' ? record.id : event.source_record_id;
@@ -383,6 +440,9 @@ function normalizeSourceProvenance(event, record) {
   };
 }
 
+/**
+ * Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.
+ */
 export function adaptChatGPTRecords(records) {
   const events = adaptBaseChatGPTRecords(records);
   const knownRecordIds = new Set(records

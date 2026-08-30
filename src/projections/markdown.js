@@ -1,3 +1,6 @@
+/**
+ * Implements `htmlEscape`.
+ */
 function htmlEscape(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -7,20 +10,32 @@ function htmlEscape(value) {
     .replaceAll("'", '&#39;');
 }
 
+/**
+ * Quotes Markdown.
+ */
 function quoteMarkdown(text) {
   return String(text).split('\n').map(line => line ? `> ${line}` : '>').join('\n');
 }
 
+/**
+ * Implements `providerLabel`.
+ */
 function providerLabel(provider) {
   if (provider === 'claude') return 'Claude';
   if (provider === 'codex') return 'Codex';
   return 'ChatGPT';
 }
 
+/**
+ * Implements `resourceById`.
+ */
 function resourceById(event, resourceId) {
   return event.resources?.find(resource => resource.id === resourceId) ?? null;
 }
 
+/**
+ * Renders image block.
+ */
 function renderImageBlock(event, block) {
   const resource = resourceById(event, block.resource_id);
   if (!resource || resource.status === 'missing') return '[image missing]';
@@ -32,6 +47,9 @@ function renderImageBlock(event, block) {
   return '[image not available]';
 }
 
+/**
+ * Implements `faviconDomain`.
+ */
 function faviconDomain(url) {
   if (typeof url !== 'string' || !url) return '';
   try {
@@ -42,6 +60,9 @@ function faviconDomain(url) {
   }
 }
 
+/**
+ * Implements `sourceTooltip`.
+ */
 function sourceTooltip(source) {
   const title = source?.title ?? '';
   const snippet = source?.snippet ?? '';
@@ -49,10 +70,16 @@ function sourceTooltip(source) {
   return title || snippet;
 }
 
+/**
+ * Implements `sourceLabel`.
+ */
 function sourceLabel(source, fallback = '') {
   return source?.attribution || source?.title || fallback;
 }
 
+/**
+ * Renders source anchor.
+ */
 function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
   const url = source?.url ?? '';
   const tooltip = sourceTooltip(source);
@@ -63,6 +90,9 @@ function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
   return `<a href="${htmlEscape(url)}" title="${escapedTooltip}" style="display:inline-block;white-space:nowrap;"><img alt="" src="${htmlEscape(favicon)}" width="15" height="15" title="${escapedTooltip}" style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">${htmlEscape(label)}</a>`;
 }
 
+/**
+ * Renders web citation.
+ */
 function renderWebCitation(citation) {
   const rendered = [];
   for (const source of citation.web?.sources ?? []) {
@@ -72,12 +102,18 @@ function renderWebCitation(citation) {
   return `**(cite: ${rendered.join(', ')})**`;
 }
 
+/**
+ * Renders memory citation.
+ */
 function renderMemoryCitation(citation) {
   const rendered = (citation.memory?.sources ?? [])
     .map(source => renderSourceAnchor(source, source?.title ?? 'memory', true));
   return `**(memory: ${rendered.join(', ')})**`;
 }
 
+/**
+ * Implements `retrievedLineLabel`.
+ */
 function retrievedLineLabel(citation) {
   const matched = citation?.matched_text;
   if (typeof matched !== 'string') return '';
@@ -85,6 +121,9 @@ function retrievedLineLabel(citation) {
   return match ? ` ${match[1].replace(/-(?=\d)/, '-L')}` : '';
 }
 
+/**
+ * Renders citation.
+ */
 function renderCitation(citation) {
   if (citation.citation_kind === 'file') return `\`${citation.file?.name ?? 'file'}\``;
   if (citation.citation_kind === 'retrieved_file') {
@@ -97,6 +136,9 @@ function renderCitation(citation) {
   return citation.matched_text ?? '';
 }
 
+/**
+ * Implements `textReplacements`.
+ */
 function textReplacements(event, partIndex) {
   const replacements = [];
   for (const replacement of event.display_replacements ?? []) {
@@ -122,6 +164,9 @@ function textReplacements(event, partIndex) {
   return replacements.sort((a, b) => b.start - a.start || b.end - a.end);
 }
 
+/**
+ * Renders text block.
+ */
 function renderTextBlock(event, block, partIndex) {
   let text = block.text ?? '';
   for (const replacement of textReplacements(event, partIndex)) {
@@ -130,6 +175,9 @@ function renderTextBlock(event, block, partIndex) {
   return text;
 }
 
+/**
+ * Renders message blocks.
+ */
 function renderMessageBlocks(event) {
   return (event.blocks ?? []).map((block, blockIndex) => {
     if (block.type === 'text') {
@@ -141,6 +189,9 @@ function renderMessageBlocks(event) {
   }).filter(text => text !== '').join('\n\n');
 }
 
+/**
+ * Implements `reasoningBody`.
+ */
 function reasoningBody(event) {
   return (event.blocks ?? []).map(block => {
     if (block.type !== 'reasoning_summary') return '';
@@ -151,14 +202,23 @@ function reasoningBody(event) {
   }).filter(Boolean).join('\n\n');
 }
 
+/**
+ * Implements `details`.
+ */
 function details(summary, body) {
   return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
 }
 
+/**
+ * Implements `thoughtSummary`.
+ */
 function thoughtSummary(count) {
   return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
 }
 
+/**
+ * Implements `fencedCode`.
+ */
 function fencedCode(content, language = '') {
   const text = String(content ?? '');
   const runs = text.match(/`+/g) ?? [];
@@ -167,6 +227,11 @@ function fencedCode(content, language = '') {
   return `${fence}${language}\n${text}\n${fence}`;
 }
 
+/**
+ * Selects the Markdown fence language from canonical tool-call semantics.
+ *
+ * A normalized non-`unknown` canonical language is emitted unchanged; the historical `container.exec` fallback emits `bash` only when no stronger normalized language is present.
+ */
 function inferredToolLanguage(block) {
   const language = typeof block.language === 'string' ? block.language.trim() : '';
   if (language && language !== 'unknown') return language;
@@ -174,6 +239,9 @@ function inferredToolLanguage(block) {
   return '';
 }
 
+/**
+ * Implements `relatedRetrievedFile`.
+ */
 function relatedRetrievedFile(events, sourceRecordId) {
   for (const event of events) {
     for (const citation of event.citations ?? []) {
@@ -183,6 +251,9 @@ function relatedRetrievedFile(events, sourceRecordId) {
   return null;
 }
 
+/**
+ * Renders multimodal tool output.
+ */
 function renderMultimodalToolOutput(event, block, events) {
   const values = Array.isArray(block.output) ? block.output : [];
   const visible = values.filter(value => typeof value === 'string' && !value.startsWith('Make sure to include ')).map(value => value.trim());
@@ -195,6 +266,11 @@ function renderMultimodalToolOutput(event, block, events) {
   return visible.join('\n\n');
 }
 
+/**
+ * Renders a canonical ChatGPT tool block into the Markdown details/fence representation.
+ *
+ * The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.
+ */
 function renderChatGPTToolBlock(event, block, events) {
   if (block.type === 'tool_call') {
     const language = inferredToolLanguage(block);
@@ -209,17 +285,29 @@ function renderChatGPTToolBlock(event, block, events) {
   return '';
 }
 
+/**
+ * Renders all canonical tool blocks belonging to one ChatGPT tool event.
+ */
 function renderChatGPTToolEvent(event, events) {
   return (event.blocks ?? []).map(block => renderChatGPTToolBlock(event, block, events)).filter(Boolean).join('\n\n');
 }
 
+/**
+ * Renders user.
+ */
 function renderUser(event) {
   return `## User\n\n${quoteMarkdown(renderMessageBlocks(event))}`;
 }
 
+/**
+ * Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.
+ */
 function renderChatGPTCommentarySegment(segment, events) {
   const body = [];
   let thoughts = [];
+  /**
+   * Implements `flushThoughts`.
+   */
   const flushThoughts = () => {
     if (!thoughts.length) return;
     body.push(details('Thoughts', thoughts.join('\n\n')));
@@ -246,6 +334,9 @@ function renderChatGPTCommentarySegment(segment, events) {
   return body.length ? `## ChatGPT Commentary\n\n${body.join('\n\n')}` : null;
 }
 
+/**
+ * Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.
+ */
 function renderChatGPTAssistantSegment(segment, events) {
   const reasoning = segment.filter(event => event.kind === 'reasoning_summary');
   const commentary = segment.filter(event => event.kind === 'commentary');
@@ -268,16 +359,25 @@ function renderChatGPTAssistantSegment(segment, events) {
   return sections;
 }
 
+/**
+ * Implements `toolCallId`.
+ */
 function toolCallId(event) {
   return event?.relationships?.tool_call_id ?? event?.blocks?.[0]?.call_id ?? null;
 }
 
+/**
+ * Implements `toolResultByCallId`.
+ */
 function toolResultByCallId(segment) {
   const results = new Map();
   for (const event of segment) if (event.kind === 'tool_result' && toolCallId(event)) results.set(toolCallId(event), event);
   return results;
 }
 
+/**
+ * Implements `toolOutput`.
+ */
 function toolOutput(event) {
   const block = event?.blocks?.find(item => item.type === 'tool_result');
   if (!block) return '';
@@ -286,6 +386,9 @@ function toolOutput(event) {
   return String(block.output ?? '');
 }
 
+/**
+ * Renders Claude tool thought.
+ */
 function renderClaudeToolThought(callEvent, resultEvent) {
   const block = callEvent?.blocks?.find(item => item.type === 'tool_call');
   if (!block || block.name !== 'Bash') return '';
@@ -295,6 +398,9 @@ function renderClaudeToolThought(callEvent, resultEvent) {
   return details(summary, [fencedCode(command, 'bash'), `**OUT**\n\n${fencedCode(output)}`].join('\n\n'));
 }
 
+/**
+ * Renders subagent event.
+ */
 function renderSubagentEvent(event) {
   const block = event?.blocks?.find(item => item.type === 'subagent');
   if (!block?.agent_id) return '';
@@ -304,6 +410,9 @@ function renderSubagentEvent(event) {
   return `## ${providerLabel(event.provider)} Sub-agent ${block.agent_id}\n\n${body.join('\n\n')}`;
 }
 
+/**
+ * Renders Claude question block.
+ */
 function renderClaudeQuestionBlock(block) {
   const questions = block?.ask_user_question?.questions ?? [];
   const chunks = [];
@@ -319,12 +428,18 @@ function renderClaudeQuestionBlock(block) {
   return chunks.join('\n\n');
 }
 
+/**
+ * Renders Claude plan block.
+ */
 function renderClaudePlanBlock(block) {
   const plan = block?.exit_plan?.plan;
   if (typeof plan !== 'string' || !plan.trim()) return '';
   return quoteMarkdown(`### Plan\n\n${quoteMarkdown(plan.trim())}`);
 }
 
+/**
+ * Renders Claude plan approval.
+ */
 function renderClaudePlanApproval(block) {
   const response = block?.exit_plan_response;
   if (!response) return '';
@@ -334,6 +449,9 @@ function renderClaudePlanApproval(block) {
   return `## User\n\n${parts.join('\n\n')}`;
 }
 
+/**
+ * Renders Claude assistant segment.
+ */
 function renderClaudeAssistantSegment(segment) {
   const sections = [];
   const subagents = segment.filter(event => event.kind === 'subagent');
@@ -342,11 +460,17 @@ function renderClaudeAssistantSegment(segment) {
   let body = [];
   let thoughts = [];
 
+  /**
+   * Implements `flushThoughts`.
+   */
   const flushThoughts = () => {
     if (!thoughts.length) return;
     body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
     thoughts = [];
   };
+  /**
+   * Implements `flushClaude`.
+   */
   const flushClaude = () => {
     flushThoughts();
     if (!body.length) return;
@@ -407,14 +531,23 @@ function renderClaudeAssistantSegment(segment) {
   return sections;
 }
 
+/**
+ * Implements `codexRequestBlock`.
+ */
 function codexRequestBlock(event) {
   return event?.blocks?.find(block => block.type === 'tool_call' && block.name === 'request_user_input');
 }
 
+/**
+ * Implements `codexResponseBlock`.
+ */
 function codexResponseBlock(event) {
   return event?.blocks?.find(block => block.type === 'tool_result' && block.request_user_input_response);
 }
 
+/**
+ * Renders Codex request sections.
+ */
 function renderCodexRequestSections(callEvent, resultEvent, state) {
   const call = codexRequestBlock(callEvent);
   if (!call) return [];
@@ -437,6 +570,9 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
   return sections;
 }
 
+/**
+ * Renders Codex file changes.
+ */
 function renderCodexFileChanges(segment) {
   const patches = [];
   for (const event of segment) {
@@ -450,6 +586,9 @@ function renderCodexFileChanges(segment) {
   return details(`${n} file change${n === 1 ? '' : 's'}`, patches.map(patch => quoteMarkdown(`\`\`\`diff\n${patch}\n\`\`\``)).join('\n\n'));
 }
 
+/**
+ * Renders Codex main response.
+ */
 function renderCodexMainResponse(segment) {
   const thoughts = [];
   const finals = [];
@@ -465,6 +604,9 @@ function renderCodexMainResponse(segment) {
   return `## Codex\n\n${body.join('\n\n')}`;
 }
 
+/**
+ * Renders Codex assistant segment.
+ */
 function renderCodexAssistantSegment(segment, state) {
   const sections = [];
   const results = toolResultByCallId(segment);
@@ -484,6 +626,9 @@ function renderCodexAssistantSegment(segment, state) {
   return sections;
 }
 
+/**
+ * Renders assistant segment.
+ */
 function renderAssistantSegment(segment, events, state) {
   const provider = segment.find(event => event?.provider)?.provider ?? 'chatgpt';
   if (provider === 'claude') return renderClaudeAssistantSegment(segment);
@@ -491,16 +636,25 @@ function renderAssistantSegment(segment, events, state) {
   return renderChatGPTAssistantSegment(segment, events);
 }
 
+/**
+ * Renders notice.
+ */
 function renderNotice(event) {
   const text = renderMessageBlocks(event);
   return text ? `> *(system: ${text})*` : '';
 }
 
+/**
+ * Renders canonical Markdown.
+ */
 export function renderCanonicalMarkdown(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
   const sections = [];
   const state = { codexQuestionNumber: 0 };
   let assistantSegment = [];
+  /**
+   * Implements `flushAssistant`.
+   */
   const flushAssistant = () => {
     if (!assistantSegment.length) return;
     sections.push(...renderAssistantSegment(assistantSegment, events, state));

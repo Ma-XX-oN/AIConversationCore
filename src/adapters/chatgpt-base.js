@@ -1,9 +1,15 @@
+/**
+ * Implements `textParts`.
+ */
 function textParts(record) {
   const parts = record?.content?.parts;
   if (!Array.isArray(parts)) return [];
   return parts.filter(part => typeof part === 'string');
 }
 
+/**
+ * Implements `reasoningBlocks`.
+ */
 function reasoningBlocks(record, sourceRecordId, sourceIndex) {
   const thoughts = record?.content?.thoughts;
   if (!Array.isArray(thoughts)) return [];
@@ -24,6 +30,9 @@ function reasoningBlocks(record, sourceRecordId, sourceIndex) {
   }));
 }
 
+/**
+ * Parses a JSON string when valid, otherwise returns no parsed value.
+ */
 function parsedJson(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
@@ -33,12 +42,24 @@ function parsedJson(value) {
   }
 }
 
+/**
+ * Implements `launcherToken`.
+ */
 function launcherToken(value) {
   if (typeof value !== 'string') return null;
   const match = value.trimStart().match(/^([A-Za-z0-9_./+-]+)/);
   return match?.[1]?.split('/').at(-1)?.toLowerCase() ?? null;
 }
 
+/**
+ * Normalizes ChatGPT tool-call presentation without discarding the persisted source form.
+ *
+ * Source -> canonical transformations:
+ * - `api_tool.*` + provider `language: python3` + JSON object text -> unchanged JSON input, `input_format: json`, `language: json`.
+ * - `container.exec` + provider `language: unknown` + `bash`/`sh` launcher -> original command text with `bash`/`sh` language.
+ * - `container.exec` + provider `language: unknown` + flattened Python `-c` command -> preserve the full persisted command in `source_input`, render only the Python program in `input`, and set `language: python`.
+ * The source language is always retained separately as `source_language`.
+ */
 function normalizedToolCallPresentation(record) {
   const name = record?.recipient ?? null;
   const sourceInput = record?.content?.text ?? null;
@@ -73,6 +94,11 @@ function normalizedToolCallPresentation(record) {
   return { input, inputFormat, language, sourceInput, sourceLanguage };
 }
 
+/**
+ * Projects a persisted ChatGPT assistant tool-call record into one canonical `tool_call` block.
+ *
+ * The block carries both the normalized input/language used for output and the original persisted input/language for provenance.
+ */
 function toolCallBlocks(record, sourceRecordId, sourceIndex) {
   const presentation = normalizedToolCallPresentation(record);
   return [{
@@ -93,6 +119,15 @@ function toolCallBlocks(record, sourceRecordId, sourceIndex) {
   }];
 }
 
+/**
+ * Projects a persisted ChatGPT tool-role record into one canonical `tool_result` block.
+ *
+ * Source -> canonical transformations:
+ * - `execution_output`/`code` -> text output from the source text/content field.
+ * - `text` -> string parts joined in source order with blank lines.
+ * - `multimodal_text` -> source parts preserved as an ordered array.
+ * The original ChatGPT content type is retained as `output_format`.
+ */
 function toolResultBlocks(record, sourceRecordId, sourceIndex) {
   const contentType = record?.content?.content_type ?? null;
   let output = null;
@@ -123,10 +158,16 @@ function toolResultBlocks(record, sourceRecordId, sourceIndex) {
   }];
 }
 
+/**
+ * Implements `eventVisibility`.
+ */
 function eventVisibility(record) {
   return record?.metadata?.is_visually_hidden_from_conversation ? 'hidden' : 'visible';
 }
 
+/**
+ * Checks whether tool call.
+ */
 function isToolCall(record) {
   return record?.author?.role === 'assistant' &&
     record?.content?.content_type === 'code' &&
@@ -134,12 +175,18 @@ function isToolCall(record) {
     record.recipient !== 'all';
 }
 
+/**
+ * Checks whether tool result.
+ */
 function isToolResult(record) {
   if (record?.author?.role !== 'tool') return false;
   return ['execution_output', 'multimodal_text', 'text', 'code']
     .includes(record?.content?.content_type);
 }
 
+/**
+ * Implements `eventKind`.
+ */
 function eventKind(record) {
   if (isToolCall(record)) return 'tool_call';
   if (isToolResult(record)) return 'tool_result';
@@ -150,6 +197,9 @@ function eventKind(record) {
   return 'message';
 }
 
+/**
+ * Implements `eventBlocks`.
+ */
 function eventBlocks(record, sourceRecordId, sourceIndex, kind) {
   if (kind === 'reasoning_summary') return reasoningBlocks(record, sourceRecordId, sourceIndex);
   if (kind === 'tool_call') return toolCallBlocks(record, sourceRecordId, sourceIndex);
@@ -168,6 +218,9 @@ function eventBlocks(record, sourceRecordId, sourceIndex, kind) {
   }));
 }
 
+/**
+ * Normalizes a URL for stable citation/search-result lookup.
+ */
 function normalizedUrl(value) {
   if (typeof value !== 'string') return null;
   try {
@@ -180,6 +233,9 @@ function normalizedUrl(value) {
   }
 }
 
+/**
+ * Implements `searchResultLookup`.
+ */
 function searchResultLookup(record) {
   const lookup = new Map();
   const groups = record?.metadata?.search_result_groups;
@@ -195,6 +251,9 @@ function searchResultLookup(record) {
   return lookup;
 }
 
+/**
+ * Implements `retrievedFileLookup`.
+ */
 function retrievedFileLookup(records) {
   const lookup = new Map();
   records.forEach((record, recordIndex) => {
@@ -212,12 +271,18 @@ function retrievedFileLookup(records) {
   return lookup;
 }
 
+/**
+ * Implements `fileMarkerKey`.
+ */
 function fileMarkerKey(matchedText) {
   if (typeof matchedText !== 'string') return null;
   const match = matchedText.match(/turn(\d+)file(\d+)/);
   return match ? `turn${match[1]}file${match[2]}` : null;
 }
 
+/**
+ * Locates reference.
+ */
 function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
   if (typeof matchedText !== 'string' || !matchedText) return null;
   for (let partIndex = startPartIndex; partIndex < blocks.length; partIndex += 1) {
@@ -236,6 +301,9 @@ function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 
   return null;
 }
 
+/**
+ * Implements `citationBase`.
+ */
 function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, range, kind) {
   return {
     id: `${sourceRecordId}:citation:${referenceIndex}`,
@@ -252,6 +320,9 @@ function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, ra
   };
 }
 
+/**
+ * Implements `webSource`.
+ */
 function webSource(item, lookup) {
   const source = {
     url: item?.url ?? null,
@@ -276,6 +347,9 @@ function webSource(item, lookup) {
   return source;
 }
 
+/**
+ * Normalizes citation.
+ */
 function normalizeCitation(reference, context) {
   const {
     sourceRecordId,
@@ -349,6 +423,9 @@ function normalizeCitation(reference, context) {
   return null;
 }
 
+/**
+ * Implements `eventCitations`.
+ */
 function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles) {
   const references = record?.metadata?.content_references;
   if (!Array.isArray(references)) return [];
@@ -378,6 +455,9 @@ function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFi
   return citations;
 }
 
+/**
+ * Implements `conversationId`.
+ */
 function conversationId(records) {
   const metadata = records.find(record =>
     record?.record_type === 'chatgpt_conversation_metadata' &&
@@ -386,16 +466,25 @@ function conversationId(records) {
   return metadata?.conversation_id ?? null;
 }
 
+/**
+ * Checks whether conversation metadata.
+ */
 function isConversationMetadata(record) {
   return record?.record_type === 'chatgpt_conversation_metadata';
 }
 
+/**
+ * Implements `basename`.
+ */
 function basename(path) {
   if (typeof path !== 'string') return null;
   const pieces = path.split('/').filter(Boolean);
   return pieces.length ? pieces[pieces.length - 1] : null;
 }
 
+/**
+ * Implements `sandboxPath`.
+ */
 function sandboxPath(pointer) {
   if (typeof pointer !== 'string') return null;
   const value = pointer.trim();
@@ -403,6 +492,9 @@ function sandboxPath(pointer) {
   return value.slice('sandbox:'.length);
 }
 
+/**
+ * Implements `sandboxDownloadUrl`.
+ */
 function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
   if (!path || !sourceRecordId || !chatgptConversationId) return null;
   const conversation = encodeURIComponent(chatgptConversationId);
@@ -415,6 +507,9 @@ function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
   );
 }
 
+/**
+ * Implements `sandboxLinks`.
+ */
 function sandboxLinks(text) {
   if (typeof text !== 'string' || !text) return [];
   const links = [];
@@ -466,6 +561,9 @@ function sandboxLinks(text) {
   return links;
 }
 
+/**
+ * Implements `citationResources`.
+ */
 function citationResources(citations, sourceRecordId, sourceIndex) {
   const resources = [];
 
@@ -513,6 +611,9 @@ function citationResources(citations, sourceRecordId, sourceIndex) {
   return resources;
 }
 
+/**
+ * Implements `sandboxResources`.
+ */
 function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId) {
   const resources = [];
   let resourceIndex = 0;
@@ -555,6 +656,9 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
   return resources;
 }
 
+/**
+ * Implements `eventResources`.
+ */
 function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
                         chatgptConversationId) {
   return [
@@ -563,6 +667,9 @@ function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
   ];
 }
 
+/**
+ * Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.
+ */
 export function adaptChatGPTRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('ChatGPT records must be an array.');
 

@@ -1,7 +1,13 @@
+/**
+ * Implements `sourceIdentity`.
+ */
 function sourceIdentity(record, sourceIndex) {
   return record?.payload?.call_id ?? `record:${sourceIndex}`;
 }
 
+/**
+ * Implements `source`.
+ */
 function source(record, sourceIndex) {
   return {
     provider: 'codex',
@@ -10,14 +16,23 @@ function source(record, sourceIndex) {
   };
 }
 
+/**
+ * Checks whether tool call.
+ */
 function isToolCall(payload) {
   return payload?.type === 'function_call' || payload?.type === 'custom_tool_call';
 }
 
+/**
+ * Checks whether tool result.
+ */
 function isToolResult(payload) {
   return payload?.type === 'function_call_output' || payload?.type === 'custom_tool_call_output';
 }
 
+/**
+ * Parses JSON object.
+ */
 function parseJsonObject(value) {
   if (typeof value !== 'string') return null;
   try {
@@ -28,6 +43,9 @@ function parseJsonObject(value) {
   }
 }
 
+/**
+ * Normalizes questions.
+ */
 function normalizedQuestions(argumentsText) {
   const parsed = parseJsonObject(argumentsText);
   if (!Array.isArray(parsed?.questions)) return null;
@@ -43,6 +61,9 @@ function normalizedQuestions(argumentsText) {
   }));
 }
 
+/**
+ * Normalizes answers.
+ */
 function normalizedAnswers(outputText) {
   const parsed = parseJsonObject(outputText);
   const answers = parsed?.answers;
@@ -56,6 +77,9 @@ function normalizedAnswers(outputText) {
   return normalized;
 }
 
+/**
+ * Implements `toolCallEvent`.
+ */
 function toolCallEvent(record, sourceIndex) {
   const payload = record.payload;
   const sourceInfo = source(record, sourceIndex);
@@ -99,6 +123,9 @@ function toolCallEvent(record, sourceIndex) {
   };
 }
 
+/**
+ * Implements `toolResultEvent`.
+ */
 function toolResultEvent(record, sourceIndex) {
   const payload = record.payload;
   const sourceInfo = source(record, sourceIndex);
@@ -136,6 +163,9 @@ function toolResultEvent(record, sourceIndex) {
   };
 }
 
+/**
+ * Implements `messageEvent`.
+ */
 function messageEvent(record, sourceIndex, role, kind, channel, text, contentType) {
   const sourceInfo = source(record, sourceIndex);
   return {
@@ -163,6 +193,9 @@ function messageEvent(record, sourceIndex, role, kind, channel, text, contentTyp
   };
 }
 
+/**
+ * Adapts Codex tool events.
+ */
 export function adaptCodexToolEvents(records) {
   if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
 
@@ -179,6 +212,9 @@ export function adaptCodexToolEvents(records) {
   return events;
 }
 
+/**
+ * Adapts Codex records.
+ */
 export function adaptCodexRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
 

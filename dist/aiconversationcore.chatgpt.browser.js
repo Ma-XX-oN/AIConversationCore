@@ -4,12 +4,18 @@
   'use strict';
 
   const adaptBaseChatGPTRecords = (() => {
+    /**
+     * Implements `textParts`.
+     */
     function textParts(record) {
       const parts = record?.content?.parts;
       if (!Array.isArray(parts)) return [];
       return parts.filter(part => typeof part === 'string');
     }
     
+    /**
+     * Implements `reasoningBlocks`.
+     */
     function reasoningBlocks(record, sourceRecordId, sourceIndex) {
       const thoughts = record?.content?.thoughts;
       if (!Array.isArray(thoughts)) return [];
@@ -30,6 +36,9 @@
       }));
     }
     
+    /**
+     * Parses a JSON string when valid, otherwise returns no parsed value.
+     */
     function parsedJson(value) {
       if (typeof value !== 'string' || !value.trim()) return null;
       try {
@@ -39,12 +48,24 @@
       }
     }
     
+    /**
+     * Implements `launcherToken`.
+     */
     function launcherToken(value) {
       if (typeof value !== 'string') return null;
       const match = value.trimStart().match(/^([A-Za-z0-9_./+-]+)/);
       return match?.[1]?.split('/').at(-1)?.toLowerCase() ?? null;
     }
     
+    /**
+     * Normalizes ChatGPT tool-call presentation without discarding the persisted source form.
+     *
+     * Source -> canonical transformations:
+     * - `api_tool.*` + provider `language: python3` + JSON object text -> unchanged JSON input, `input_format: json`, `language: json`.
+     * - `container.exec` + provider `language: unknown` + `bash`/`sh` launcher -> original command text with `bash`/`sh` language.
+     * - `container.exec` + provider `language: unknown` + flattened Python `-c` command -> preserve the full persisted command in `source_input`, render only the Python program in `input`, and set `language: python`.
+     * The source language is always retained separately as `source_language`.
+     */
     function normalizedToolCallPresentation(record) {
       const name = record?.recipient ?? null;
       const sourceInput = record?.content?.text ?? null;
@@ -79,6 +100,11 @@
       return { input, inputFormat, language, sourceInput, sourceLanguage };
     }
     
+    /**
+     * Projects a persisted ChatGPT assistant tool-call record into one canonical `tool_call` block.
+     *
+     * The block carries both the normalized input/language used for output and the original persisted input/language for provenance.
+     */
     function toolCallBlocks(record, sourceRecordId, sourceIndex) {
       const presentation = normalizedToolCallPresentation(record);
       return [{
@@ -99,6 +125,15 @@
       }];
     }
     
+    /**
+     * Projects a persisted ChatGPT tool-role record into one canonical `tool_result` block.
+     *
+     * Source -> canonical transformations:
+     * - `execution_output`/`code` -> text output from the source text/content field.
+     * - `text` -> string parts joined in source order with blank lines.
+     * - `multimodal_text` -> source parts preserved as an ordered array.
+     * The original ChatGPT content type is retained as `output_format`.
+     */
     function toolResultBlocks(record, sourceRecordId, sourceIndex) {
       const contentType = record?.content?.content_type ?? null;
       let output = null;
@@ -129,10 +164,16 @@
       }];
     }
     
+    /**
+     * Implements `eventVisibility`.
+     */
     function eventVisibility(record) {
       return record?.metadata?.is_visually_hidden_from_conversation ? 'hidden' : 'visible';
     }
     
+    /**
+     * Checks whether tool call.
+     */
     function isToolCall(record) {
       return record?.author?.role === 'assistant' &&
         record?.content?.content_type === 'code' &&
@@ -140,12 +181,18 @@
         record.recipient !== 'all';
     }
     
+    /**
+     * Checks whether tool result.
+     */
     function isToolResult(record) {
       if (record?.author?.role !== 'tool') return false;
       return ['execution_output', 'multimodal_text', 'text', 'code']
         .includes(record?.content?.content_type);
     }
     
+    /**
+     * Implements `eventKind`.
+     */
     function eventKind(record) {
       if (isToolCall(record)) return 'tool_call';
       if (isToolResult(record)) return 'tool_result';
@@ -156,6 +203,9 @@
       return 'message';
     }
     
+    /**
+     * Implements `eventBlocks`.
+     */
     function eventBlocks(record, sourceRecordId, sourceIndex, kind) {
       if (kind === 'reasoning_summary') return reasoningBlocks(record, sourceRecordId, sourceIndex);
       if (kind === 'tool_call') return toolCallBlocks(record, sourceRecordId, sourceIndex);
@@ -174,6 +224,9 @@
       }));
     }
     
+    /**
+     * Normalizes a URL for stable citation/search-result lookup.
+     */
     function normalizedUrl(value) {
       if (typeof value !== 'string') return null;
       try {
@@ -186,6 +239,9 @@
       }
     }
     
+    /**
+     * Implements `searchResultLookup`.
+     */
     function searchResultLookup(record) {
       const lookup = new Map();
       const groups = record?.metadata?.search_result_groups;
@@ -201,6 +257,9 @@
       return lookup;
     }
     
+    /**
+     * Implements `retrievedFileLookup`.
+     */
     function retrievedFileLookup(records) {
       const lookup = new Map();
       records.forEach((record, recordIndex) => {
@@ -218,12 +277,18 @@
       return lookup;
     }
     
+    /**
+     * Implements `fileMarkerKey`.
+     */
     function fileMarkerKey(matchedText) {
       if (typeof matchedText !== 'string') return null;
       const match = matchedText.match(/turn(\d+)file(\d+)/);
       return match ? `turn${match[1]}file${match[2]}` : null;
     }
     
+    /**
+     * Locates reference.
+     */
     function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
       if (typeof matchedText !== 'string' || !matchedText) return null;
       for (let partIndex = startPartIndex; partIndex < blocks.length; partIndex += 1) {
@@ -242,6 +307,9 @@
       return null;
     }
     
+    /**
+     * Implements `citationBase`.
+     */
     function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, range, kind) {
       return {
         id: `${sourceRecordId}:citation:${referenceIndex}`,
@@ -258,6 +326,9 @@
       };
     }
     
+    /**
+     * Implements `webSource`.
+     */
     function webSource(item, lookup) {
       const source = {
         url: item?.url ?? null,
@@ -282,6 +353,9 @@
       return source;
     }
     
+    /**
+     * Normalizes citation.
+     */
     function normalizeCitation(reference, context) {
       const {
         sourceRecordId,
@@ -355,6 +429,9 @@
       return null;
     }
     
+    /**
+     * Implements `eventCitations`.
+     */
     function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles) {
       const references = record?.metadata?.content_references;
       if (!Array.isArray(references)) return [];
@@ -384,6 +461,9 @@
       return citations;
     }
     
+    /**
+     * Implements `conversationId`.
+     */
     function conversationId(records) {
       const metadata = records.find(record =>
         record?.record_type === 'chatgpt_conversation_metadata' &&
@@ -392,16 +472,25 @@
       return metadata?.conversation_id ?? null;
     }
     
+    /**
+     * Checks whether conversation metadata.
+     */
     function isConversationMetadata(record) {
       return record?.record_type === 'chatgpt_conversation_metadata';
     }
     
+    /**
+     * Implements `basename`.
+     */
     function basename(path) {
       if (typeof path !== 'string') return null;
       const pieces = path.split('/').filter(Boolean);
       return pieces.length ? pieces[pieces.length - 1] : null;
     }
     
+    /**
+     * Implements `sandboxPath`.
+     */
     function sandboxPath(pointer) {
       if (typeof pointer !== 'string') return null;
       const value = pointer.trim();
@@ -409,6 +498,9 @@
       return value.slice('sandbox:'.length);
     }
     
+    /**
+     * Implements `sandboxDownloadUrl`.
+     */
     function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
       if (!path || !sourceRecordId || !chatgptConversationId) return null;
       const conversation = encodeURIComponent(chatgptConversationId);
@@ -421,6 +513,9 @@
       );
     }
     
+    /**
+     * Implements `sandboxLinks`.
+     */
     function sandboxLinks(text) {
       if (typeof text !== 'string' || !text) return [];
       const links = [];
@@ -472,6 +567,9 @@
       return links;
     }
     
+    /**
+     * Implements `citationResources`.
+     */
     function citationResources(citations, sourceRecordId, sourceIndex) {
       const resources = [];
     
@@ -519,6 +617,9 @@
       return resources;
     }
     
+    /**
+     * Implements `sandboxResources`.
+     */
     function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId) {
       const resources = [];
       let resourceIndex = 0;
@@ -561,6 +662,9 @@
       return resources;
     }
     
+    /**
+     * Implements `eventResources`.
+     */
     function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
                             chatgptConversationId) {
       return [
@@ -569,6 +673,9 @@
       ];
     }
     
+    /**
+     * Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.
+     */
     function adaptChatGPTRecords(records) {
       if (!Array.isArray(records)) throw new TypeError('ChatGPT records must be an array.');
     
@@ -628,6 +735,9 @@
   })();
 
   const adaptChatGPTRecords = ((adaptBaseChatGPTRecords) => {
+    /**
+     * Implements `imagePointerSource`.
+     */
     function imagePointerSource(part) {
       if (!part || typeof part !== 'object') return null;
       const metadata = part?.metadata && typeof part.metadata === 'object' ? part.metadata : {};
@@ -637,6 +747,9 @@
       return null;
     }
     
+    /**
+     * Implements `sedimentDownloadUrl`.
+     */
     function sedimentDownloadUrl(source) {
       if (typeof source !== 'string' || !source.startsWith('sediment://')) return null;
       const assetId = source.slice('sediment://'.length).split(/[?#]/, 1)[0];
@@ -644,6 +757,9 @@
       return `https://chatgpt.com/backend-api/files/download/${encodeURIComponent(assetId)}`;
     }
     
+    /**
+     * Implements `imageResource`.
+     */
     function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
       const sourcePointer = imagePointerSource(part);
       const resource = {
@@ -679,6 +795,9 @@
       return resource;
     }
     
+    /**
+     * Remaps text range.
+     */
     function remapTextRange(range, textOrdinalToPartIndex) {
       if (!range || !Number.isInteger(range.part_index)) return range;
       const partIndex = textOrdinalToPartIndex.get(range.part_index);
@@ -686,6 +805,9 @@
       return { ...range, part_index: partIndex };
     }
     
+    /**
+     * Remaps citation.
+     */
     function remapCitation(citation, textOrdinalToPartIndex) {
       if (!citation || typeof citation !== 'object') return citation;
       return {
@@ -694,6 +816,9 @@
       };
     }
     
+    /**
+     * Remaps display replacement.
+     */
     function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
       if (!replacement || typeof replacement !== 'object') return replacement;
       return {
@@ -702,6 +827,9 @@
       };
     }
     
+    /**
+     * Remaps existing resource.
+     */
     function remapExistingResource(resource, textOrdinalToPartIndex) {
       if (!resource || typeof resource !== 'object') return resource;
       const remapped = { ...resource };
@@ -717,6 +845,9 @@
       return remapped;
     }
     
+    /**
+     * Normalizes multimodal images.
+     */
     function normalizeMultimodalImages(event, record) {
       const parts = record?.content?.parts;
       if (!Array.isArray(parts)) return event;
@@ -774,6 +905,9 @@
       };
     }
     
+    /**
+     * Implements `sourceFor`.
+     */
     function sourceFor(event, extra = {}) {
       return {
         provider: 'chatgpt',
@@ -783,6 +917,9 @@
       };
     }
     
+    /**
+     * Locates text range.
+     */
     function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
       if (typeof matchedText !== 'string' || !matchedText) return null;
       for (let partIndex = startPartIndex; partIndex < blocks.length; partIndex += 1) {
@@ -801,6 +938,9 @@
       return null;
     }
     
+    /**
+     * Normalizes display replacements.
+     */
     function normalizeDisplayReplacements(event, record) {
       const references = record?.metadata?.content_references;
       if (!Array.isArray(references)) return event;
@@ -847,6 +987,9 @@
       };
     }
     
+    /**
+     * Normalizes tether assets.
+     */
     function normalizedTetherAssets(assets) {
       if (assets == null) return null;
       const values = Array.isArray(assets) ? assets : [assets];
@@ -859,6 +1002,9 @@
       });
     }
     
+    /**
+     * Normalizes tether browsing display.
+     */
     function normalizeTetherBrowsingDisplay(event, record) {
       if (record?.author?.role !== 'tool' ||
           record?.content?.content_type !== 'tether_browsing_display') return event;
@@ -885,6 +1031,9 @@
       };
     }
     
+    /**
+     * Normalizes reasoning recap.
+     */
     function normalizeReasoningRecap(event, record) {
       if (record?.author?.role !== 'assistant' ||
           record?.content?.content_type !== 'reasoning_recap') return event;
@@ -905,6 +1054,9 @@
       };
     }
     
+    /**
+     * Normalizes model editable context.
+     */
     function normalizeModelEditableContext(event, record) {
       if (record?.author?.role !== 'assistant' ||
           record?.content?.content_type !== 'model_editable_context') return event;
@@ -929,12 +1081,18 @@
       };
     }
     
+    /**
+     * Normalizes non parts content.
+     */
     function normalizeNonPartsContent(event, record) {
       let normalized = normalizeTetherBrowsingDisplay(event, record);
       normalized = normalizeReasoningRecap(normalized, record);
       return normalizeModelEditableContext(normalized, record);
     }
     
+    /**
+     * Normalizes source footnotes.
+     */
     function normalizeSourceFootnotes(event, record) {
       const references = record?.metadata?.content_references;
       if (!Array.isArray(references)) return event;
@@ -969,6 +1127,9 @@
       };
     }
     
+    /**
+     * Normalizes parent relationship.
+     */
     function normalizeParentRelationship(event, record, knownRecordIds) {
       const parentRecordId = typeof record?.metadata?.parent_id === 'string' &&
           record.metadata.parent_id.trim()
@@ -987,6 +1148,9 @@
       };
     }
     
+    /**
+     * Normalizes source provenance.
+     */
     function normalizeSourceProvenance(event, record) {
       const sourceIndex = Number.isInteger(event.source_index) ? event.source_index : null;
       const recordId = typeof record?.id === 'string' ? record.id : event.source_record_id;
@@ -1011,6 +1175,9 @@
       };
     }
     
+    /**
+     * Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.
+     */
     function adaptChatGPTRecords(records) {
       const events = adaptBaseChatGPTRecords(records);
       const knownRecordIds = new Set(records
@@ -1032,6 +1199,9 @@
   })(adaptBaseChatGPTRecords);
 
   const renderCanonicalMarkdown = (() => {
+    /**
+     * Implements `htmlEscape`.
+     */
     function htmlEscape(value) {
       return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -1041,20 +1211,32 @@
         .replaceAll("'", '&#39;');
     }
     
+    /**
+     * Quotes Markdown.
+     */
     function quoteMarkdown(text) {
       return String(text).split('\n').map(line => line ? `> ${line}` : '>').join('\n');
     }
     
+    /**
+     * Implements `providerLabel`.
+     */
     function providerLabel(provider) {
       if (provider === 'claude') return 'Claude';
       if (provider === 'codex') return 'Codex';
       return 'ChatGPT';
     }
     
+    /**
+     * Implements `resourceById`.
+     */
     function resourceById(event, resourceId) {
       return event.resources?.find(resource => resource.id === resourceId) ?? null;
     }
     
+    /**
+     * Renders image block.
+     */
     function renderImageBlock(event, block) {
       const resource = resourceById(event, block.resource_id);
       if (!resource || resource.status === 'missing') return '[image missing]';
@@ -1066,6 +1248,9 @@
       return '[image not available]';
     }
     
+    /**
+     * Implements `faviconDomain`.
+     */
     function faviconDomain(url) {
       if (typeof url !== 'string' || !url) return '';
       try {
@@ -1076,6 +1261,9 @@
       }
     }
     
+    /**
+     * Implements `sourceTooltip`.
+     */
     function sourceTooltip(source) {
       const title = source?.title ?? '';
       const snippet = source?.snippet ?? '';
@@ -1083,10 +1271,16 @@
       return title || snippet;
     }
     
+    /**
+     * Implements `sourceLabel`.
+     */
     function sourceLabel(source, fallback = '') {
       return source?.attribution || source?.title || fallback;
     }
     
+    /**
+     * Renders source anchor.
+     */
     function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
       const url = source?.url ?? '';
       const tooltip = sourceTooltip(source);
@@ -1097,6 +1291,9 @@
       return `<a href="${htmlEscape(url)}" title="${escapedTooltip}" style="display:inline-block;white-space:nowrap;"><img alt="" src="${htmlEscape(favicon)}" width="15" height="15" title="${escapedTooltip}" style="width:0.97em;height:0.97em;vertical-align:-0.13em;margin-right:0.22em;border-radius:2px;">${htmlEscape(label)}</a>`;
     }
     
+    /**
+     * Renders web citation.
+     */
     function renderWebCitation(citation) {
       const rendered = [];
       for (const source of citation.web?.sources ?? []) {
@@ -1106,12 +1303,18 @@
       return `**(cite: ${rendered.join(', ')})**`;
     }
     
+    /**
+     * Renders memory citation.
+     */
     function renderMemoryCitation(citation) {
       const rendered = (citation.memory?.sources ?? [])
         .map(source => renderSourceAnchor(source, source?.title ?? 'memory', true));
       return `**(memory: ${rendered.join(', ')})**`;
     }
     
+    /**
+     * Implements `retrievedLineLabel`.
+     */
     function retrievedLineLabel(citation) {
       const matched = citation?.matched_text;
       if (typeof matched !== 'string') return '';
@@ -1119,6 +1322,9 @@
       return match ? ` ${match[1].replace(/-(?=\d)/, '-L')}` : '';
     }
     
+    /**
+     * Renders citation.
+     */
     function renderCitation(citation) {
       if (citation.citation_kind === 'file') return `\`${citation.file?.name ?? 'file'}\``;
       if (citation.citation_kind === 'retrieved_file') {
@@ -1131,6 +1337,9 @@
       return citation.matched_text ?? '';
     }
     
+    /**
+     * Implements `textReplacements`.
+     */
     function textReplacements(event, partIndex) {
       const replacements = [];
       for (const replacement of event.display_replacements ?? []) {
@@ -1156,6 +1365,9 @@
       return replacements.sort((a, b) => b.start - a.start || b.end - a.end);
     }
     
+    /**
+     * Renders text block.
+     */
     function renderTextBlock(event, block, partIndex) {
       let text = block.text ?? '';
       for (const replacement of textReplacements(event, partIndex)) {
@@ -1164,6 +1376,9 @@
       return text;
     }
     
+    /**
+     * Renders message blocks.
+     */
     function renderMessageBlocks(event) {
       return (event.blocks ?? []).map((block, blockIndex) => {
         if (block.type === 'text') {
@@ -1175,6 +1390,9 @@
       }).filter(text => text !== '').join('\n\n');
     }
     
+    /**
+     * Implements `reasoningBody`.
+     */
     function reasoningBody(event) {
       return (event.blocks ?? []).map(block => {
         if (block.type !== 'reasoning_summary') return '';
@@ -1185,14 +1403,23 @@
       }).filter(Boolean).join('\n\n');
     }
     
+    /**
+     * Implements `details`.
+     */
     function details(summary, body) {
       return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
     }
     
+    /**
+     * Implements `thoughtSummary`.
+     */
     function thoughtSummary(count) {
       return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
     }
     
+    /**
+     * Implements `fencedCode`.
+     */
     function fencedCode(content, language = '') {
       const text = String(content ?? '');
       const runs = text.match(/`+/g) ?? [];
@@ -1201,6 +1428,11 @@
       return `${fence}${language}\n${text}\n${fence}`;
     }
     
+    /**
+     * Selects the Markdown fence language from canonical tool-call semantics.
+     *
+     * A normalized non-`unknown` canonical language is emitted unchanged; the historical `container.exec` fallback emits `bash` only when no stronger normalized language is present.
+     */
     function inferredToolLanguage(block) {
       const language = typeof block.language === 'string' ? block.language.trim() : '';
       if (language && language !== 'unknown') return language;
@@ -1208,6 +1440,9 @@
       return '';
     }
     
+    /**
+     * Implements `relatedRetrievedFile`.
+     */
     function relatedRetrievedFile(events, sourceRecordId) {
       for (const event of events) {
         for (const citation of event.citations ?? []) {
@@ -1217,6 +1452,9 @@
       return null;
     }
     
+    /**
+     * Renders multimodal tool output.
+     */
     function renderMultimodalToolOutput(event, block, events) {
       const values = Array.isArray(block.output) ? block.output : [];
       const visible = values.filter(value => typeof value === 'string' && !value.startsWith('Make sure to include ')).map(value => value.trim());
@@ -1229,6 +1467,11 @@
       return visible.join('\n\n');
     }
     
+    /**
+     * Renders a canonical ChatGPT tool block into the Markdown details/fence representation.
+     *
+     * The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.
+     */
     function renderChatGPTToolBlock(event, block, events) {
       if (block.type === 'tool_call') {
         const language = inferredToolLanguage(block);
@@ -1243,17 +1486,29 @@
       return '';
     }
     
+    /**
+     * Renders all canonical tool blocks belonging to one ChatGPT tool event.
+     */
     function renderChatGPTToolEvent(event, events) {
       return (event.blocks ?? []).map(block => renderChatGPTToolBlock(event, block, events)).filter(Boolean).join('\n\n');
     }
     
+    /**
+     * Renders user.
+     */
     function renderUser(event) {
       return `## User\n\n${quoteMarkdown(renderMessageBlocks(event))}`;
     }
     
+    /**
+     * Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.
+     */
     function renderChatGPTCommentarySegment(segment, events) {
       const body = [];
       let thoughts = [];
+      /**
+       * Implements `flushThoughts`.
+       */
       const flushThoughts = () => {
         if (!thoughts.length) return;
         body.push(details('Thoughts', thoughts.join('\n\n')));
@@ -1280,6 +1535,9 @@
       return body.length ? `## ChatGPT Commentary\n\n${body.join('\n\n')}` : null;
     }
     
+    /**
+     * Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.
+     */
     function renderChatGPTAssistantSegment(segment, events) {
       const reasoning = segment.filter(event => event.kind === 'reasoning_summary');
       const commentary = segment.filter(event => event.kind === 'commentary');
@@ -1302,16 +1560,25 @@
       return sections;
     }
     
+    /**
+     * Implements `toolCallId`.
+     */
     function toolCallId(event) {
       return event?.relationships?.tool_call_id ?? event?.blocks?.[0]?.call_id ?? null;
     }
     
+    /**
+     * Implements `toolResultByCallId`.
+     */
     function toolResultByCallId(segment) {
       const results = new Map();
       for (const event of segment) if (event.kind === 'tool_result' && toolCallId(event)) results.set(toolCallId(event), event);
       return results;
     }
     
+    /**
+     * Implements `toolOutput`.
+     */
     function toolOutput(event) {
       const block = event?.blocks?.find(item => item.type === 'tool_result');
       if (!block) return '';
@@ -1320,6 +1587,9 @@
       return String(block.output ?? '');
     }
     
+    /**
+     * Renders Claude tool thought.
+     */
     function renderClaudeToolThought(callEvent, resultEvent) {
       const block = callEvent?.blocks?.find(item => item.type === 'tool_call');
       if (!block || block.name !== 'Bash') return '';
@@ -1329,6 +1599,9 @@
       return details(summary, [fencedCode(command, 'bash'), `**OUT**\n\n${fencedCode(output)}`].join('\n\n'));
     }
     
+    /**
+     * Renders subagent event.
+     */
     function renderSubagentEvent(event) {
       const block = event?.blocks?.find(item => item.type === 'subagent');
       if (!block?.agent_id) return '';
@@ -1338,6 +1611,9 @@
       return `## ${providerLabel(event.provider)} Sub-agent ${block.agent_id}\n\n${body.join('\n\n')}`;
     }
     
+    /**
+     * Renders Claude question block.
+     */
     function renderClaudeQuestionBlock(block) {
       const questions = block?.ask_user_question?.questions ?? [];
       const chunks = [];
@@ -1353,12 +1629,18 @@
       return chunks.join('\n\n');
     }
     
+    /**
+     * Renders Claude plan block.
+     */
     function renderClaudePlanBlock(block) {
       const plan = block?.exit_plan?.plan;
       if (typeof plan !== 'string' || !plan.trim()) return '';
       return quoteMarkdown(`### Plan\n\n${quoteMarkdown(plan.trim())}`);
     }
     
+    /**
+     * Renders Claude plan approval.
+     */
     function renderClaudePlanApproval(block) {
       const response = block?.exit_plan_response;
       if (!response) return '';
@@ -1368,6 +1650,9 @@
       return `## User\n\n${parts.join('\n\n')}`;
     }
     
+    /**
+     * Renders Claude assistant segment.
+     */
     function renderClaudeAssistantSegment(segment) {
       const sections = [];
       const subagents = segment.filter(event => event.kind === 'subagent');
@@ -1376,11 +1661,17 @@
       let body = [];
       let thoughts = [];
     
+      /**
+       * Implements `flushThoughts`.
+       */
       const flushThoughts = () => {
         if (!thoughts.length) return;
         body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
         thoughts = [];
       };
+      /**
+       * Implements `flushClaude`.
+       */
       const flushClaude = () => {
         flushThoughts();
         if (!body.length) return;
@@ -1441,14 +1732,23 @@
       return sections;
     }
     
+    /**
+     * Implements `codexRequestBlock`.
+     */
     function codexRequestBlock(event) {
       return event?.blocks?.find(block => block.type === 'tool_call' && block.name === 'request_user_input');
     }
     
+    /**
+     * Implements `codexResponseBlock`.
+     */
     function codexResponseBlock(event) {
       return event?.blocks?.find(block => block.type === 'tool_result' && block.request_user_input_response);
     }
     
+    /**
+     * Renders Codex request sections.
+     */
     function renderCodexRequestSections(callEvent, resultEvent, state) {
       const call = codexRequestBlock(callEvent);
       if (!call) return [];
@@ -1471,6 +1771,9 @@
       return sections;
     }
     
+    /**
+     * Renders Codex file changes.
+     */
     function renderCodexFileChanges(segment) {
       const patches = [];
       for (const event of segment) {
@@ -1484,6 +1787,9 @@
       return details(`${n} file change${n === 1 ? '' : 's'}`, patches.map(patch => quoteMarkdown(`\`\`\`diff\n${patch}\n\`\`\``)).join('\n\n'));
     }
     
+    /**
+     * Renders Codex main response.
+     */
     function renderCodexMainResponse(segment) {
       const thoughts = [];
       const finals = [];
@@ -1499,6 +1805,9 @@
       return `## Codex\n\n${body.join('\n\n')}`;
     }
     
+    /**
+     * Renders Codex assistant segment.
+     */
     function renderCodexAssistantSegment(segment, state) {
       const sections = [];
       const results = toolResultByCallId(segment);
@@ -1518,6 +1827,9 @@
       return sections;
     }
     
+    /**
+     * Renders assistant segment.
+     */
     function renderAssistantSegment(segment, events, state) {
       const provider = segment.find(event => event?.provider)?.provider ?? 'chatgpt';
       if (provider === 'claude') return renderClaudeAssistantSegment(segment);
@@ -1525,16 +1837,25 @@
       return renderChatGPTAssistantSegment(segment, events);
     }
     
+    /**
+     * Renders notice.
+     */
     function renderNotice(event) {
       const text = renderMessageBlocks(event);
       return text ? `> *(system: ${text})*` : '';
     }
     
+    /**
+     * Renders canonical Markdown.
+     */
     function renderCanonicalMarkdown(events) {
       if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
       const sections = [];
       const state = { codexQuestionNumber: 0 };
       let assistantSegment = [];
+      /**
+       * Implements `flushAssistant`.
+       */
       const flushAssistant = () => {
         if (!assistantSegment.length) return;
         sections.push(...renderAssistantSegment(assistantSegment, events, state));
