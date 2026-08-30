@@ -23,7 +23,14 @@ jobs:
         with:
           python-version: '3.x'
       - name: Correct one helper declaration key
-        run: sed -i "s/  let inputFormat = null;/  let inputFormat = 'code';/" scripts/finish-documentation-once.py
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/finish-documentation-once.py')
+          s = p.read_text()
+          s = s.replace("'  let inputFormat = null;'", '"  let inputFormat = \'code\';"')
+          p.write_text(s)
+          PY
       - name: Normalize and complete documentation
         run: python scripts/finish-documentation-once.py
       - name: Rebuild browser bundle
