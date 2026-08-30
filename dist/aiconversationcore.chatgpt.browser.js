@@ -1468,7 +1468,7 @@ function providerLabel(provider) {
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
-  const color = label === '## User' ? colors.user : colors.ai;
+  const color = label === '## User' ? colors.user : (label.includes(' Sub-agent ') ? '' : colors.ai);
   const reset = colors.reset ?? '';
   const heading = color ? `${color}${label}${reset}` : label;
   return `${heading}${projection.heading_suffix ?? ''}`;
@@ -2130,7 +2130,7 @@ function renderClaudeAssistantSegment(segment) {
   const consumedResults = new Set();
   let body = [];
   let thoughts = [];
-  const headingEvent = segment.find(event => event.kind === 'message' && event.role === 'assistant') ?? segment[0];
+  const headingEvent = segment[0];
 
   /**
    * Implements `flushThoughts`.
