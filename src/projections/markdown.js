@@ -664,13 +664,14 @@ function renderSubagentEvent(event) {
   const headingEvent = relatedProjectionEvent(event, 'invocation_source');
   const body = [];
   const completionComment = headingEvent === event ? '' : projectedComment(event);
-  if (completionComment) body.push(completionComment);
   if (block.description) body.push(quoteMarkdown(`**${block.description}**`));
   if (block.output) body.push(quoteMarkdown(block.output));
   const label = `## ${providerLabel(event.provider)} Sub-agent ${block.agent_id}`;
+  const secondaryProvenance = completionComment ? `\n${completionComment}` : '';
+  const renderedBody = body.length ? `\n\n${body.join('\n\n')}` : '';
   return projectedSection(
     headingEvent,
-    `${projectedHeading(headingEvent, label)}\n${body.length ? `\n${body.join('\n\n')}` : ''}`
+    `${projectedHeading(headingEvent, label)}${secondaryProvenance}${renderedBody}`
   );
 }
 /**
