@@ -275,3 +275,42 @@ will be useful in terminal output, HTML/WebView2, browser UI, and future display
 projections.  Separating semantic style roles from format-specific presentation
 prevents styling knowledge from being duplicated across consumers and keeps the
 core API suitable for both `AI-transcript.py` and `AgentPanelSpeaker`.
+
+## D015 — Renderer debug provenance uses source record identity
+
+**Status:** Accepted
+
+**Decision:** Renderer debugging metadata uses the DownloadConversation-compatible
+HTML comment fields `turn_id` and `record_index`.  For canonical provider events,
+`turn_id` is the preserved provider/source record identity (`source_record_id`),
+not the separately derived canonical turn ID.  `record_index` is the zero-based
+source record index (`source_index`).
+
+When debugging is enabled, every renderer-generated heading or grouping structure
+is annotated with this source provenance, including User/Assistant headings,
+commentary headings, sub-agent headings, Question headings, Plan headings, thought
+or tool details groups, and equivalent future renderer-generated structures.
+When one generated group represents multiple source records, the first source
+comment is attached to the opening/summary line and subsequent source comments are
+emitted on immediately following lines.
+
+**Reason:** This is debugging instrumentation.  It must expose every generated
+structural boundary back to the source records that caused it, and it must use the
+same identity vocabulary already consumed by DownloadConversation rather than
+introducing a competing `record_id` output field.
+
+## D016 — ChatGPT response and thought/commentary grammar
+
+**Status:** Accepted
+
+**Decision:** Each rendered ChatGPT response begins with exactly one `## ChatGPT`
+heading.  Commentary inside that response is headed `### ChatGPT Commentary`.
+Consecutive thought/reasoning activity is grouped under
+`<details><summary>Having a thought</summary>...</details>` for one item or
+`<details><summary>Having N thoughts</summary>...</details>` for multiple
+consecutive items.  Commentary ends the current consecutive thought run; later
+thought activity begins a new group.
+
+**Reason:** This is the user-selected canonical ChatGPT transcript grammar for the
+Phase 6 migration and resolves the previously undecided difference surfaced by the
+strict historical AI-transcript.py parity gate on 2026-08-30.

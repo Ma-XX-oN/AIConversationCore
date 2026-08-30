@@ -157,3 +157,33 @@ If a renderer needs to inspect raw provider records to reproduce established beh
 ## Scope discipline
 
 Do not change chronology, grouping, association, or other unrelated semantics while implementing citation/file/image normalization unless real evidence demonstrates a separate defect.  Any such defect must be tracked and changed separately.
+
+## Renderer debug provenance
+
+Debug provenance is a renderer-wide diagnostic contract.  When enabled, every
+renderer-generated heading or grouping element carries the source identity that
+caused it, using HTML comments with DownloadConversation-compatible names:
+
+```text
+<!-- turn_id=<source_record_id> record_index=<source_index> -->
+```
+
+This includes top-level User/provider headings and nested structures such as
+commentary, sub-agent, Question, Plan, thought, tool, and file-change groups.  A
+provider-specific semantic identifier that belongs in visible text (for example a
+Claude sub-agent ID) remains visible and is distinct from the source `turn_id` in
+the diagnostic comment.
+
+When one generated group aggregates multiple source events, attach the first
+source comment to the generated opening/summary line and emit each later source
+comment on its own immediately following line.  Do not silently drop provenance
+merely because multiple records were collapsed into one rendered group.
+
+## ChatGPT response grouping
+
+A rendered ChatGPT response begins with exactly one `## ChatGPT` heading.
+Commentary within the response is rendered as `### ChatGPT Commentary`.
+Consecutive thought/reasoning activity is grouped using `Having a thought` or
+`Having N thoughts` summary text.  Commentary breaks consecutiveness, so thought
+activity after commentary begins a new details group rather than being counted in
+the preceding group.

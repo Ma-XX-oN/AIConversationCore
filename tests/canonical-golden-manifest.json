@@ -8,7 +8,7 @@
       "fixture_git_blob": "1631c0b4fe7b059759d3546f9c8ab54d6ae22c92",
       "fixture_sha256": "9348f559872bc46662ac98a58c21561daf02cfaeefff4f3ee56ce66a64daf217",
       "golden": "tests/golden/chatgpt/chatgpt-direct.canonical.md",
-      "golden_sha256": "5583dfa71c0e367654c6cc38ca49e1932d755094ccab691a46b009bb587b2289",
+      "golden_sha256": "eedd1c5926fe47c313156bbdb606409e0ad97a51aa94fb981a3b594de7ce6055",
       "base_authority": {
         "repository": "Ma-XX-oN/AI-General-Memory",
         "commit": "2910c54a4786d17de684bcffb00181b5d2c37d38",
@@ -56,6 +56,11 @@
           "semantic": "chatgpt_commentary_tool_segmentation",
           "choice": "Tool calls/results occurring in a ChatGPT commentary sequence stay in that ChatGPT Commentary section; a later true final Assistant message remains a separate ChatGPT section. Arbitrary tool payload Markdown is contained with adaptive fences rather than repaired.",
           "authority": "live DownloadConversation v0.6.142 export evidence and user-approved fix 2026-08-29"
+        },
+        {
+          "semantic": "chatgpt_response_grouping",
+          "choice": "Every ChatGPT response begins with one ## ChatGPT heading; commentary uses ### ChatGPT Commentary; consecutive thoughts use Having a thought/Having N thoughts groups and commentary breaks thought consecutiveness.",
+          "authority": "user decision 2026-08-30"
         }
       ],
       "comparison": {

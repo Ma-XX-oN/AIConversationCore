@@ -68,28 +68,41 @@ function projectedThoughtHeading(event, number) {
 }
 
 /**
- * Returns the optional source-record debug comment supplied by the consumer.
+ * Returns the optional source-record debug provenance comment for an event.
  *
- * @param {Object<string, *>} event - The canonical event whose projection metadata is being read.
+ * Debug provenance is formatted centrally so every renderer uses the same
+ * DownloadConversation-compatible `turn_id` and `record_index` field names.
+ * `turn_id` is the provider/source record identity retained as
+ * `source_record_id`; it is not the separately derived canonical turn ID.
+ *
+ * @param {Object<string, *>} event - The canonical event whose source provenance is being rendered.
  * @param {boolean} quoted - Whether the comment must remain inside an existing Markdown blockquote.
- * @returns {string} The record comment in plain or blockquoted form, or an empty string when disabled.
+ * @returns {string} The provenance comment in plain or blockquoted form, or an empty string when debugging is disabled.
  */
 function projectedComment(event, quoted = false) {
-  const comment = event?.projection?.record_comment ?? '';
-  if (!comment) return '';
+  const projection = event?.projection ?? {};
+  if (!projection.debug_provenance) return '';
+  const fields = [];
+  if (event?.source_record_id != null) fields.push(`turn_id=${event.source_record_id}`);
+  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);
+  if (!fields.length) return '';
+  const comment = `<!-- ${fields.join(' ')} -->`;
   return quoted ? quoteMarkdown(comment) : comment;
 }
 
 /**
- * Prefixes a rendered section with the source-record debug comment when enabled.
+ * Appends source debug provenance to the first renderer-generated structural line.
  *
- * @param {Object<string, *>} event - The canonical event whose record comment identifies the section.
- * @param {string} section - The already-rendered Markdown section.
- * @returns {string} The section with its optional source-record comment prefix.
+ * @param {Object<string, *>} event - The canonical event whose provenance identifies the generated structure.
+ * @param {string} section - The already-rendered Markdown section whose first line is renderer-generated structure.
+ * @returns {string} The section with optional provenance appended to its first structural line.
  */
 function projectedSection(event, section) {
   const comment = projectedComment(event);
-  return comment ? `${comment}\n\n${section}` : section;
+  if (!comment) return section;
+  const newline = section.indexOf('\n');
+  if (newline < 0) return `${section} ${comment}`;
+  return `${section.slice(0, newline)} ${comment}${section.slice(newline)}`;
 }
 
 /**
@@ -330,6 +343,26 @@ function details(summary, body) {
 }
 
 /**
+ * Renders a details group with source debug provenance for every grouped event.
+ *
+ * @param {string} summary - The visible summary label for the details group.
+ * @param {string} body - The Markdown body inside the details group.
+ * @param {Array<Object<string, *>>} sourceEvents - Ordered canonical events represented by the generated group.
+ * @param {boolean} quoted - Whether provenance lines must be Markdown-blockquoted.
+ * @param {boolean} inlineOpening - Whether `<details>` and `<summary>` share the opening line.
+ * @returns {string} The details group with optional per-source provenance on the summary and following lines.
+ */
+function projectedDetails(summary, body, sourceEvents, quoted = false, inlineOpening = false) {
+  const events = Array.isArray(sourceEvents) ? sourceEvents : [];
+  const comments = events.map(event => projectedComment(event, quoted)).filter(Boolean);
+  const first = comments.shift() ?? '';
+  const summaryLine = `<summary>${summary}</summary>${first ? ` ${first.replace(/^> /, '')}` : ''}`;
+  const opening = inlineOpening ? `<details>${summaryLine}` : `<details>\n${summaryLine}`;
+  const extra = comments.length ? `\n${comments.join('\n')}` : '';
+  return `${opening}${extra}\n\n${body}\n\n</details>`;
+}
+
+/**
  * Returns the singular/plural human-readable summary for a count of thoughts.
  *
  * @param {number} count - The number of reasoning/thought items represented by the summary label.
@@ -408,23 +441,24 @@ function renderMultimodalToolOutput(event, block, events) {
 /**
  * Renders a canonical ChatGPT tool block into the Markdown details/fence representation.
  *
- * The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.
+ * The renderer consumes canonical `input`, `language`, `output`, and
+ * `output_format`; provider-native presentation is not reinterpreted here.
  *
- * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
- * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
- * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
+ * @param {Object<string, *>} event - The canonical event represented by the tool structure.
+ * @param {Object<string, *>} block - The canonical tool call/result block being rendered.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events used for related-resource resolution.
  * @returns {string} Rendered Markdown details block for one ChatGPT tool call or result block.
  */
 function renderChatGPTToolBlock(event, block, events) {
   if (block.type === 'tool_call') {
     const language = inferredToolLanguage(block);
-    return details(`${block.name ?? 'tool'} code`, fencedCode(block.input ?? '', language));
+    return projectedDetails(`${block.name ?? 'tool'} code`, fencedCode(block.input ?? '', language), [event]);
   }
   if (block.type === 'tool_result') {
     let output = block.output ?? '';
     if (block.output_format === 'multimodal_text') output = renderMultimodalToolOutput(event, block, events);
     else if (block.output_format === 'tether_browsing_display') output = [block.output?.summary, block.output?.result].filter(Boolean).join('\n\n');
-    return details(`${block.name ?? 'tool'} output`, fencedCode(output));
+    return projectedDetails(`${block.name ?? 'tool'} output`, fencedCode(output), [event]);
   }
   return '';
 }
@@ -451,78 +485,90 @@ function renderUser(event) {
 }
 
 /**
- * Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.
+ * Renders the ChatGPT activity inside one response while preserving source order.
  *
- * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
- * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
- * @returns {string|null} The ChatGPT Commentary Markdown section for the segment, or null when the segment produces no visible body.
+ * Consecutive reasoning records define the thought count. Tool call/result
+ * structures may occur within the same thought run but do not increment `N`.
+ * Commentary flushes the current run, receives its own
+ * `### ChatGPT Commentary` heading, and breaks thought consecutiveness.
+ *
+ * @param {Array<Object<string, *>>} segment - Ordered canonical events in one ChatGPT response.
+ * @param {Array<Object<string, *>>} events - Full ordered canonical event sequence for resource resolution.
+ * @returns {Array<string>} Ordered thought/tool/commentary structures rendered inside the enclosing ChatGPT response.
  */
 function renderChatGPTCommentarySegment(segment, events) {
   const body = [];
-  let thoughts = [];
+  let run = [];
+  let thoughtEvents = [];
+
   /**
-   * Implements `flushThoughts`.
+   * Flushes the current ChatGPT reasoning/tool run without counting tools as thoughts.
    *
    * @returns {void} No value is returned.
    */
-  const flushThoughts = () => {
-    if (!thoughts.length) return;
-    body.push(details('Thoughts', thoughts.join('\n\n')));
-    thoughts = [];
+  const flushRun = () => {
+    if (!run.length) return;
+    if (thoughtEvents.length) {
+      const rendered = run.map(item => item.text).join('\n\n');
+      body.push(projectedDetails(
+        thoughtSummary(thoughtEvents.length),
+        rendered,
+        thoughtEvents,
+        false,
+        true
+      ));
+    } else {
+      body.push(...run.map(item => item.text));
+    }
+    run = [];
+    thoughtEvents = [];
   };
+
   for (const event of segment) {
     if (event.kind === 'reasoning_summary') {
       const text = reasoningBody(event);
-      if (text) thoughts.push(text);
+      if (text) {
+        run.push({ event, text });
+        thoughtEvents.push(event);
+      }
       continue;
     }
     if (event.kind === 'tool_call' || event.kind === 'tool_result') {
       const text = renderChatGPTToolEvent(event, events);
-      if (text) thoughts.push(text);
+      if (text) run.push({ event, text });
       continue;
     }
     if (event.kind === 'commentary') {
-      flushThoughts();
+      flushRun();
       const text = renderMessageBlocks(event);
-      if (text) body.push(quoteMarkdown(text));
+      if (text) body.push(projectedSection(event, `### ChatGPT Commentary\n\n${quoteMarkdown(text)}`));
     }
   }
-  flushThoughts();
-  if (!body.length) return null;
-  const headingEvent = segment.find(event => event.kind === 'commentary') ?? segment[0];
-  return projectedSection(headingEvent, `${projectedHeading(headingEvent, '## ChatGPT Commentary')}\n\n${body.join('\n\n')}`);
+  flushRun();
+  return body;
 }
 
 /**
- * Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.
+ * Renders one canonical ChatGPT response with exactly one leading `## ChatGPT` heading.
  *
- * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
- * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
- * @returns {Array<string>} One or more ChatGPT Markdown sections produced from the Assistant segment.
+ * Reasoning/tool activity is grouped into consecutive thought groups; commentary
+ * is rendered at level three and breaks thought-group consecutiveness. Final
+ * Assistant messages remain inside the same response section.
+ *
+ * @param {Array<Object<string, *>>} segment - Ordered canonical events forming one ChatGPT response.
+ * @param {Array<Object<string, *>>} events - Full ordered canonical event sequence for resource resolution.
+ * @returns {Array<string>} Zero or one complete ChatGPT Markdown response sections.
  */
 function renderChatGPTAssistantSegment(segment, events) {
-  const reasoning = segment.filter(event => event.kind === 'reasoning_summary');
-  const commentary = segment.filter(event => event.kind === 'commentary');
-  const tools = segment.filter(event => event.kind === 'tool_call' || event.kind === 'tool_result');
+  const body = renderChatGPTCommentarySegment(segment, events);
   const messages = segment.filter(event => event.kind === 'message' && event.role === 'assistant');
-  const sections = [];
-  if (commentary.length) {
-    const section = renderChatGPTCommentarySegment(segment, events);
-    if (section) sections.push(section);
+  for (const event of messages) {
+    const text = renderMessageBlocks(event);
+    if (text) body.push(quoteMarkdown(text));
   }
-  const body = [];
-  const thoughts = [];
-  if (!commentary.length) {
-    for (const event of reasoning) { const text = reasoningBody(event); if (text) thoughts.push(text); }
-    for (const event of tools) { const text = renderChatGPTToolEvent(event, events); if (text) thoughts.push(text); }
-  }
-  if (thoughts.length) body.push(details('Thoughts', thoughts.join('\n\n')));
-  for (const event of messages) { const text = renderMessageBlocks(event); if (text) body.push(quoteMarkdown(text)); }
-  if (body.length) {
-    const headingEvent = messages[0] ?? segment[0];
-    sections.push(projectedSection(headingEvent, `${projectedHeading(headingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`));
-  }
-  return sections;
+  if (!body.length) return [];
+  const headingEvent = segment[0];
+  return [projectedSection(headingEvent, `${projectedHeading(headingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
 }
 
 /**
@@ -575,7 +621,8 @@ function renderClaudeToolThought(callEvent, resultEvent) {
   const command = typeof block.input?.command === 'string' ? block.input.command : '';
   const summary = typeof block.input?.description === 'string' && block.input.description ? block.input.description : 'Bash';
   const output = resultEvent ? toolOutput(resultEvent) : '';
-  return details(summary, [fencedCode(command, 'bash'), `**OUT**\n\n${fencedCode(output)}`].join('\n\n'));
+  const sources = resultEvent ? [callEvent, resultEvent] : [callEvent];
+  return projectedDetails(summary, [fencedCode(command, 'bash'), `**OUT**\n\n${fencedCode(output)}`].join('\n\n'), sources);
 }
 
 /**
@@ -595,12 +642,13 @@ function renderSubagentEvent(event) {
 }
 
 /**
- * Renders Claude question block.
+ * Renders Claude AskUserQuestion headings/options with source debug provenance.
  *
- * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
- * @returns {string} Markdown question/options block for a normalized Claude AskUserQuestion call.
+ * @param {Object<string, *>} event - The canonical tool-call event represented by the generated question headings.
+ * @param {Object<string, *>} block - The normalized Claude AskUserQuestion block.
+ * @returns {string} Markdown question/options blocks in provider order.
  */
-function renderClaudeQuestionBlock(block) {
+function renderClaudeQuestionBlock(event, block) {
   const questions = block?.ask_user_question?.questions ?? [];
   const chunks = [];
   questions.forEach((question, index) => {
@@ -610,21 +658,24 @@ function renderClaudeQuestionBlock(block) {
       if (!option?.label) continue;
       lines.push(`- ${option.label}${option.description ? ` - ${option.description}` : ''}`);
     }
-    chunks.push(`### Question ${index + 1}\n\n${quoteMarkdown(lines.join('\n'))}`);
+    chunks.push(projectedSection(event, `### Question ${index + 1}\n\n${quoteMarkdown(lines.join('\n'))}`));
   });
   return chunks.join('\n\n');
 }
 
 /**
- * Renders Claude plan block.
+ * Renders a Claude ExitPlanMode plan heading with source debug provenance.
  *
- * @param {Object<string, *>} block - The canonical/provider content block being inspected or rendered.
- * @returns {string} Markdown details block containing a Claude exit-plan proposal.
+ * @param {Object<string, *>} event - The canonical tool-call event represented by the generated plan heading.
+ * @param {Object<string, *>} block - The normalized Claude ExitPlanMode block.
+ * @returns {string} Blockquoted Markdown plan section, or an empty string when no plan is present.
  */
-function renderClaudePlanBlock(block) {
+function renderClaudePlanBlock(event, block) {
   const plan = block?.exit_plan?.plan;
   if (typeof plan !== 'string' || !plan.trim()) return '';
-  return quoteMarkdown(`### Plan\n\n${quoteMarkdown(plan.trim())}`);
+  const comment = projectedComment(event);
+  const heading = `### Plan${comment ? ` ${comment}` : ''}`;
+  return quoteMarkdown(`${heading}\n\n${quoteMarkdown(plan.trim())}`);
 }
 
 /**
@@ -639,7 +690,7 @@ function renderClaudePlanApproval(event, block) {
   if (!response) return '';
   const parts = [];
   if (response.intro) parts.push(quoteMarkdown(response.intro));
-  if (response.approved_plan) parts.push(quoteMarkdown(details('Approved Plan', response.approved_plan)));
+  if (response.approved_plan) parts.push(quoteMarkdown(projectedDetails('Approved Plan', response.approved_plan, [event])));
   return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${parts.join('\n\n')}`);
 }
 
@@ -668,9 +719,9 @@ function renderClaudeAssistantSegment(segment) {
     if (!thoughts.length) return;
     const separate = Boolean(headingEvent?.projection?.separate_thoughts);
     const renderedThoughts = separate
-      ? thoughts.map((item, index) => `${quoteMarkdown(projectedThoughtHeading(item.event, index + 1))}\n>\n${quoteMarkdown(item.text)}`).join('\n>\n> ***\n>\n')
+      ? thoughts.map((item, index) => `${projectedThoughtHeading(item.event, index + 1)}\n\n${item.text}`).join('\n\n***\n\n')
       : thoughts.map(item => item.text).join('\n\n***\n\n');
-    body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), renderedThoughts)));
+    body.push(quoteMarkdown(projectedDetails(thoughtSummary(thoughts.length), renderedThoughts, thoughts.map(item => item.event))));
     thoughts = [];
   };
   /**
@@ -701,11 +752,11 @@ function renderClaudeAssistantSegment(segment) {
         if (result) consumedResults.add(result.id);
       } else if (block?.name === 'AskUserQuestion') {
         flushThoughts();
-        const rendered = renderClaudeQuestionBlock(block);
+        const rendered = renderClaudeQuestionBlock(event, block);
         if (rendered) body.push(rendered);
       } else if (block?.name === 'ExitPlanMode') {
         flushThoughts();
-        const rendered = renderClaudePlanBlock(block);
+        const rendered = renderClaudePlanBlock(event, block);
         if (rendered) body.push(rendered);
       }
       continue;
@@ -787,7 +838,7 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
     const lines = [];
     if (question.question) lines.push(`**${question.question}**`);
     for (const option of question.options ?? []) if (option?.label) lines.push(`- ${option.label}${option.description ? ` - ${option.description}` : ''}`);
-    questionParts.push(`### Question ${state.codexQuestionNumber}\n\n${quoteMarkdown(lines.join('\n'))}`);
+    questionParts.push(projectedSection(callEvent, `### Question ${state.codexQuestionNumber}\n\n${quoteMarkdown(lines.join('\n'))}`));
     const selected = response?.request_user_input_response?.answers?.[question.id] ?? [];
     if (question.question && selected.length) answerLines.push(`**${question.question}** → ${selected.map(value => `"${value}"`).join(', ')}`);
   }
@@ -797,42 +848,53 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
 }
 
 /**
- * Renders Codex file changes.
+ * Renders Codex apply_patch changes as one provenance-traceable details group.
  *
- * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
- * @returns {string|null} The collapsed Codex file-change details section, or null when the segment has no apply_patch changes.
+ * @param {Array<Object<string, *>>} segment - Ordered canonical events forming the Codex response.
+ * @returns {string|null} Collapsed Codex file-change details section, or null when no apply_patch changes exist.
  */
 function renderCodexFileChanges(segment) {
   const patches = [];
   for (const event of segment) {
     if (event.kind !== 'tool_call') continue;
     const block = event.blocks?.find(item => item.type === 'tool_call' && item.name === 'apply_patch' && item.file_change?.patch);
-    if (block) patches.push(block.file_change.patch);
+    if (block) patches.push({ event, patch: block.file_change.patch });
   }
   if (!patches.length) return null;
-  const fileCount = patches.reduce((count, patch) => count + (patch.match(/^\*\*\* (?:Update|Add|Delete) File:/gm)?.length ?? 0), 0);
+  const fileCount = patches.reduce((count, item) => count + (item.patch.match(/^\*\*\* (?:Update|Add|Delete) File:/gm)?.length ?? 0), 0);
   const n = fileCount || patches.length;
-  return details(`${n} file change${n === 1 ? '' : 's'}`, patches.map(patch => quoteMarkdown(`\`\`\`diff\n${patch}\n\`\`\``)).join('\n\n'));
+  const body = patches.map(item => quoteMarkdown(`\`\`\`diff\n${item.patch}\n\`\`\``)).join('\n\n');
+  return projectedDetails(`${n} file change${n === 1 ? '' : 's'}`, body, patches.map(item => item.event));
 }
 
 /**
- * Renders Codex main response.
+ * Renders the main Codex response with provenance on generated response/thought structures.
  *
- * @param {Array<Object<string, *>>} segment - The ordered canonical events that form one Assistant activity segment.
- * @returns {string|null} The main Codex transcript section for reasoning/commentary/final text, or null when the segment has no visible main response.
+ * @param {Array<Object<string, *>>} segment - Ordered canonical events forming the Codex response.
+ * @returns {string|null} The main Codex transcript section, or null when no visible response exists.
  */
 function renderCodexMainResponse(segment) {
   const thoughts = [];
   const finals = [];
   for (const event of segment) {
-    if (event.kind === 'reasoning_summary') { const text = reasoningBody(event); if (text) thoughts.push(text); }
-    else if (event.kind === 'commentary') { const text = renderMessageBlocks(event); if (text) thoughts.push(text); }
-    else if (event.kind === 'message' && event.role === 'assistant') { const text = renderMessageBlocks(event); if (text) finals.push(text); }
+    if (event.kind === 'reasoning_summary') {
+      const text = reasoningBody(event);
+      if (text) thoughts.push({ event, text });
+    } else if (event.kind === 'commentary') {
+      const text = renderMessageBlocks(event);
+      if (text) thoughts.push({ event, text });
+    } else if (event.kind === 'message' && event.role === 'assistant') {
+      const text = renderMessageBlocks(event);
+      if (text) finals.push({ event, text });
+    }
   }
   if (!thoughts.length && !finals.length) return null;
   const body = [];
-  if (thoughts.length) body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
-  for (const text of finals) body.push(quoteMarkdown(text));
+  if (thoughts.length) {
+    const thoughtBody = thoughts.map(item => item.text).join('\n\n***\n\n');
+    body.push(quoteMarkdown(projectedDetails(thoughtSummary(thoughts.length), thoughtBody, thoughts.map(item => item.event))));
+  }
+  for (const item of finals) body.push(quoteMarkdown(item.text));
   const headingEvent = segment[0];
   return projectedSection(headingEvent, `${projectedHeading(headingEvent, '## Codex')}\n\n${body.join('\n\n')}`);
 }
