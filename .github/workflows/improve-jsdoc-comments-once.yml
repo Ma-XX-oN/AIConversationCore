@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/improve-jsdoc-comments-once.yml
       - scripts/improve-jsdoc-comments.py
+      - scripts/build-browser-bundle.mjs
 
 permissions:
   contents: write
