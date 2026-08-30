@@ -44,17 +44,19 @@ function splitTopLevel(value) {
 
 function immediateJsdoc(text, start) {
   const prefix = text.slice(0, start);
-  const end = prefix.trimEnd().lastIndexOf('*/');
-  if (end < 0 || prefix.slice(end + 2).trim()) return null;
-  const begin = prefix.lastIndexOf('/**', end);
-  return begin < 0 ? null : prefix.slice(begin, end + 2);
+  const stripped = prefix.trimEnd();
+  if (!stripped.endsWith('*/')) return null;
+  const marker = stripped.lastIndexOf('/**');
+  if (marker < 0) return null;
+  const lineStart = stripped.lastIndexOf('\n', marker - 1) + 1;
+  return stripped.slice(lineStart);
 }
 
 function functionsIn(text) {
   const results = [];
   const parenPatterns = [
-    /^(?:[ \t]*)(?:export\s+)?(?:async\s+)?function\*?\s+(?<name>[A-Za-z_$][\w$]*)\s*\(/gm,
-    /^(?:[ \t]*)(?:export\s+)?const\s+(?<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(/gm
+    /^(?<indent>[ \t]*)(?:export\s+)?(?:async\s+)?function\*?\s+(?<name>[A-Za-z_$][\w$]*)\s*\(/gm,
+    /^(?<indent>[ \t]*)(?:export\s+)?const\s+(?<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(/gm
   ];
   for (const pattern of parenPatterns) {
     for (let match; (match = pattern.exec(text)); ) {
@@ -77,14 +79,31 @@ function functionsIn(text) {
       }
       if (close < 0) continue;
       if (match[0].includes('const') && !/^\s*=>/.test(text.slice(close + 1))) continue;
-      results.push({ start: match.index, name: match.groups.name, params: splitTopLevel(text.slice(open + 1, close)) });
+      results.push({
+        start: match.index,
+        indent: match.groups.indent,
+        name: match.groups.name,
+        params: splitTopLevel(text.slice(open + 1, close))
+      });
     }
   }
-  const single = /^(?:[ \t]*)(?:export\s+)?const\s+(?<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?<param>[A-Za-z_$][\w$]*)\s*=>/gm;
+  const single = /^(?<indent>[ \t]*)(?:export\s+)?const\s+(?<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?<param>[A-Za-z_$][\w$]*)\s*=>/gm;
   for (let match; (match = single.exec(text)); ) {
-    results.push({ start: match.index, name: match.groups.name, params: [match.groups.param] });
+    results.push({
+      start: match.index,
+      indent: match.groups.indent,
+      name: match.groups.name,
+      params: [match.groups.param]
+    });
   }
   return [...new Map(results.map(item => [item.start, item])).values()];
+}
+
+function alignedJsdoc(doc, indent) {
+  const lines = doc.split('\n');
+  if (lines[0] !== `${indent}/**`) return false;
+  if (lines.at(-1) !== `${indent} */`) return false;
+  return lines.slice(1, -1).every(line => line === `${indent} *` || line.startsWith(`${indent} * `));
 }
 
 const failures = [];
@@ -95,6 +114,9 @@ for (const file of files.sort()) {
     functionCount += 1;
     const doc = immediateJsdoc(text, fn.start);
     if (!doc) { failures.push(`${file}: ${fn.name}: missing immediate JSDoc`); continue; }
+    if (!alignedJsdoc(doc, fn.indent)) {
+      failures.push(`${file}: ${fn.name}: JSDoc indentation does not match declaration`);
+    }
     const paramTags = [...doc.matchAll(/@param\s+\{([^}]+)\}\s+([^\s]+)\s+-\s+(.+)/g)];
     const topLevelTags = paramTags.filter(tag => !tag[2].includes('.'));
     if (topLevelTags.length !== fn.params.length) {
@@ -113,4 +135,4 @@ if (failures.length) {
   console.error('JSDoc contract failures:\n' + failures.join('\n'));
   process.exit(1);
 }
-console.log(`Complete typed JSDoc audit passed for ${functionCount} named production functions.`);
+console.log(`Complete typed/aligned JSDoc audit passed for ${functionCount} named production functions.`);
