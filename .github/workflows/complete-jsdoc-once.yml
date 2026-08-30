@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/complete-jsdoc-once.yml
       - scripts/apply-complete-jsdoc.py
+      - scripts/finalize-complete-jsdoc.py
 
 permissions:
   contents: write
@@ -21,6 +22,8 @@ jobs:
           node-version: 22
       - name: Apply typed JSDoc contract
         run: python scripts/apply-complete-jsdoc.py
+      - name: Finalize named function coverage and checker
+        run: python scripts/finalize-complete-jsdoc.py
       - name: Audit complete JSDoc contract
         run: node scripts/check-jsdoc.mjs
       - name: JavaScript syntax
