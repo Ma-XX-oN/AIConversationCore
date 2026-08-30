@@ -40,15 +40,15 @@ jobs:
       - name: Core tests
         run: npm test
       - name: Phase 2 integrity gate
-        run: python tests/phase2_integrity.py
+        run: python tests/validate-phase2-baseline.py
       - name: Canonical ChatGPT golden
-        run: python tests/golden_chatgpt.py
+        run: python tests/validate-canonical-golden.py
       - name: Canonical Claude golden
-        run: python tests/golden_claude.py
+        run: python tests/validate-claude-canonical-golden.py
       - name: Canonical Codex golden
-        run: python tests/golden_codex.py
+        run: python tests/validate-codex-canonical-golden.py
       - name: Provider regressions
-        run: python tests/provider_examples.py
+        run: python tests/validate-provider-example-regressions.py
       - name: Diff hygiene
         run: git diff --check
       - name: Commit verified documentation
