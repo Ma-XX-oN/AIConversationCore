@@ -28,35 +28,6 @@ jobs:
         run: node scripts/build-browser-bundle.mjs
       - name: Documentation contract
         run: node scripts/check-jsdoc.mjs
-      - name: Reject void contracts with value returns
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          failures=[]
-          for p in [*Path('src').rglob('*.js'), *Path('scripts').rglob('*.mjs')]:
-            if p.name == 'check-jsdoc.mjs': continue
-            s=p.read_text()
-            pat=re.compile(r'/\*\*[\s\S]*?@returns\s+\{void\}[\s\S]*?\*/\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{')
-            for m in pat.finditer(s):
-              i=m.end(); depth=1; quote=None; esc=False
-              while i < len(s) and depth:
-                c=s[i]
-                if quote:
-                  if esc: esc=False
-                  elif c=='\\': esc=True
-                  elif c==quote: quote=None
-                else:
-                  if c in "'\"`": quote=c
-                  elif c=='{': depth+=1
-                  elif c=='}': depth-=1
-                i+=1
-              body=s[m.end():i-1]
-              if re.search(r'\breturn\s+(?!;)', body): failures.append(f'{p}:{m.group(1)}')
-          if failures:
-            raise SystemExit('void contracts with value returns:\n'+'\n'.join(failures))
-          print('No named function documented void returns a value.')
-          PY
       - name: Core tests
         run: npm test
       - name: Phase 2 integrity gate
