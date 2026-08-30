@@ -11,8 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Void return declarations
-        run: grep -R -n -B5 -A3 '@returns {void}' src scripts --include='*.js' --include='*.mjs' || true
+        run: grep -R -n -B4 -A2 '@returns {void}' src scripts --include='*.js' --include='*.mjs' || true
       - name: Broad Object parameter and return declarations
-        run: grep -R -n -E '@(param|returns) \{Object\}' src scripts --include='*.js' --include='*.mjs' || true
-      - name: Broad Array and Map return declarations
-        run: grep -R -n -E '@returns \{(Array<unknown>|Map<unknown, unknown>|Object\|)' src scripts --include='*.js' --include='*.mjs' || true
+        run: grep -R -n -E '@(param|returns) \{Object\}([ |]|$)' src scripts --include='*.js' --include='*.mjs' || true
+      - name: Placeholder descriptions
+        run: grep -R -n -E 'value used by this operation|text representation produced by|structured value produced by|value produced by' src scripts --include='*.js' --include='*.mjs' || true
