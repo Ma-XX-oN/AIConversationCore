@@ -29,7 +29,7 @@ function replaceOnce(text, search, replacement, label) {
  * Converts one ESM source module into the local-function body used by the classic-script browser bundle.
  *
  * @param {string} text - The complete UTF-8 ESM module source.
- * @param {Object} options - The export/import rewriting options for this module.
+ * @param {Object<string, string|null>} options - Export/import rewriting options containing the optional import line plus exported and local function names.
  * @param {string|null} [options.importLine=null] - The exact import line to remove, or `null` when no import is removed.
  * @param {string} options.exportedFunction - The exported function name present in the ESM source.
  * @param {string} options.localFunction - The local function name to emit in the classic-script bundle.
