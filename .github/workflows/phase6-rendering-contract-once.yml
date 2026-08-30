@@ -1,17 +1,16 @@
-name: Apply Phase 6 rendering contract once
+name: Finalize Phase 6 core integration
 
 on:
   push:
     paths:
       - .github/workflows/phase6-rendering-contract-once.yml
-      - scripts/fix-phase6-claude-legacy-rendering.py
-      - tests/claude-legacy-rendering-regressions.test.js
+      - scripts/finalize-phase6-integration.py
 
 permissions:
   contents: write
 
 jobs:
-  apply:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +22,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Apply Claude legacy rendering parity fixes
-        run: python scripts/fix-phase6-claude-legacy-rendering.py
-      - name: Rebuild deterministic browser bundle
-        run: node scripts/build-browser-bundle.mjs
+      - name: Record Phase 6 decisions and completion
+        run: python scripts/finalize-phase6-integration.py
       - name: Documentation contract
         run: node scripts/check-jsdoc.mjs
       - name: Core tests
@@ -41,12 +38,16 @@ jobs:
         run: python tests/validate-codex-canonical-golden.py
       - name: Provider regressions
         run: python tests/validate-provider-example-regressions.py
+      - name: Remove temporary Phase 6 scaffolding
+        run: |
+          git rm -f --ignore-unmatch scripts/*phase6*.py scripts/*phase6*.mjs
+          git rm -f --ignore-unmatch .github/workflows/phase6-*.yml
       - name: Diff hygiene
         run: git diff --check
-      - name: Commit verified Claude rendering parity
+      - name: Commit final Phase 6 core state
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/adapters/claude.js src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js
-          git commit -m "phase6: preserve Claude legacy rendering semantics"
+          git add ROADMAP.md tests/known-differences.json
+          git commit -m "phase6: finalize canonical integration"
           git push
