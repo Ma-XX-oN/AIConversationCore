@@ -339,6 +339,33 @@ function renderMessageBlocks(event) {
 }
 
 /**
+ * Escapes bare HTML starts on Claude blockquoted thinking lines outside code fences.
+ *
+ * Claude thinking may itself contain Markdown blockquote lines. After the
+ * renderer adds its outer blockquote, an unescaped `<tag>` on one of those
+ * source lines can be interpreted as HTML rather than literal reasoning text.
+ * Fenced code is left unchanged because the fence already protects its body.
+ *
+ * @param {string} text - Raw Claude thinking content.
+ * @returns {string} Thinking content with `<` escaped only on source blockquote lines outside matching backtick fences.
+ */
+function escapeClaudeThinking(text) {
+  const lines = String(text ?? '').split('\n');
+  let fence = null;
+  return lines.map(line => {
+    const marker = line.match(/^((?:> )*)(`{3,})(?!`)/);
+    if (marker) {
+      const key = `${marker[1]}${marker[2]}`;
+      if (fence === null) fence = key;
+      else if (key === fence) fence = null;
+      return line;
+    }
+    if (fence === null && line.startsWith('>')) return line.replaceAll('<', '&lt;');
+    return line;
+  }).join('\n');
+}
+
+/**
  * Builds the Markdown body for canonical reasoning-summary blocks in one event.
  *
  * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
@@ -349,7 +376,7 @@ function reasoningBody(event) {
     if (block.type !== 'reasoning_summary') return '';
     const parts = [];
     if (block.summary) parts.push(`**${block.summary}**`);
-    if (block.content) parts.push(block.content);
+    if (block.content) parts.push(event.provider === 'claude' ? escapeClaudeThinking(block.content) : block.content);
     return parts.join('\n\n');
   }).filter(Boolean).join('\n\n');
 }

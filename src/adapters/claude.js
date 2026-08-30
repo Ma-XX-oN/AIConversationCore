@@ -147,12 +147,11 @@ function toolCallEvent(record, sourceIndex, block, blockIndex) {
  */
 function normalizeExitPlanResponse(text) {
   if (typeof text !== 'string') return null;
-  const marker = '\n\n## Approved Plan (edited by user):\n';
-  const index = text.indexOf(marker);
-  if (index < 0) return { intro: text.trim(), approved_plan: null };
+  const heading = text.match(/^#{0,6}\s*Approved Plan(?::|\s)/m);
+  if (!heading || heading.index == null) return { intro: text.trim(), approved_plan: null };
   return {
-    intro: text.slice(0, index).trim(),
-    approved_plan: text.slice(index + 2).trim()
+    intro: text.slice(0, heading.index).trim(),
+    approved_plan: text.slice(heading.index).trim()
   };
 }
 
