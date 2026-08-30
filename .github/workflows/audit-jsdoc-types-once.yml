@@ -1,0 +1,18 @@
+name: Audit core JSDoc types once
+
+on:
+  push:
+    paths:
+      - .github/workflows/audit-jsdoc-types-once.yml
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Void return declarations
+        run: grep -R -n -B5 -A3 '@returns {void}' src scripts --include='*.js' --include='*.mjs' || true
+      - name: Broad Object parameter and return declarations
+        run: grep -R -n -E '@(param|returns) \{Object\}' src scripts --include='*.js' --include='*.mjs' || true
+      - name: Broad Array and Map return declarations
+        run: grep -R -n -E '@returns \{(Array<unknown>|Map<unknown, unknown>|Object\|)' src scripts --include='*.js' --include='*.mjs' || true
