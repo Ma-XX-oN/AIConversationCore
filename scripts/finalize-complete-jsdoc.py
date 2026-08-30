@@ -139,7 +139,7 @@ function functionsIn(text) {
         else if (ch === ')' && --depth === 0) { close = i; break; }
       }
       if (close < 0) continue;
-      if (match[0].includes('const') && !text.slice(close + 1, close + 20).includes('=>')) continue;
+      if (match[0].includes('const') && !/^\s*=>/.test(text.slice(close + 1))) continue;
       results.push({ start: match.index, name: match.groups.name, params: splitTopLevel(text.slice(open + 1, close)) });
     }
   }
