@@ -9,8 +9,8 @@
 /**
  * Returns the string-valued text parts from a ChatGPT source record in source order.
  *
- * @param {Object} record - The provider/source record to process.
- * @returns {Array<string>} The string-valued text parts in source order.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Array<string>} String-valued ChatGPT content parts in their source order.
  */
 function textParts(record) {
   const parts = record?.content?.parts;
@@ -21,10 +21,10 @@ function textParts(record) {
 /**
  * Builds canonical reasoning-summary blocks from a ChatGPT `thoughts` record.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Array<Object>} The canonical reasoning-summary blocks derived from the source record.
+ * @returns {Array<Object<string, *>>} Canonical reasoning-summary blocks derived from the ChatGPT thoughts record.
  */
 function reasoningBlocks(record, sourceRecordId, sourceIndex) {
   const thoughts = record?.content?.thoughts;
@@ -82,8 +82,8 @@ function launcherToken(value) {
  * - `container.exec` + provider `language: unknown` + flattened Python `-c` command -> preserve the full persisted command in `source_input`, render only the Python program in `input`, and set `language: python`.
  * The source language is always retained separately as `source_language`.
  *
- * @param {Object} record - The provider/source record to process.
- * @returns {Object} The canonical tool-call presentation together with the preserved source input and source language.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} Normalized output-facing tool-call input/format/language together with the exact persisted source input and source language.
  */
 function normalizedToolCallPresentation(record) {
   const name = record?.recipient ?? null;
@@ -127,10 +127,10 @@ function normalizedToolCallPresentation(record) {
  *
  * The block carries both the normalized input/language used for output and the original persisted input/language for provenance.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Array<Object>} The canonical tool-call block array for the source record.
+ * @returns {Array<Object<string, *>>} The single canonical tool-call block array for the source record.
  */
 function toolCallBlocks(record, sourceRecordId, sourceIndex) {
   const presentation = normalizedToolCallPresentation(record);
@@ -161,10 +161,10 @@ function toolCallBlocks(record, sourceRecordId, sourceIndex) {
  * - `multimodal_text` -> source parts preserved as an ordered array.
  * The original ChatGPT content type is retained as `output_format`.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Array<Object>} The canonical tool-result block array for the source record.
+ * @returns {Array<Object<string, *>>} The single canonical tool-result block array for the source record.
  */
 function toolResultBlocks(record, sourceRecordId, sourceIndex) {
   const contentType = record?.content?.content_type ?? null;
@@ -199,7 +199,7 @@ function toolResultBlocks(record, sourceRecordId, sourceIndex) {
 /**
  * Returns whether a ChatGPT source record is canonically visible or hidden.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {string} The canonical visibility value, `visible` or `hidden`.
  */
 function eventVisibility(record) {
@@ -209,7 +209,7 @@ function eventVisibility(record) {
 /**
  * Checks whether tool call.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool call.
  */
 function isToolCall(record) {
@@ -222,7 +222,7 @@ function isToolCall(record) {
 /**
  * Checks whether tool result.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool result.
  */
 function isToolResult(record) {
@@ -234,7 +234,7 @@ function isToolResult(record) {
 /**
  * Classifies a ChatGPT source record into its canonical event kind.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {string} The canonical event-kind classification for the source record.
  */
 function eventKind(record) {
@@ -250,11 +250,11 @@ function eventKind(record) {
 /**
  * Builds the canonical content blocks for one classified ChatGPT source record.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {string} kind - The canonical kind/category being processed.
- * @returns {Array<Object>} The canonical content blocks for the classified source record.
+ * @returns {Array<Object<string, *>>} Canonical content blocks for the classified ChatGPT source record.
  */
 function eventBlocks(record, sourceRecordId, sourceIndex, kind) {
   if (kind === 'reasoning_summary') return reasoningBlocks(record, sourceRecordId, sourceIndex);
@@ -295,8 +295,8 @@ function normalizedUrl(value) {
 /**
  * Handles search result lookup.
  *
- * @param {Object} record - The provider/source record to process.
- * @returns {Map<string, Object>} The search-result entries indexed by normalized URL.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Map<string, Object<string, *>>} Search-result entries indexed by normalized URL.
  */
 function searchResultLookup(record) {
   // Lookup maps preserve source reference identity while citations/resources are normalized.
@@ -317,8 +317,8 @@ function searchResultLookup(record) {
 /**
  * Handles retrieved file lookup.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {Map<string, Object>} The retrieved-file citation metadata indexed by ChatGPT file marker.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Map<string, Object<string, *>>} Retrieved-file citation metadata indexed by ChatGPT retrieval marker.
  */
 function retrievedFileLookup(records) {
   // Lookup maps preserve source reference identity while citations/resources are normalized.
@@ -353,11 +353,11 @@ function fileMarkerKey(matchedText) {
 /**
  * Locates reference.
  *
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
  * @param {string} matchedText - The literal source text associated with the reference.
  * @param {number} startPartIndex - The content-part index at which searching begins.
  * @param {number} startOffset - The character offset at which searching begins.
- * @returns {Object|null} The located canonical text range, or `null` when the referenced text is absent.
+ * @returns {Object<string, number>|null} The matching canonical text range, or null when the literal reference text is absent.
  */
 function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
   if (typeof matchedText !== 'string' || !matchedText) return null;
@@ -383,10 +383,10 @@ function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {number} referenceIndex - The zero-based index of the content reference.
- * @param {Object} reference - The provider reference object to process.
- * @param {Object|null} range - The located text range, or `null` when the reference text was not found.
+ * @param {Object<string, *>} reference - The provider reference object to process.
+ * @param {Object<string, number>|null} range - The located text range, or `null` when the reference text was not found.
  * @param {string} kind - The canonical kind/category being processed.
- * @returns {Object} The common canonical citation fields and source provenance.
+ * @returns {Object<string, *>} Common canonical citation fields and source provenance.
  */
 function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, range, kind) {
   return {
@@ -407,9 +407,9 @@ function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, ra
 /**
  * Handles web source.
  *
- * @param {Object} item - The item value used by this operation.
- * @param {Map<string, Object>} lookup - The lookup table used to resolve related source data.
- * @returns {Object} The canonical web-source object derived from the provider search result.
+ * @param {Object<string, *>} item - The item value used by this operation.
+ * @param {Map<string, Object<string, *>>} lookup - The lookup table used to resolve related source data.
+ * @returns {Object<string, *>} A canonical web-source descriptor with any normalized supporting-source evidence.
  */
 function webSource(item, lookup) {
   const source = {
@@ -438,9 +438,9 @@ function webSource(item, lookup) {
 /**
  * Normalizes citation.
  *
- * @param {Object} reference - The provider reference object to process.
- * @param {Object} context - The contextual source/provenance values required by the operation.
- * @returns {Object|null} The canonical citation object, or `null` for unsupported provider reference shapes.
+ * @param {Object<string, *>} reference - The provider reference object to process.
+ * @param {Object<string, *>} context - The contextual source/provenance values required by the operation.
+ * @returns {Object<string, *>|null} The canonical citation for a supported provider reference, or null for an unsupported reference shape.
  */
 function normalizeCitation(reference, context) {
   const {
@@ -518,12 +518,12 @@ function normalizeCitation(reference, context) {
 /**
  * Handles event citations.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
- * @param {Map<string, Object>} retrievedFiles - The retrieved-file lookup keyed by ChatGPT file marker.
- * @returns {Array<Object>} The canonical citations associated with the source record.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
+ * @param {Map<string, Object<string, *>>} retrievedFiles - The retrieved-file lookup keyed by ChatGPT file marker.
+ * @returns {Array<Object<string, *>>} Canonical citations associated with the source record in source-reference order.
  */
 function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles) {
   const references = record?.metadata?.content_references;
@@ -560,8 +560,8 @@ function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFi
 /**
  * Handles conversation ID.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {void} No value is returned.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {string|null} The ChatGPT conversation identifier from the metadata record, or null when metadata is absent.
  */
 function conversationId(records) {
   const metadata = records.find(record =>
@@ -574,7 +574,7 @@ function conversationId(records) {
 /**
  * Checks whether conversation metadata.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {boolean} Whether the isConversationMetadata condition is satisfied.
  */
 function isConversationMetadata(record) {
@@ -585,7 +585,7 @@ function isConversationMetadata(record) {
  * Handles basename.
  *
  * @param {string} path - The path value used by this operation.
- * @returns {Object} The structured value produced by `basename`.
+ * @returns {string|null} The last non-empty path component, or null when the path has no component.
  */
 function basename(path) {
   if (typeof path !== 'string') return null;
@@ -596,8 +596,8 @@ function basename(path) {
 /**
  * Handles sandbox path.
  *
- * @param {Object} pointer - The pointer value used by this operation.
- * @returns {void} No value is returned.
+ * @param {string} pointer - The pointer value used by this operation.
+ * @returns {string|null} The /mnt/data-style path represented by a supported sandbox pointer, or null for unsupported pointer forms.
  */
 function sandboxPath(pointer) {
   if (typeof pointer !== 'string') return null;
@@ -612,7 +612,7 @@ function sandboxPath(pointer) {
  * @param {string} path - The path value used by this operation.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
- * @returns {void} No value is returned.
+ * @returns {string|null} The authenticated ChatGPT generated-file download URL, or null when required identity is unavailable.
  */
 function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
   if (!path || !sourceRecordId || !chatgptConversationId) return null;
@@ -630,7 +630,7 @@ function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
  * Handles sandbox links.
  *
  * @param {string} text - The text value to process.
- * @returns {void} No value is returned.
+ * @returns {Array<Object<string, *>>} Generated sandbox-link descriptors in source-text order, including label, pointer, and character range.
  */
 function sandboxLinks(text) {
   if (typeof text !== 'string' || !text) return [];
@@ -687,10 +687,10 @@ function sandboxLinks(text) {
 /**
  * Handles citation resources.
  *
- * @param {Array<Object>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Object} The structured value produced by `citationResources`.
+ * @returns {Array<Object<string, *>>} Canonical file resources derived from supported citation objects in citation order.
  */
 function citationResources(citations, sourceRecordId, sourceIndex) {
   // Canonical resources are accumulated without changing source encounter order.
@@ -743,11 +743,11 @@ function citationResources(citations, sourceRecordId, sourceIndex) {
 /**
  * Handles sandbox resources.
  *
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
- * @returns {void} No value is returned.
+ * @returns {Array<Object<string, *>>} Canonical generated-file resources derived from sandbox links in block/source order.
  */
 function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId) {
   // Canonical resources are accumulated without changing source encounter order.
@@ -796,13 +796,13 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
 /**
  * Handles event resources.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
- * @param {Array<Object>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
- * @returns {void} No value is returned.
+ * @returns {Array<Object<string, *>>} Canonical citation and generated-file resources for the source event.
  */
 function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
                         chatgptConversationId) {
@@ -815,8 +815,8 @@ function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
 /**
  * Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {Array<Object>} The ordered canonical events derived from the ordered ChatGPT source records.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Array<Object<string, *>>} Canonical events derived from ChatGPT source records while preserving source order and provenance.
  */
 function adaptBaseChatGPTRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('ChatGPT records must be an array.');
@@ -877,8 +877,8 @@ function adaptBaseChatGPTRecords(records) {
 /**
  * Returns the first usable image asset pointer exposed by a ChatGPT multimodal part.
  *
- * @param {Object} part - The part value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} part - The part value used by this operation.
+ * @returns {string|null} The first usable image asset pointer exposed by the multimodal part, or null when none is present.
  */
 function imagePointerSource(part) {
   if (!part || typeof part !== 'object') return null;
@@ -892,8 +892,8 @@ function imagePointerSource(part) {
 /**
  * Converts a ChatGPT `sediment://file_*` pointer into its authenticated download URL.
  *
- * @param {Object} source - The source value used by this operation.
- * @returns {void} No value is returned.
+ * @param {string} source - The source value used by this operation.
+ * @returns {string|null} The authenticated ChatGPT file-download URL for a sediment file pointer, or null for another pointer form.
  */
 function sedimentDownloadUrl(source) {
   if (typeof source !== 'string' || !source.startsWith('sediment://')) return null;
@@ -905,11 +905,11 @@ function sedimentDownloadUrl(source) {
 /**
  * Builds the canonical conversation-image resource for one ChatGPT image-pointer part.
  *
- * @param {Object} part - The part value used by this operation.
+ * @param {Object<string, *>} part - The part value used by this operation.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {number} partIndex - The zero-based content-part index.
- * @returns {void} No value is returned.
+ * @returns {Object<string, *>} The canonical conversation-image resource corresponding to the source image-pointer part.
  */
 function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
   const sourcePointer = imagePointerSource(part);
@@ -949,9 +949,9 @@ function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
 /**
  * Remaps text range.
  *
- * @param {Object|null} range - The located text range, or `null` when the reference text was not found.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>|null} range - The located text range, or `null` when the reference text was not found.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>|null} The supplied text range with its text-only ordinal remapped to the original multimodal part index, or the original null/range when no remap applies.
  */
 function remapTextRange(range, textOrdinalToPartIndex) {
   if (!range || !Number.isInteger(range.part_index)) return range;
@@ -963,9 +963,9 @@ function remapTextRange(range, textOrdinalToPartIndex) {
 /**
  * Remaps citation.
  *
- * @param {Object} citation - The citation value used by this operation.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} citation - The citation value used by this operation.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>} A copy of the canonical citation whose text range uses the original multimodal part index.
  */
 function remapCitation(citation, textOrdinalToPartIndex) {
   if (!citation || typeof citation !== 'object') return citation;
@@ -978,9 +978,9 @@ function remapCitation(citation, textOrdinalToPartIndex) {
 /**
  * Remaps display replacement.
  *
- * @param {string} replacement - The replacement value used by this operation.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} replacement - The replacement value used by this operation.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>} A copy of the display replacement whose text range uses the original multimodal part index.
  */
 function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
   if (!replacement || typeof replacement !== 'object') return replacement;
@@ -993,9 +993,9 @@ function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
 /**
  * Remaps existing resource.
  *
- * @param {Object} resource - The resource value used by this operation.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} resource - The resource value used by this operation.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>} A copy of the canonical resource with text/source part indexes remapped to original multimodal indexes when applicable.
  */
 function remapExistingResource(resource, textOrdinalToPartIndex) {
   if (!resource || typeof resource !== 'object') return resource;
@@ -1015,9 +1015,9 @@ function remapExistingResource(resource, textOrdinalToPartIndex) {
 /**
  * Normalizes multimodal images.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeMultimodalImages`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with source-order image blocks/resources inserted, or the original event when no image pointers are present.
  */
 function normalizeMultimodalImages(event, record) {
   const parts = record?.content?.parts;
@@ -1081,9 +1081,9 @@ function normalizeMultimodalImages(event, record) {
 /**
  * Builds canonical ChatGPT source provenance for a derived event/block object.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} extra - The extra value used by this operation.
- * @returns {Object} The structured value produced by `sourceFor`.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} extra - The extra value used by this operation.
+ * @returns {Object<string, *>} Canonical ChatGPT source provenance extended with any supplied block/reference fields.
  */
 function sourceFor(event, extra = {}) {
   return {
@@ -1097,11 +1097,11 @@ function sourceFor(event, extra = {}) {
 /**
  * Locates text range.
  *
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
  * @param {string} matchedText - The literal source text associated with the reference.
  * @param {number} startPartIndex - The content-part index at which searching begins.
  * @param {number} startOffset - The character offset at which searching begins.
- * @returns {Object|null} The value produced by `locateTextRange`, or `null` when no value is available.
+ * @returns {Object<string, number>|null} The located text range within canonical blocks, or null when the literal text is absent.
  */
 function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
   if (typeof matchedText !== 'string' || !matchedText) return null;
@@ -1124,9 +1124,9 @@ function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 
 /**
  * Normalizes display replacements.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Array<Object>} The ordered values produced by `normalizeDisplayReplacements`.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with normalized alt-text display replacements appended, or the original event when none apply.
  */
 function normalizeDisplayReplacements(event, record) {
   const references = record?.metadata?.content_references;
@@ -1179,8 +1179,8 @@ function normalizeDisplayReplacements(event, record) {
 /**
  * Normalizes tether assets.
  *
- * @param {Object} assets - The assets value used by this operation.
- * @returns {Object|null} The value produced by `normalizedTetherAssets`, or `null` when no value is available.
+ * @param {Object<string, *>|Array<Object<string, *>>|null} assets - The assets value used by this operation.
+ * @returns {Array<Object<string, *>>|null} Normalized tether asset descriptors in source order, or null when the source assets field is absent.
  */
 function normalizedTetherAssets(assets) {
   if (assets == null) return null;
@@ -1197,9 +1197,9 @@ function normalizedTetherAssets(assets) {
 /**
  * Normalizes tether browsing display.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeTetherBrowsingDisplay`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} A canonical tool-result event for tether browsing display content, or the original event when the source shape does not match.
  */
 function normalizeTetherBrowsingDisplay(event, record) {
   if (record?.author?.role !== 'tool' ||
@@ -1230,9 +1230,9 @@ function normalizeTetherBrowsingDisplay(event, record) {
 /**
  * Normalizes reasoning recap.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeReasoningRecap`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} A canonical reasoning-summary event for reasoning recap content, or the original event when the source shape does not match.
  */
 function normalizeReasoningRecap(event, record) {
   if (record?.author?.role !== 'assistant' ||
@@ -1257,9 +1257,9 @@ function normalizeReasoningRecap(event, record) {
 /**
  * Normalizes model editable context.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeModelEditableContext`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} A canonical system-context event for model editable context content, or the original event when the source shape does not match.
  */
 function normalizeModelEditableContext(event, record) {
   if (record?.author?.role !== 'assistant' ||
@@ -1288,9 +1288,9 @@ function normalizeModelEditableContext(event, record) {
 /**
  * Normalizes non parts content.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeNonPartsContent`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event after applying supported non-parts ChatGPT content normalizers.
  */
 function normalizeNonPartsContent(event, record) {
   let normalized = normalizeTetherBrowsingDisplay(event, record);
@@ -1460,9 +1460,9 @@ function providerLabel(provider) {
 /**
  * Finds one canonical event resource by resource ID.
  *
- * @param {Object} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
  * @param {string} resourceId - The resource id.
- * @returns {void} No value is returned.
+ * @returns {Object<string, *>|null} The canonical resource with the requested ID, or null when the event has no matching resource.
  */
 function resourceById(event, resourceId) {
   return event.resources?.find(resource => resource.id === resourceId) ?? null;
@@ -1471,8 +1471,8 @@ function resourceById(event, resourceId) {
 /**
  * Renders image block.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} block - The block value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderImageBlock`.
  */
 function renderImageBlock(event, block) {
@@ -1505,7 +1505,7 @@ function faviconDomain(url) {
 /**
  * Builds citation-source tooltip text from the source title and snippet.
  *
- * @param {Object} source - The source value used by this operation.
+ * @param {Object<string, *>} source - The source value used by this operation.
  * @returns {string} The text representation produced by `sourceTooltip`.
  */
 function sourceTooltip(source) {
@@ -1518,7 +1518,7 @@ function sourceTooltip(source) {
 /**
  * Returns the preferred visible label for a citation source.
  *
- * @param {Object} source - The source value used by this operation.
+ * @param {Object<string, *>} source - The source value used by this operation.
  * @param {string} fallback - The fallback value used by this operation.
  * @returns {string} The text representation produced by `sourceLabel`.
  */
@@ -1529,7 +1529,7 @@ function sourceLabel(source, fallback = '') {
 /**
  * Renders source anchor.
  *
- * @param {Object} source - The source value used by this operation.
+ * @param {Object<string, *>} source - The source value used by this operation.
  * @param {string} fallbackLabel - The fallback label value used by this operation.
  * @param {boolean} preferTitle - The prefer title value used by this operation.
  * @returns {string} The text representation produced by `renderSourceAnchor`.
@@ -1547,7 +1547,7 @@ function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
 /**
  * Renders web citation.
  *
- * @param {Object} citation - The citation value used by this operation.
+ * @param {Object<string, *>} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `renderWebCitation`.
  */
 function renderWebCitation(citation) {
@@ -1562,7 +1562,7 @@ function renderWebCitation(citation) {
 /**
  * Renders memory citation.
  *
- * @param {Object} citation - The citation value used by this operation.
+ * @param {Object<string, *>} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `renderMemoryCitation`.
  */
 function renderMemoryCitation(citation) {
@@ -1574,7 +1574,7 @@ function renderMemoryCitation(citation) {
 /**
  * Extracts and normalizes a retrieved-file line-range label from citation marker text.
  *
- * @param {Object} citation - The citation value used by this operation.
+ * @param {Object<string, *>} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `retrievedLineLabel`.
  */
 function retrievedLineLabel(citation) {
@@ -1587,7 +1587,7 @@ function retrievedLineLabel(citation) {
 /**
  * Renders citation.
  *
- * @param {Object} citation - The citation value used by this operation.
+ * @param {Object<string, *>} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `renderCitation`.
  */
 function renderCitation(citation) {
@@ -1605,9 +1605,9 @@ function renderCitation(citation) {
 /**
  * Collects display replacements, citations, and generated-file links that apply to one text part.
  *
- * @param {Object} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
  * @param {number} partIndex - The zero-based content-part index.
- * @returns {Array<Object>} The ordered values produced by `textReplacements`.
+ * @returns {Array<Object<string, *>>} Text replacements for the requested part, sorted from highest to lowest character offset for safe in-place rewriting.
  */
 function textReplacements(event, partIndex) {
   const replacements = [];
@@ -1637,8 +1637,8 @@ function textReplacements(event, partIndex) {
 /**
  * Renders text block.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} block - The block value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
  * @param {number} partIndex - The zero-based content-part index.
  * @returns {string} The text representation produced by `renderTextBlock`.
  */
@@ -1653,8 +1653,8 @@ function renderTextBlock(event, block, partIndex) {
 /**
  * Renders message blocks.
  *
- * @param {Object} event - The event value used by this operation.
- * @returns {Array<Object>} The ordered values produced by `renderMessageBlocks`.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @returns {string} Visible canonical message/image blocks rendered as Markdown text in block order.
  */
 function renderMessageBlocks(event) {
   return (event.blocks ?? []).map((block, blockIndex) => {
@@ -1670,7 +1670,7 @@ function renderMessageBlocks(event) {
 /**
  * Builds the Markdown body for canonical reasoning-summary blocks in one event.
  *
- * @param {Object} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
  * @returns {string} The text representation produced by `reasoningBody`.
  */
 function reasoningBody(event) {
@@ -1688,7 +1688,7 @@ function reasoningBody(event) {
  *
  * @param {string} summary - The summary value used by this operation.
  * @param {string} body - The body value used by this operation.
- * @returns {void} No value is returned.
+ * @returns {string} The HTML details/summary Markdown fragment containing the supplied body.
  */
 function details(summary, body) {
   return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
@@ -1724,8 +1724,8 @@ function fencedCode(content, language = '') {
  *
  * A normalized non-`unknown` canonical language is emitted unchanged; the historical `container.exec` fallback emits `bash` only when no stronger normalized language is present.
  *
- * @param {Object} block - The block value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} block - The block value used by this operation.
+ * @returns {string} The Markdown fence language selected from canonical tool semantics, or an empty string when no language is justified.
  */
 function inferredToolLanguage(block) {
   const language = typeof block.language === 'string' ? block.language.trim() : '';
@@ -1737,9 +1737,9 @@ function inferredToolLanguage(block) {
 /**
  * Handles related retrieved file.
  *
- * @param {Array<Object>} events - The ordered canonical events to process.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
- * @returns {void} No value is returned.
+ * @returns {Object<string, *>|null} Resolved retrieved-file citation metadata associated with the source record, or null when none is related.
  */
 function relatedRetrievedFile(events, sourceRecordId) {
   for (const event of events) {
@@ -1753,9 +1753,9 @@ function relatedRetrievedFile(events, sourceRecordId) {
 /**
  * Renders multimodal tool output.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} block - The block value used by this operation.
- * @param {Array<Object>} events - The ordered canonical events to process.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
  * @returns {string} The text representation produced by `renderMultimodalToolOutput`.
  */
 function renderMultimodalToolOutput(event, block, events) {
@@ -1775,9 +1775,9 @@ function renderMultimodalToolOutput(event, block, events) {
  *
  * The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} block - The block value used by this operation.
- * @param {Array<Object>} events - The ordered canonical events to process.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
  * @returns {string} The text representation produced by `renderChatGPTToolBlock`.
  */
 function renderChatGPTToolBlock(event, block, events) {
@@ -1797,8 +1797,8 @@ function renderChatGPTToolBlock(event, block, events) {
 /**
  * Renders all canonical tool blocks belonging to one ChatGPT tool event.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Array<Object>} events - The ordered canonical events to process.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
  * @returns {string} The text representation produced by `renderChatGPTToolEvent`.
  */
 function renderChatGPTToolEvent(event, events) {
@@ -1808,7 +1808,7 @@ function renderChatGPTToolEvent(event, events) {
 /**
  * Renders user.
  *
- * @param {Object} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
  * @returns {string} The text representation produced by `renderUser`.
  */
 function renderUser(event) {
@@ -1818,9 +1818,9 @@ function renderUser(event) {
 /**
  * Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @param {Array<Object>} events - The ordered canonical events to process.
- * @returns {string} The text representation produced by `renderChatGPTCommentarySegment`.
+ * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
+ * @returns {string|null} The ChatGPT Commentary Markdown section for the segment, or null when the segment produces no visible body.
  */
 function renderChatGPTCommentarySegment(segment, events) {
   const body = [];
@@ -1859,9 +1859,9 @@ function renderChatGPTCommentarySegment(segment, events) {
 /**
  * Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @param {Array<Object>} events - The ordered canonical events to process.
- * @returns {string} The text representation produced by `renderChatGPTAssistantSegment`.
+ * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
+ * @returns {Array<string>} One or more ChatGPT Markdown sections produced from the Assistant segment.
  */
 function renderChatGPTAssistantSegment(segment, events) {
   const reasoning = segment.filter(event => event.kind === 'reasoning_summary');
@@ -1888,8 +1888,8 @@ function renderChatGPTAssistantSegment(segment, events) {
 /**
  * Handles tool call ID.
  *
- * @param {Object} event - The event value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @returns {string|null} The canonical tool-call correlation ID, or null when the event carries no call ID.
  */
 function toolCallId(event) {
   return event?.relationships?.tool_call_id ?? event?.blocks?.[0]?.call_id ?? null;
@@ -1898,8 +1898,8 @@ function toolCallId(event) {
 /**
  * Handles tool result by call ID.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @returns {Map<string, Object<string, *>>} Tool-result events indexed by their non-null call IDs.
  */
 function toolResultByCallId(segment) {
   // Maps tool-call IDs to their canonical result events for paired rendering.
@@ -1911,8 +1911,8 @@ function toolResultByCallId(segment) {
 /**
  * Handles tool output.
  *
- * @param {Object} event - The event value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @returns {string} Tool-result output flattened to displayable text.
  */
 function toolOutput(event) {
   const block = event?.blocks?.find(item => item.type === 'tool_result');
@@ -1925,8 +1925,8 @@ function toolOutput(event) {
 /**
  * Renders Claude tool thought.
  *
- * @param {Object} callEvent - The call event value used by this operation.
- * @param {Object} resultEvent - The result event value used by this operation.
+ * @param {Object<string, *>} callEvent - The call event value used by this operation.
+ * @param {Object<string, *>|null} resultEvent - The result event value used by this operation.
  * @returns {string} The text representation produced by `renderClaudeToolThought`.
  */
 function renderClaudeToolThought(callEvent, resultEvent) {
@@ -1941,7 +1941,7 @@ function renderClaudeToolThought(callEvent, resultEvent) {
 /**
  * Renders subagent event.
  *
- * @param {Object} event - The event value used by this operation.
+ * @param {Object<string, *>} event - The event value used by this operation.
  * @returns {string} The text representation produced by `renderSubagentEvent`.
  */
 function renderSubagentEvent(event) {
@@ -1956,7 +1956,7 @@ function renderSubagentEvent(event) {
 /**
  * Renders Claude question block.
  *
- * @param {Object} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderClaudeQuestionBlock`.
  */
 function renderClaudeQuestionBlock(block) {
@@ -1977,7 +1977,7 @@ function renderClaudeQuestionBlock(block) {
 /**
  * Renders Claude plan block.
  *
- * @param {Object} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderClaudePlanBlock`.
  */
 function renderClaudePlanBlock(block) {
@@ -1989,7 +1989,7 @@ function renderClaudePlanBlock(block) {
 /**
  * Renders Claude plan approval.
  *
- * @param {Object} block - The block value used by this operation.
+ * @param {Object<string, *>} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderClaudePlanApproval`.
  */
 function renderClaudePlanApproval(block) {
@@ -2004,8 +2004,8 @@ function renderClaudePlanApproval(block) {
 /**
  * Renders Claude assistant segment.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @returns {string} The text representation produced by `renderClaudeAssistantSegment`.
+ * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @returns {Array<string>} Claude/User/subagent Markdown sections produced from the Assistant segment.
  */
 function renderClaudeAssistantSegment(segment) {
   const sections = [];
@@ -2094,8 +2094,8 @@ function renderClaudeAssistantSegment(segment) {
 /**
  * Handles codex request block.
  *
- * @param {Object} event - The event value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @returns {Object<string, *>|undefined} The request_user_input tool-call block, or undefined when the event has no such block.
  */
 function codexRequestBlock(event) {
   return event?.blocks?.find(block => block.type === 'tool_call' && block.name === 'request_user_input');
@@ -2104,8 +2104,8 @@ function codexRequestBlock(event) {
 /**
  * Handles codex response block.
  *
- * @param {Object} event - The event value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @returns {Object<string, *>|undefined} The request_user_input tool-result block, or undefined when the event has no such block.
  */
 function codexResponseBlock(event) {
   return event?.blocks?.find(block => block.type === 'tool_result' && block.request_user_input_response);
@@ -2114,10 +2114,10 @@ function codexResponseBlock(event) {
 /**
  * Renders Codex request sections.
  *
- * @param {Object} callEvent - The call event value used by this operation.
- * @param {Object} resultEvent - The result event value used by this operation.
- * @param {Object} state - The state value used by this operation.
- * @returns {string} The text representation produced by `renderCodexRequestSections`.
+ * @param {Object<string, *>} callEvent - The call event value used by this operation.
+ * @param {Object<string, *>|null} resultEvent - The result event value used by this operation.
+ * @param {Object<string, number>} state - The state value used by this operation.
+ * @returns {Array<string>} Codex question Markdown and, when answers exist, the corresponding User answer section.
  */
 function renderCodexRequestSections(callEvent, resultEvent, state) {
   const call = codexRequestBlock(callEvent);
@@ -2144,8 +2144,8 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
 /**
  * Renders Codex file changes.
  *
- * @param {Object} segment - The segment value used by this operation.
- * @returns {string} The text representation produced by `renderCodexFileChanges`.
+ * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
+ * @returns {string|null} The collapsed Codex file-change details section, or null when the segment has no apply_patch changes.
  */
 function renderCodexFileChanges(segment) {
   const patches = [];
@@ -2163,7 +2163,7 @@ function renderCodexFileChanges(segment) {
 /**
  * Renders Codex main response.
  *
- * @param {Object} segment - The segment value used by this operation.
+ * @param {Array<Object<string, *>>} segment - The segment value used by this operation.
  * @returns {string} The text representation produced by `renderCodexMainResponse`.
  */
 function renderCodexMainResponse(segment) {

@@ -1,8 +1,8 @@
 /**
  * Returns the string-valued text parts from a ChatGPT source record in source order.
  *
- * @param {Object} record - The provider/source record to process.
- * @returns {Array<string>} The string-valued text parts in source order.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Array<string>} String-valued ChatGPT content parts in their source order.
  */
 function textParts(record) {
   const parts = record?.content?.parts;
@@ -13,10 +13,10 @@ function textParts(record) {
 /**
  * Builds canonical reasoning-summary blocks from a ChatGPT `thoughts` record.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Array<Object>} The canonical reasoning-summary blocks derived from the source record.
+ * @returns {Array<Object<string, *>>} Canonical reasoning-summary blocks derived from the ChatGPT thoughts record.
  */
 function reasoningBlocks(record, sourceRecordId, sourceIndex) {
   const thoughts = record?.content?.thoughts;
@@ -74,8 +74,8 @@ function launcherToken(value) {
  * - `container.exec` + provider `language: unknown` + flattened Python `-c` command -> preserve the full persisted command in `source_input`, render only the Python program in `input`, and set `language: python`.
  * The source language is always retained separately as `source_language`.
  *
- * @param {Object} record - The provider/source record to process.
- * @returns {Object} The canonical tool-call presentation together with the preserved source input and source language.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} Normalized output-facing tool-call input/format/language together with the exact persisted source input and source language.
  */
 function normalizedToolCallPresentation(record) {
   const name = record?.recipient ?? null;
@@ -119,10 +119,10 @@ function normalizedToolCallPresentation(record) {
  *
  * The block carries both the normalized input/language used for output and the original persisted input/language for provenance.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Array<Object>} The canonical tool-call block array for the source record.
+ * @returns {Array<Object<string, *>>} The single canonical tool-call block array for the source record.
  */
 function toolCallBlocks(record, sourceRecordId, sourceIndex) {
   const presentation = normalizedToolCallPresentation(record);
@@ -153,10 +153,10 @@ function toolCallBlocks(record, sourceRecordId, sourceIndex) {
  * - `multimodal_text` -> source parts preserved as an ordered array.
  * The original ChatGPT content type is retained as `output_format`.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Array<Object>} The canonical tool-result block array for the source record.
+ * @returns {Array<Object<string, *>>} The single canonical tool-result block array for the source record.
  */
 function toolResultBlocks(record, sourceRecordId, sourceIndex) {
   const contentType = record?.content?.content_type ?? null;
@@ -191,7 +191,7 @@ function toolResultBlocks(record, sourceRecordId, sourceIndex) {
 /**
  * Returns whether a ChatGPT source record is canonically visible or hidden.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {string} The canonical visibility value, `visible` or `hidden`.
  */
 function eventVisibility(record) {
@@ -201,7 +201,7 @@ function eventVisibility(record) {
 /**
  * Checks whether tool call.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool call.
  */
 function isToolCall(record) {
@@ -214,7 +214,7 @@ function isToolCall(record) {
 /**
  * Checks whether tool result.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool result.
  */
 function isToolResult(record) {
@@ -226,7 +226,7 @@ function isToolResult(record) {
 /**
  * Classifies a ChatGPT source record into its canonical event kind.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {string} The canonical event-kind classification for the source record.
  */
 function eventKind(record) {
@@ -242,11 +242,11 @@ function eventKind(record) {
 /**
  * Builds the canonical content blocks for one classified ChatGPT source record.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {string} kind - The canonical kind/category being processed.
- * @returns {Array<Object>} The canonical content blocks for the classified source record.
+ * @returns {Array<Object<string, *>>} Canonical content blocks for the classified ChatGPT source record.
  */
 function eventBlocks(record, sourceRecordId, sourceIndex, kind) {
   if (kind === 'reasoning_summary') return reasoningBlocks(record, sourceRecordId, sourceIndex);
@@ -287,8 +287,8 @@ function normalizedUrl(value) {
 /**
  * Handles search result lookup.
  *
- * @param {Object} record - The provider/source record to process.
- * @returns {Map<string, Object>} The search-result entries indexed by normalized URL.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Map<string, Object<string, *>>} Search-result entries indexed by normalized URL.
  */
 function searchResultLookup(record) {
   // Lookup maps preserve source reference identity while citations/resources are normalized.
@@ -309,8 +309,8 @@ function searchResultLookup(record) {
 /**
  * Handles retrieved file lookup.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {Map<string, Object>} The retrieved-file citation metadata indexed by ChatGPT file marker.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Map<string, Object<string, *>>} Retrieved-file citation metadata indexed by ChatGPT retrieval marker.
  */
 function retrievedFileLookup(records) {
   // Lookup maps preserve source reference identity while citations/resources are normalized.
@@ -345,11 +345,11 @@ function fileMarkerKey(matchedText) {
 /**
  * Locates reference.
  *
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
  * @param {string} matchedText - The literal source text associated with the reference.
  * @param {number} startPartIndex - The content-part index at which searching begins.
  * @param {number} startOffset - The character offset at which searching begins.
- * @returns {Object|null} The located canonical text range, or `null` when the referenced text is absent.
+ * @returns {Object<string, number>|null} The matching canonical text range, or null when the literal reference text is absent.
  */
 function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
   if (typeof matchedText !== 'string' || !matchedText) return null;
@@ -375,10 +375,10 @@ function locateReference(blocks, matchedText, startPartIndex = 0, startOffset = 
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {number} referenceIndex - The zero-based index of the content reference.
- * @param {Object} reference - The provider reference object to process.
- * @param {Object|null} range - The located text range, or `null` when the reference text was not found.
+ * @param {Object<string, *>} reference - The provider reference object to process.
+ * @param {Object<string, number>|null} range - The located text range, or `null` when the reference text was not found.
  * @param {string} kind - The canonical kind/category being processed.
- * @returns {Object} The common canonical citation fields and source provenance.
+ * @returns {Object<string, *>} Common canonical citation fields and source provenance.
  */
 function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, range, kind) {
   return {
@@ -399,9 +399,9 @@ function citationBase(sourceRecordId, sourceIndex, referenceIndex, reference, ra
 /**
  * Handles web source.
  *
- * @param {Object} item - The item value used by this operation.
- * @param {Map<string, Object>} lookup - The lookup table used to resolve related source data.
- * @returns {Object} The canonical web-source object derived from the provider search result.
+ * @param {Object<string, *>} item - The item value used by this operation.
+ * @param {Map<string, Object<string, *>>} lookup - The lookup table used to resolve related source data.
+ * @returns {Object<string, *>} A canonical web-source descriptor with any normalized supporting-source evidence.
  */
 function webSource(item, lookup) {
   const source = {
@@ -430,9 +430,9 @@ function webSource(item, lookup) {
 /**
  * Normalizes citation.
  *
- * @param {Object} reference - The provider reference object to process.
- * @param {Object} context - The contextual source/provenance values required by the operation.
- * @returns {Object|null} The canonical citation object, or `null` for unsupported provider reference shapes.
+ * @param {Object<string, *>} reference - The provider reference object to process.
+ * @param {Object<string, *>} context - The contextual source/provenance values required by the operation.
+ * @returns {Object<string, *>|null} The canonical citation for a supported provider reference, or null for an unsupported reference shape.
  */
 function normalizeCitation(reference, context) {
   const {
@@ -510,12 +510,12 @@ function normalizeCitation(reference, context) {
 /**
  * Handles event citations.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
- * @param {Map<string, Object>} retrievedFiles - The retrieved-file lookup keyed by ChatGPT file marker.
- * @returns {Array<Object>} The canonical citations associated with the source record.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
+ * @param {Map<string, Object<string, *>>} retrievedFiles - The retrieved-file lookup keyed by ChatGPT file marker.
+ * @returns {Array<Object<string, *>>} Canonical citations associated with the source record in source-reference order.
  */
 function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFiles) {
   const references = record?.metadata?.content_references;
@@ -552,8 +552,8 @@ function eventCitations(record, sourceRecordId, sourceIndex, blocks, retrievedFi
 /**
  * Handles conversation ID.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {void} No value is returned.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {string|null} The ChatGPT conversation identifier from the metadata record, or null when metadata is absent.
  */
 function conversationId(records) {
   const metadata = records.find(record =>
@@ -566,7 +566,7 @@ function conversationId(records) {
 /**
  * Checks whether conversation metadata.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @returns {boolean} Whether the isConversationMetadata condition is satisfied.
  */
 function isConversationMetadata(record) {
@@ -577,7 +577,7 @@ function isConversationMetadata(record) {
  * Handles basename.
  *
  * @param {string} path - The path value used by this operation.
- * @returns {Object} The structured value produced by `basename`.
+ * @returns {string|null} The last non-empty path component, or null when the path has no component.
  */
 function basename(path) {
   if (typeof path !== 'string') return null;
@@ -588,8 +588,8 @@ function basename(path) {
 /**
  * Handles sandbox path.
  *
- * @param {Object} pointer - The pointer value used by this operation.
- * @returns {void} No value is returned.
+ * @param {string} pointer - The pointer value used by this operation.
+ * @returns {string|null} The /mnt/data-style path represented by a supported sandbox pointer, or null for unsupported pointer forms.
  */
 function sandboxPath(pointer) {
   if (typeof pointer !== 'string') return null;
@@ -604,7 +604,7 @@ function sandboxPath(pointer) {
  * @param {string} path - The path value used by this operation.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
- * @returns {void} No value is returned.
+ * @returns {string|null} The authenticated ChatGPT generated-file download URL, or null when required identity is unavailable.
  */
 function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
   if (!path || !sourceRecordId || !chatgptConversationId) return null;
@@ -622,7 +622,7 @@ function sandboxDownloadUrl(path, sourceRecordId, chatgptConversationId) {
  * Handles sandbox links.
  *
  * @param {string} text - The text value to process.
- * @returns {void} No value is returned.
+ * @returns {Array<Object<string, *>>} Generated sandbox-link descriptors in source-text order, including label, pointer, and character range.
  */
 function sandboxLinks(text) {
   if (typeof text !== 'string' || !text) return [];
@@ -679,10 +679,10 @@ function sandboxLinks(text) {
 /**
  * Handles citation resources.
  *
- * @param {Array<Object>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Object} The structured value produced by `citationResources`.
+ * @returns {Array<Object<string, *>>} Canonical file resources derived from supported citation objects in citation order.
  */
 function citationResources(citations, sourceRecordId, sourceIndex) {
   // Canonical resources are accumulated without changing source encounter order.
@@ -735,11 +735,11 @@ function citationResources(citations, sourceRecordId, sourceIndex) {
 /**
  * Handles sandbox resources.
  *
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
- * @returns {void} No value is returned.
+ * @returns {Array<Object<string, *>>} Canonical generated-file resources derived from sandbox links in block/source order.
  */
 function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversationId) {
   // Canonical resources are accumulated without changing source encounter order.
@@ -788,13 +788,13 @@ function sandboxResources(blocks, sourceRecordId, sourceIndex, chatgptConversati
 /**
  * Handles event resources.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
- * @param {Array<Object>} citations - The citations value used by this operation.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} citations - The citations value used by this operation.
  * @param {string} chatgptConversationId - The chatgpt conversation id.
- * @returns {void} No value is returned.
+ * @returns {Array<Object<string, *>>} Canonical citation and generated-file resources for the source event.
  */
 function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
                         chatgptConversationId) {
@@ -807,8 +807,8 @@ function eventResources(record, sourceRecordId, sourceIndex, blocks, citations,
 /**
  * Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {Array<Object>} The ordered canonical events derived from the ordered ChatGPT source records.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Array<Object<string, *>>} Canonical events derived from ChatGPT source records while preserving source order and provenance.
  */
 export function adaptChatGPTRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('ChatGPT records must be an array.');

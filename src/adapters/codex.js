@@ -1,9 +1,9 @@
 /**
  * Returns the stable source identity used to derive Codex canonical IDs.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Object} The structured value produced by `sourceIdentity`.
+ * @returns {string} The stable source identity used to derive Codex canonical IDs.
  */
 function sourceIdentity(record, sourceIndex) {
   return record?.payload?.call_id ?? `record:${sourceIndex}`;
@@ -12,9 +12,9 @@ function sourceIdentity(record, sourceIndex) {
 /**
  * Builds canonical source provenance for a Codex source record.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {Object} The structured value produced by `source`.
+ * @returns {Object<string, *>} Canonical Codex source provenance for the provider record.
  */
 function source(record, sourceIndex) {
   return {
@@ -27,7 +27,7 @@ function source(record, sourceIndex) {
 /**
  * Checks whether tool call.
  *
- * @param {Object} payload - The payload value used by this operation.
+ * @param {Object<string, *>} payload - The payload value used by this operation.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool call.
  */
 function isToolCall(payload) {
@@ -37,7 +37,7 @@ function isToolCall(payload) {
 /**
  * Checks whether tool result.
  *
- * @param {Object} payload - The payload value used by this operation.
+ * @param {Object<string, *>} payload - The payload value used by this operation.
  * @returns {boolean} Whether the source record represents a supported ChatGPT tool result.
  */
 function isToolResult(payload) {
@@ -64,7 +64,7 @@ function parseJsonObject(value) {
  * Normalizes questions.
  *
  * @param {string} argumentsText - The arguments text value used by this operation.
- * @returns {Object|null} The value produced by `normalizedQuestions`, or `null` when no value is available.
+ * @returns {Array<Object<string, *>>|null} Normalized request-user-input questions, or null when the argument JSON has no questions array.
  */
 function normalizedQuestions(argumentsText) {
   const parsed = parseJsonObject(argumentsText);
@@ -85,7 +85,7 @@ function normalizedQuestions(argumentsText) {
  * Normalizes answers.
  *
  * @param {string} outputText - The output text value used by this operation.
- * @returns {Object|null} The value produced by `normalizedAnswers`, or `null` when no value is available.
+ * @returns {Object<string, Array<string>>|null} Answers indexed by question ID, or null when the tool output has no answers object.
  */
 function normalizedAnswers(outputText) {
   const parsed = parseJsonObject(outputText);
@@ -103,9 +103,9 @@ function normalizedAnswers(outputText) {
 /**
  * Builds a canonical tool-call event from the provider-specific tool-call source record/block.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {void} No value is returned.
+ * @returns {Object<string, *>} A canonical Codex tool-call event preserving source index and call correlation.
  */
 function toolCallEvent(record, sourceIndex) {
   const payload = record.payload;
@@ -153,9 +153,9 @@ function toolCallEvent(record, sourceIndex) {
 /**
  * Builds a canonical tool-result event from the provider-specific tool-result source record/block.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
- * @returns {void} No value is returned.
+ * @returns {Object<string, *>} A canonical Codex tool-result event preserving source index and call correlation.
  */
 function toolResultEvent(record, sourceIndex) {
   const payload = record.payload;
@@ -197,14 +197,14 @@ function toolResultEvent(record, sourceIndex) {
 /**
  * Builds a canonical message/commentary event from provider-specific message content.
  *
- * @param {Object} record - The provider/source record to process.
+ * @param {Object<string, *>} record - The provider/source record to process.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {string} role - The role value used by this operation.
  * @param {string} kind - The canonical kind/category being processed.
- * @param {Object} channel - The channel value used by this operation.
+ * @param {string|null} channel - The channel value used by this operation.
  * @param {string} text - The text value to process.
- * @param {Object} contentType - The content type value used by this operation.
- * @returns {void} No value is returned.
+ * @param {string} contentType - The content type value used by this operation.
+ * @returns {Object<string, *>} A canonical Codex message, commentary, or reasoning-summary event for the supplied provider text.
  */
 function messageEvent(record, sourceIndex, role, kind, channel, text, contentType) {
   const sourceInfo = source(record, sourceIndex);
@@ -236,8 +236,8 @@ function messageEvent(record, sourceIndex, role, kind, channel, text, contentTyp
 /**
  * Adapts Codex tool events.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {Array<Object>} The ordered values produced by `adaptCodexToolEvents`.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Array<Object<string, *>>} Canonical Codex tool events in provider source order.
  */
 export function adaptCodexToolEvents(records) {
   if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
@@ -259,8 +259,8 @@ export function adaptCodexToolEvents(records) {
 /**
  * Adapts Codex records.
  *
- * @param {Array<Object>} records - The ordered provider/source records to process.
- * @returns {void} No value is returned.
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Array<Object<string, *>>} Canonical Codex events in provider source order.
  */
 export function adaptCodexRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');

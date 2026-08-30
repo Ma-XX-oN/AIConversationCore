@@ -3,8 +3,8 @@ import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.j
 /**
  * Returns the first usable image asset pointer exposed by a ChatGPT multimodal part.
  *
- * @param {Object} part - The part value used by this operation.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} part - The part value used by this operation.
+ * @returns {string|null} The first usable image asset pointer exposed by the multimodal part, or null when none is present.
  */
 function imagePointerSource(part) {
   if (!part || typeof part !== 'object') return null;
@@ -18,8 +18,8 @@ function imagePointerSource(part) {
 /**
  * Converts a ChatGPT `sediment://file_*` pointer into its authenticated download URL.
  *
- * @param {Object} source - The source value used by this operation.
- * @returns {void} No value is returned.
+ * @param {string} source - The source value used by this operation.
+ * @returns {string|null} The authenticated ChatGPT file-download URL for a sediment file pointer, or null for another pointer form.
  */
 function sedimentDownloadUrl(source) {
   if (typeof source !== 'string' || !source.startsWith('sediment://')) return null;
@@ -31,11 +31,11 @@ function sedimentDownloadUrl(source) {
 /**
  * Builds the canonical conversation-image resource for one ChatGPT image-pointer part.
  *
- * @param {Object} part - The part value used by this operation.
+ * @param {Object<string, *>} part - The part value used by this operation.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @param {number} sourceIndex - The zero-based index of the source record.
  * @param {number} partIndex - The zero-based content-part index.
- * @returns {void} No value is returned.
+ * @returns {Object<string, *>} The canonical conversation-image resource corresponding to the source image-pointer part.
  */
 function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
   const sourcePointer = imagePointerSource(part);
@@ -75,9 +75,9 @@ function imageResource(part, sourceRecordId, sourceIndex, partIndex) {
 /**
  * Remaps text range.
  *
- * @param {Object|null} range - The located text range, or `null` when the reference text was not found.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>|null} range - The located text range, or `null` when the reference text was not found.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>|null} The supplied text range with its text-only ordinal remapped to the original multimodal part index, or the original null/range when no remap applies.
  */
 function remapTextRange(range, textOrdinalToPartIndex) {
   if (!range || !Number.isInteger(range.part_index)) return range;
@@ -89,9 +89,9 @@ function remapTextRange(range, textOrdinalToPartIndex) {
 /**
  * Remaps citation.
  *
- * @param {Object} citation - The citation value used by this operation.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} citation - The citation value used by this operation.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>} A copy of the canonical citation whose text range uses the original multimodal part index.
  */
 function remapCitation(citation, textOrdinalToPartIndex) {
   if (!citation || typeof citation !== 'object') return citation;
@@ -104,9 +104,9 @@ function remapCitation(citation, textOrdinalToPartIndex) {
 /**
  * Remaps display replacement.
  *
- * @param {string} replacement - The replacement value used by this operation.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} replacement - The replacement value used by this operation.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>} A copy of the display replacement whose text range uses the original multimodal part index.
  */
 function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
   if (!replacement || typeof replacement !== 'object') return replacement;
@@ -119,9 +119,9 @@ function remapDisplayReplacement(replacement, textOrdinalToPartIndex) {
 /**
  * Remaps existing resource.
  *
- * @param {Object} resource - The resource value used by this operation.
- * @param {number} textOrdinalToPartIndex - The zero-based text ordinal to part index.
- * @returns {void} No value is returned.
+ * @param {Object<string, *>} resource - The resource value used by this operation.
+ * @param {Map<number, number>} textOrdinalToPartIndex - The zero-based text ordinal to part index.
+ * @returns {Object<string, *>} A copy of the canonical resource with text/source part indexes remapped to original multimodal indexes when applicable.
  */
 function remapExistingResource(resource, textOrdinalToPartIndex) {
   if (!resource || typeof resource !== 'object') return resource;
@@ -141,9 +141,9 @@ function remapExistingResource(resource, textOrdinalToPartIndex) {
 /**
  * Normalizes multimodal images.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeMultimodalImages`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with source-order image blocks/resources inserted, or the original event when no image pointers are present.
  */
 function normalizeMultimodalImages(event, record) {
   const parts = record?.content?.parts;
@@ -207,9 +207,9 @@ function normalizeMultimodalImages(event, record) {
 /**
  * Builds canonical ChatGPT source provenance for a derived event/block object.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} extra - The extra value used by this operation.
- * @returns {Object} The structured value produced by `sourceFor`.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} extra - The extra value used by this operation.
+ * @returns {Object<string, *>} Canonical ChatGPT source provenance extended with any supplied block/reference fields.
  */
 function sourceFor(event, extra = {}) {
   return {
@@ -223,11 +223,11 @@ function sourceFor(event, extra = {}) {
 /**
  * Locates text range.
  *
- * @param {Array<Object>} blocks - The ordered canonical content blocks to process.
+ * @param {Array<Object<string, *>>} blocks - The ordered canonical content blocks to process.
  * @param {string} matchedText - The literal source text associated with the reference.
  * @param {number} startPartIndex - The content-part index at which searching begins.
  * @param {number} startOffset - The character offset at which searching begins.
- * @returns {Object|null} The value produced by `locateTextRange`, or `null` when no value is available.
+ * @returns {Object<string, number>|null} The located text range within canonical blocks, or null when the literal text is absent.
  */
 function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 0) {
   if (typeof matchedText !== 'string' || !matchedText) return null;
@@ -250,9 +250,9 @@ function locateTextRange(blocks, matchedText, startPartIndex = 0, startOffset = 
 /**
  * Normalizes display replacements.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Array<Object>} The ordered values produced by `normalizeDisplayReplacements`.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event with normalized alt-text display replacements appended, or the original event when none apply.
  */
 function normalizeDisplayReplacements(event, record) {
   const references = record?.metadata?.content_references;
@@ -305,8 +305,8 @@ function normalizeDisplayReplacements(event, record) {
 /**
  * Normalizes tether assets.
  *
- * @param {Object} assets - The assets value used by this operation.
- * @returns {Object|null} The value produced by `normalizedTetherAssets`, or `null` when no value is available.
+ * @param {Object<string, *>|Array<Object<string, *>>|null} assets - The assets value used by this operation.
+ * @returns {Array<Object<string, *>>|null} Normalized tether asset descriptors in source order, or null when the source assets field is absent.
  */
 function normalizedTetherAssets(assets) {
   if (assets == null) return null;
@@ -323,9 +323,9 @@ function normalizedTetherAssets(assets) {
 /**
  * Normalizes tether browsing display.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeTetherBrowsingDisplay`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} A canonical tool-result event for tether browsing display content, or the original event when the source shape does not match.
  */
 function normalizeTetherBrowsingDisplay(event, record) {
   if (record?.author?.role !== 'tool' ||
@@ -356,9 +356,9 @@ function normalizeTetherBrowsingDisplay(event, record) {
 /**
  * Normalizes reasoning recap.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeReasoningRecap`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} A canonical reasoning-summary event for reasoning recap content, or the original event when the source shape does not match.
  */
 function normalizeReasoningRecap(event, record) {
   if (record?.author?.role !== 'assistant' ||
@@ -383,9 +383,9 @@ function normalizeReasoningRecap(event, record) {
 /**
  * Normalizes model editable context.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeModelEditableContext`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} A canonical system-context event for model editable context content, or the original event when the source shape does not match.
  */
 function normalizeModelEditableContext(event, record) {
   if (record?.author?.role !== 'assistant' ||
@@ -414,9 +414,9 @@ function normalizeModelEditableContext(event, record) {
 /**
  * Normalizes non parts content.
  *
- * @param {Object} event - The event value used by this operation.
- * @param {Object} record - The provider/source record to process.
- * @returns {Object|null} The value produced by `normalizeNonPartsContent`, or `null` when no value is available.
+ * @param {Object<string, *>} event - The event value used by this operation.
+ * @param {Object<string, *>} record - The provider/source record to process.
+ * @returns {Object<string, *>} The canonical event after applying supported non-parts ChatGPT content normalizers.
  */
 function normalizeNonPartsContent(event, record) {
   let normalized = normalizeTetherBrowsingDisplay(event, record);
