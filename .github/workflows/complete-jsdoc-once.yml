@@ -1,0 +1,45 @@
+name: Complete typed JSDoc once
+
+on:
+  push:
+    paths:
+      - .github/workflows/complete-jsdoc-once.yml
+      - scripts/apply-complete-jsdoc.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply typed JSDoc contract
+        run: python scripts/apply-complete-jsdoc.py
+      - name: Audit complete JSDoc contract
+        run: node scripts/check-jsdoc.mjs
+      - name: JavaScript syntax
+        run: |
+          find src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+      - name: Rebuild browser bundle
+        run: node scripts/build-browser-bundle.mjs
+      - name: Audit after bundle build
+        run: node scripts/check-jsdoc.mjs
+      - name: Full tests
+        run: node --test tests/*.test.js
+      - name: Verify documentation-only source diff
+        run: |
+          git diff --check
+          git diff -- src scripts/check-jsdoc.mjs AI_AGENT_RULES.md dist/aiconversationcore.chatgpt.browser.js
+      - name: Commit verified documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src scripts/check-jsdoc.mjs AI_AGENT_RULES.md dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "docs: add typed JSDoc contracts"
+          git push
