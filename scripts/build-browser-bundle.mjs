@@ -7,6 +7,12 @@ const OUTPUT = resolve(ROOT, 'dist/aiconversationcore.chatgpt.browser.js');
 
 /**
  * Replaces exactly one expected source fragment while building the browser bundle.
+ *
+ * @param {string} text - The source text in which the replacement is made.
+ * @param {string} search - The exact source fragment that must occur once.
+ * @param {string} replacement - The replacement text to insert.
+ * @param {string} label - The human-readable fragment name used in build errors.
+ * @returns {string} The source text with exactly one expected fragment replaced.
  */
 function replaceOnce(text, search, replacement, label) {
   const index = text.indexOf(search);
@@ -19,6 +25,13 @@ function replaceOnce(text, search, replacement, label) {
 
 /**
  * Converts one ESM source module into the local-function body used by the classic-script browser bundle.
+ *
+ * @param {string} text - The complete UTF-8 ESM module source.
+ * @param {Object} options - The export/import rewriting options for this module.
+ * @param {string|null} [options.importLine=null] - The exact import line to remove, or `null` when no import is removed.
+ * @param {string} options.exportedFunction - The exported function name present in the ESM source.
+ * @param {string} options.localFunction - The local function name to emit in the classic-script bundle.
+ * @returns {string} The rewritten local-function module body used by the generated browser bundle.
  */
 function moduleBody(text, { importLine = null, exportedFunction, localFunction }) {
   let result = text;
@@ -34,6 +47,8 @@ function moduleBody(text, { importLine = null, exportedFunction, localFunction }
 
 /**
  * Builds the deterministic classic-script ChatGPT browser bundle from the canonical ESM sources.
+ *
+ * @returns {Promise<string>} A promise resolving to the complete generated browser-bundle source text.
  */
 export async function buildBrowserBundle() {
   const [baseSource, chatgptSource, markdownSource] = await Promise.all([
