@@ -5,6 +5,19 @@ from pathlib import Path
 path = Path('src/adapters/claude.js')
 text = path.read_text(encoding='utf-8')
 
+old_doc = ''' * @param {number|null} sourceBlockIndex - The zero-based source block index.
+ * @returns {Object<string, *>} A canonical Claude subagent completion event with source/tool-call provenance.
+ */'''
+new_doc = ''' * @param {number|null} sourceBlockIndex - The zero-based block index of the Agent tool-call source.
+ * @param {Object<string, *>|null} outputRecord - The tool-result record supplying completion output, or null when the event has one source record.
+ * @param {number|null} outputSourceIndex - The zero-based source index of the completion-output record, or null when not separate.
+ * @param {number|null} outputBlockIndex - The zero-based block index of the completion-output record, or null when not separate.
+ * @returns {Object<string, *>} A canonical Claude subagent completion event whose event provenance identifies the Agent call while the output block identifies its completion result.
+ */'''
+if old_doc not in text:
+  raise SystemExit('subagentEvent JSDoc anchor not found')
+text = text.replace(old_doc, new_doc, 1)
+
 old = '''function subagentEvent(record, sourceIndex, agentId, description, output, callId, sourceBlockIndex = null) {
   const sourceIdentity = sourceRecordIdentity(record, sourceIndex);
   const source = baseSource(record, sourceIndex, sourceBlockIndex);
