@@ -1,0 +1,51 @@
+name: Finish core documentation once
+
+on:
+  push:
+    paths:
+      - .github/workflows/finish-documentation-once.yml
+      - scripts/finish-documentation-once.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Normalize and complete documentation
+        run: python scripts/finish-documentation-once.py
+      - name: Rebuild browser bundle
+        run: node scripts/build-browser-bundle.mjs
+      - name: Documentation contract
+        run: node scripts/check-jsdoc.mjs
+      - name: Core tests
+        run: npm test
+      - name: Phase 2 integrity gate
+        run: python tests/phase2_integrity.py
+      - name: Canonical ChatGPT golden
+        run: python tests/golden_chatgpt.py
+      - name: Canonical Claude golden
+        run: python tests/golden_claude.py
+      - name: Canonical Codex golden
+        run: python tests/golden_codex.py
+      - name: Provider regressions
+        run: python tests/provider_examples.py
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Commit verified documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src scripts/build-browser-bundle.mjs dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "docs: complete core source documentation"
+          git push
