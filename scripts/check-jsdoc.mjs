@@ -106,11 +106,33 @@ function alignedJsdoc(doc, indent) {
   return lines.slice(1, -1).every(line => line === `${indent} *` || line.startsWith(`${indent} * `));
 }
 
+function previousNonblankLine(text, start) {
+  const prefix = text.slice(0, start).replace(/[ \t]+$/gm, '');
+  const lines = prefix.split('\n');
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (lines[i].trim()) return lines[i];
+  }
+  return '';
+}
+
+function topLevelVariablesIn(text, functionStarts) {
+  const results = [];
+  const pattern = /^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\b/gm;
+  for (let match; (match = pattern.exec(text)); ) {
+    if (functionStarts.has(match.index)) continue;
+    results.push({ start: match.index, name: match[1] });
+  }
+  return results;
+}
+
 const failures = [];
 let functionCount = 0;
+let variableCount = 0;
 for (const file of files.sort()) {
   const text = fs.readFileSync(file, 'utf8');
-  for (const fn of functionsIn(text)) {
+  const functions = functionsIn(text);
+  const functionStarts = new Set(functions.map(fn => fn.start));
+  for (const fn of functions) {
     functionCount += 1;
     const doc = immediateJsdoc(text, fn.start);
     if (!doc) { failures.push(`${file}: ${fn.name}: missing immediate JSDoc`); continue; }
@@ -129,10 +151,18 @@ for (const file of files.sort()) {
     if (!returns) failures.push(`${file}: ${fn.name}: missing typed/described @returns`);
     else if (!returns[1].trim() || !returns[2].trim()) failures.push(`${file}: ${fn.name}: incomplete @returns`);
   }
+
+  for (const variable of topLevelVariablesIn(text, functionStarts)) {
+    variableCount += 1;
+    const prior = previousNonblankLine(text, variable.start).trim();
+    if (!(prior.startsWith('//') || prior.startsWith('/*') || prior.endsWith('*/'))) {
+      failures.push(`${file}: ${variable.name}: missing immediately associated explanatory comment`);
+    }
+  }
 }
 
 if (failures.length) {
-  console.error('JSDoc contract failures:\n' + failures.join('\n'));
+  console.error('Documentation contract failures:\n' + failures.join('\n'));
   process.exit(1);
 }
-console.log(`Complete typed/aligned JSDoc audit passed for ${functionCount} named production functions.`);
+console.log(`Documentation audit passed for ${functionCount} named production functions and ${variableCount} top-level variables.`);
