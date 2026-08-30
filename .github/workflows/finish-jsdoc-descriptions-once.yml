@@ -22,6 +22,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+      - name: Complete semantic-description table
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/finish-jsdoc-descriptions-once.py')
+          text = path.read_text()
+          marker = "  'callId': 'The correlated provider tool-call identifier, or null when unavailable.',\n"
+          additions = """  'callName': 'The normalized provider tool name associated with the correlated call, or null when unavailable.',
+  'index': 'The zero-based position of the current item within its ordered source collection.',
+  'question': 'The normalized question object being rendered or converted.',
+  'option': 'The normalized selectable option being rendered or converted.',
+  'value': 'The source value being normalized, formatted, or emitted by this operation.',
+  'format': 'The requested output format for the projection.',
+  'directory': 'The directory path whose entries are being enumerated.',
+  'entry': 'The current filesystem directory entry being inspected.',
+  'root': 'The source-root directory currently being traversed.',
+"""
+          if "  'callName':" not in text:
+            if marker not in text:
+              raise SystemExit('callId insertion marker not found')
+            text = text.replace(marker, marker + additions, 1)
+            path.write_text(text)
+          PY
       - name: Finish semantic descriptions/types
         run: python scripts/finish-jsdoc-descriptions-once.py
       - name: Rebuild browser bundle
