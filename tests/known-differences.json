@@ -72,6 +72,24 @@
       "classification": "drift-point",
       "evidence": "v212 archive vs current repository source sizes/features and Phase 2 current-script baseline",
       "migration_rule": "do not create or preserve another independent semantic implementation"
+    },
+    {
+      "id": "ai-transcript-debug-provenance",
+      "area": "transcript debug provenance",
+      "ai_transcript_legacy": "-N emitted a 1-based '<!-- record: N -->' comment before visible record blocks",
+      "canonical": "the existing -N debug flag now emits renderer-owned source provenance using turn_id=<source_record_id> and zero-based record_index=<source_index> on every renderer-generated structural heading/grouping",
+      "classification": "user-decided-canonical-policy",
+      "evidence": "2026-08-30 Phase 6 user decision plus production parity/regression gates",
+      "migration_rule": "the canonical provenance format replaces the old -N syntax; do not preserve a compatibility path for <!-- record: N -->"
+    },
+    {
+      "id": "chatgpt-response-heading-thought-commentary-grouping",
+      "area": "ChatGPT response structure",
+      "ai_transcript_legacy": "could place a Thoughts details block before a later ChatGPT heading and used a generic Thoughts summary",
+      "canonical": "each ChatGPT response starts with exactly one ## ChatGPT; commentary uses ### ChatGPT Commentary; consecutive reasoning is grouped as Having a thought / Having N thoughts; commentary breaks thought consecutiveness; tools do not increment N",
+      "classification": "user-decided-canonical-policy",
+      "evidence": "2026-08-30 explicit user decision after strict pre-migration parity exposed the structural difference",
+      "migration_rule": "protect the decided response grammar with focused and production parity tests rather than preserving the legacy placement"
     }
   ]
 }
