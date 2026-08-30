@@ -38,7 +38,7 @@ test('Claude thinking escapes nested blockquote HTML outside fenced code', () =>
 
   assert.match(markdown, /> > &lt;details>Outside fence - should be escaped\./);
   assert.match(markdown, /> > <code>Inside fence - should NOT be escaped\./);
-  assert.match(markdown, /> > &lt;span>After fence - should also be escaped\.<\/span>/);
+  assert.match(markdown, /> > &lt;span>After fence - should also be escaped\.&lt;\/span>/);
 });
 
 test('Claude ExitPlanMode approval collapses historical Approved Plan heading forms', () => {
