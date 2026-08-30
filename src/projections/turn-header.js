@@ -3,6 +3,7 @@ import {
   resolveProjectionTheme
 } from './style.js';
 
+/** Human-readable provider labels used when rendering turn-header provenance. */
 const PROVIDER_LABELS = Object.freeze({
   chatgpt: 'ChatGPT',
   claude: 'Claude',
@@ -11,7 +12,7 @@ const PROVIDER_LABELS = Object.freeze({
 
 /**
  * Escapes text for safe insertion into generated HTML fragments.
-  *
+ *
  * @param {string} text - The text value to process.
  * @returns {string} The HTML-escaped form of the supplied text.
  */
@@ -26,7 +27,7 @@ function htmlEscape(text) {
 
 /**
  * Handles heading label.
-  *
+ *
  * @param {Object} turn - The turn value used by this operation.
  * @returns {string} The text representation produced by `headingLabel`.
  */
@@ -38,7 +39,7 @@ function headingLabel(turn) {
 
 /**
  * Builds turn header components.
-  *
+ *
  * @param {Object} turn - The turn value used by this operation.
  * @param {Object} options - The options value used by this operation.
  * @returns {Object} The structured value produced by `buildTurnHeaderComponents`.
@@ -83,7 +84,7 @@ export function buildTurnHeaderComponents(turn, options = {}) {
 
 /**
  * Renders plain.
-  *
+ *
  * @param {Object} components - The components value used by this operation.
  * @returns {string} The text representation produced by `renderPlain`.
  */
@@ -93,7 +94,7 @@ function renderPlain(components) {
 
 /**
  * Renders ANSI.
-  *
+ *
  * @param {Object} components - The components value used by this operation.
  * @param {Object} theme - The theme value used by this operation.
  * @returns {string} The text representation produced by `renderAnsi`.
@@ -108,7 +109,7 @@ function renderAnsi(components, theme) {
 
 /**
  * Renders HTML.
-  *
+ *
  * @param {Object} components - The components value used by this operation.
  * @param {Object} theme - The theme value used by this operation.
  * @returns {string} The text representation produced by `renderHtml`.
@@ -125,7 +126,7 @@ function renderHtml(components, theme) {
 
 /**
  * Renders turn header.
-  *
+ *
  * @param {Object} turn - The turn value used by this operation.
  * @param {Object} options - The options value used by this operation.
  * @returns {string} The text representation produced by `renderTurnHeader`.

@@ -2,7 +2,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/** Repository root used to resolve source modules and the generated browser bundle. */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/** Generated browser-bundle path consumed by browser integrations. */
 const OUTPUT = resolve(ROOT, 'dist/aiconversationcore.chatgpt.browser.js');
 
 /**

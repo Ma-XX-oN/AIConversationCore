@@ -1,3 +1,4 @@
+/** Stable semantic style-role names exposed to projection consumers. */
 export const STYLE_ROLES = Object.freeze({
   USER_HEADING: 'user-heading',
   ASSISTANT_HEADING: 'assistant-heading',
@@ -6,6 +7,7 @@ export const STYLE_ROLES = Object.freeze({
   TURN_ID: 'turn-id'
 });
 
+/** Immutable default projection theme used as the reset and merge baseline. */
 const DEFAULT_THEME = Object.freeze({
   ansi: Object.freeze({
     [STYLE_ROLES.USER_HEADING]: '\u001b[33m',
@@ -24,11 +26,12 @@ const DEFAULT_THEME = Object.freeze({
   })
 });
 
+/** Mutable process-wide projection theme produced by applying consumer overrides to the default. */
 let configuredTheme = cloneTheme(DEFAULT_THEME);
 
 /**
  * Handles clone theme.
-  *
+ *
  * @param {Object} theme - The theme value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -41,7 +44,7 @@ function cloneTheme(theme) {
 
 /**
  * Handles merge theme.
-  *
+ *
  * @param {Object} base - The base value used by this operation.
  * @param {Object} overrides - The overrides value used by this operation.
  * @returns {void} No value is returned.
@@ -55,7 +58,7 @@ function mergeTheme(base, overrides) {
 
 /**
  * Gets default projection theme.
-  *
+ *
  * @returns {Object|null} The value produced by `getDefaultProjectionTheme`, or `null` when no value is available.
  */
 export function getDefaultProjectionTheme() {
@@ -64,7 +67,7 @@ export function getDefaultProjectionTheme() {
 
 /**
  * Configures projection theme.
-  *
+ *
  * @param {Object} overrides - The overrides value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -75,7 +78,7 @@ export function configureProjectionTheme(overrides = {}) {
 
 /**
  * Resets projection theme.
-  *
+ *
  * @returns {void} No value is returned.
  */
 export function resetProjectionTheme() {
@@ -85,7 +88,7 @@ export function resetProjectionTheme() {
 
 /**
  * Handles resolve projection theme.
-  *
+ *
  * @param {Object|null} overrides - The overrides value used by this operation.
  * @returns {void} No value is returned.
  */

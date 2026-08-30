@@ -1,6 +1,6 @@
 /**
  * Escapes text for safe insertion into generated HTML fragments.
-  *
+ *
  * @param {string} value - The input value to process.
  * @returns {string} The HTML-escaped form of the supplied text.
  */
@@ -15,7 +15,7 @@ function htmlEscape(value) {
 
 /**
  * Quotes Markdown.
-  *
+ *
  * @param {string} text - The text value to process.
  * @returns {string} The text representation produced by `quoteMarkdown`.
  */
@@ -25,7 +25,7 @@ function quoteMarkdown(text) {
 
 /**
  * Returns the human-readable transcript speaker label for a canonical provider.
-  *
+ *
  * @param {string} provider - The provider value used by this operation.
  * @returns {string} The text representation produced by `providerLabel`.
  */
@@ -37,7 +37,7 @@ function providerLabel(provider) {
 
 /**
  * Finds one canonical event resource by resource ID.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {string} resourceId - The resource id.
  * @returns {void} No value is returned.
@@ -48,7 +48,7 @@ function resourceById(event, resourceId) {
 
 /**
  * Renders image block.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {Object} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderImageBlock`.
@@ -66,7 +66,7 @@ function renderImageBlock(event, block) {
 
 /**
  * Returns the origin used for a citation-source favicon lookup.
-  *
+ *
  * @param {string} url - The URL value to process.
  * @returns {string} The text representation produced by `faviconDomain`.
  */
@@ -82,7 +82,7 @@ function faviconDomain(url) {
 
 /**
  * Builds citation-source tooltip text from the source title and snippet.
-  *
+ *
  * @param {Object} source - The source value used by this operation.
  * @returns {string} The text representation produced by `sourceTooltip`.
  */
@@ -95,7 +95,7 @@ function sourceTooltip(source) {
 
 /**
  * Returns the preferred visible label for a citation source.
-  *
+ *
  * @param {Object} source - The source value used by this operation.
  * @param {string} fallback - The fallback value used by this operation.
  * @returns {string} The text representation produced by `sourceLabel`.
@@ -106,7 +106,7 @@ function sourceLabel(source, fallback = '') {
 
 /**
  * Renders source anchor.
-  *
+ *
  * @param {Object} source - The source value used by this operation.
  * @param {string} fallbackLabel - The fallback label value used by this operation.
  * @param {boolean} preferTitle - The prefer title value used by this operation.
@@ -124,7 +124,7 @@ function renderSourceAnchor(source, fallbackLabel = '', preferTitle = false) {
 
 /**
  * Renders web citation.
-  *
+ *
  * @param {Object} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `renderWebCitation`.
  */
@@ -139,7 +139,7 @@ function renderWebCitation(citation) {
 
 /**
  * Renders memory citation.
-  *
+ *
  * @param {Object} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `renderMemoryCitation`.
  */
@@ -151,7 +151,7 @@ function renderMemoryCitation(citation) {
 
 /**
  * Extracts and normalizes a retrieved-file line-range label from citation marker text.
-  *
+ *
  * @param {Object} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `retrievedLineLabel`.
  */
@@ -164,7 +164,7 @@ function retrievedLineLabel(citation) {
 
 /**
  * Renders citation.
-  *
+ *
  * @param {Object} citation - The citation value used by this operation.
  * @returns {string} The text representation produced by `renderCitation`.
  */
@@ -182,7 +182,7 @@ function renderCitation(citation) {
 
 /**
  * Collects display replacements, citations, and generated-file links that apply to one text part.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {number} partIndex - The zero-based content-part index.
  * @returns {Array<Object>} The ordered values produced by `textReplacements`.
@@ -214,7 +214,7 @@ function textReplacements(event, partIndex) {
 
 /**
  * Renders text block.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {Object} block - The block value used by this operation.
  * @param {number} partIndex - The zero-based content-part index.
@@ -230,7 +230,7 @@ function renderTextBlock(event, block, partIndex) {
 
 /**
  * Renders message blocks.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {Array<Object>} The ordered values produced by `renderMessageBlocks`.
  */
@@ -247,7 +247,7 @@ function renderMessageBlocks(event) {
 
 /**
  * Builds the Markdown body for canonical reasoning-summary blocks in one event.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {string} The text representation produced by `reasoningBody`.
  */
@@ -263,7 +263,7 @@ function reasoningBody(event) {
 
 /**
  * Wraps a summary and body in the HTML `details` structure used by Markdown output.
-  *
+ *
  * @param {string} summary - The summary value used by this operation.
  * @param {string} body - The body value used by this operation.
  * @returns {void} No value is returned.
@@ -274,7 +274,7 @@ function details(summary, body) {
 
 /**
  * Returns the singular/plural human-readable summary for a count of thoughts.
-  *
+ *
  * @param {number} count - The count value used by this operation.
  * @returns {string} The text representation produced by `thoughtSummary`.
  */
@@ -284,7 +284,7 @@ function thoughtSummary(count) {
 
 /**
  * Wraps literal content in an adaptive Markdown code fence that cannot collide with backtick runs in the payload.
-  *
+ *
  * @param {string} content - The content value used by this operation.
  * @param {string} language - The source or canonical language identifier.
  * @returns {string} The Markdown code-fence representation of the literal payload.
@@ -301,7 +301,7 @@ function fencedCode(content, language = '') {
  * Selects the Markdown fence language from canonical tool-call semantics.
  *
  * A normalized non-`unknown` canonical language is emitted unchanged; the historical `container.exec` fallback emits `bash` only when no stronger normalized language is present.
-  *
+ *
  * @param {Object} block - The block value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -314,7 +314,7 @@ function inferredToolLanguage(block) {
 
 /**
  * Handles related retrieved file.
-  *
+ *
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @param {string} sourceRecordId - The stable provider/source record identifier.
  * @returns {void} No value is returned.
@@ -330,7 +330,7 @@ function relatedRetrievedFile(events, sourceRecordId) {
 
 /**
  * Renders multimodal tool output.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {Object} block - The block value used by this operation.
  * @param {Array<Object>} events - The ordered canonical events to process.
@@ -352,7 +352,7 @@ function renderMultimodalToolOutput(event, block, events) {
  * Renders a canonical ChatGPT tool block into the Markdown details/fence representation.
  *
  * The renderer consumes canonical `input`, `language`, `output`, and `output_format`; it does not reinterpret the provider source label once normalization has supplied those output-facing fields.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {Object} block - The block value used by this operation.
  * @param {Array<Object>} events - The ordered canonical events to process.
@@ -374,7 +374,7 @@ function renderChatGPTToolBlock(event, block, events) {
 
 /**
  * Renders all canonical tool blocks belonging to one ChatGPT tool event.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @returns {string} The text representation produced by `renderChatGPTToolEvent`.
@@ -385,7 +385,7 @@ function renderChatGPTToolEvent(event, events) {
 
 /**
  * Renders user.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {string} The text representation produced by `renderUser`.
  */
@@ -395,7 +395,7 @@ function renderUser(event) {
 
 /**
  * Renders one canonical ChatGPT commentary segment while keeping its reasoning and tool activity together.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @returns {string} The text representation produced by `renderChatGPTCommentarySegment`.
@@ -405,9 +405,9 @@ function renderChatGPTCommentarySegment(segment, events) {
   let thoughts = [];
   /**
    * Implements `flushThoughts`.
-    *
- * @returns {void} No value is returned.
- */
+   *
+   * @returns {void} No value is returned.
+   */
   const flushThoughts = () => {
     if (!thoughts.length) return;
     body.push(details('Thoughts', thoughts.join('\n\n')));
@@ -436,7 +436,7 @@ function renderChatGPTCommentarySegment(segment, events) {
 
 /**
  * Renders one canonical ChatGPT Assistant segment into the required Markdown section or sections.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @returns {string} The text representation produced by `renderChatGPTAssistantSegment`.
@@ -465,7 +465,7 @@ function renderChatGPTAssistantSegment(segment, events) {
 
 /**
  * Handles tool call ID.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -475,11 +475,12 @@ function toolCallId(event) {
 
 /**
  * Handles tool result by call ID.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @returns {void} No value is returned.
  */
 function toolResultByCallId(segment) {
+  // Maps tool-call IDs to their canonical result events for paired rendering.
   const results = new Map();
   for (const event of segment) if (event.kind === 'tool_result' && toolCallId(event)) results.set(toolCallId(event), event);
   return results;
@@ -487,7 +488,7 @@ function toolResultByCallId(segment) {
 
 /**
  * Handles tool output.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -501,7 +502,7 @@ function toolOutput(event) {
 
 /**
  * Renders Claude tool thought.
-  *
+ *
  * @param {Object} callEvent - The call event value used by this operation.
  * @param {Object} resultEvent - The result event value used by this operation.
  * @returns {string} The text representation produced by `renderClaudeToolThought`.
@@ -517,7 +518,7 @@ function renderClaudeToolThought(callEvent, resultEvent) {
 
 /**
  * Renders subagent event.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {string} The text representation produced by `renderSubagentEvent`.
  */
@@ -532,7 +533,7 @@ function renderSubagentEvent(event) {
 
 /**
  * Renders Claude question block.
-  *
+ *
  * @param {Object} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderClaudeQuestionBlock`.
  */
@@ -553,7 +554,7 @@ function renderClaudeQuestionBlock(block) {
 
 /**
  * Renders Claude plan block.
-  *
+ *
  * @param {Object} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderClaudePlanBlock`.
  */
@@ -565,7 +566,7 @@ function renderClaudePlanBlock(block) {
 
 /**
  * Renders Claude plan approval.
-  *
+ *
  * @param {Object} block - The block value used by this operation.
  * @returns {string} The text representation produced by `renderClaudePlanApproval`.
  */
@@ -580,7 +581,7 @@ function renderClaudePlanApproval(block) {
 
 /**
  * Renders Claude assistant segment.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @returns {string} The text representation produced by `renderClaudeAssistantSegment`.
  */
@@ -588,15 +589,16 @@ function renderClaudeAssistantSegment(segment) {
   const sections = [];
   const subagents = segment.filter(event => event.kind === 'subagent');
   const results = toolResultByCallId(segment);
+  // Tracks tool-result event IDs already rendered with a call so they are not emitted twice.
   const consumedResults = new Set();
   let body = [];
   let thoughts = [];
 
   /**
    * Implements `flushThoughts`.
-    *
- * @returns {void} No value is returned.
- */
+   *
+   * @returns {void} No value is returned.
+   */
   const flushThoughts = () => {
     if (!thoughts.length) return;
     body.push(quoteMarkdown(details(thoughtSummary(thoughts.length), thoughts.join('\n\n***\n\n'))));
@@ -604,9 +606,9 @@ function renderClaudeAssistantSegment(segment) {
   };
   /**
    * Implements `flushClaude`.
-    *
- * @returns {void} No value is returned.
- */
+   *
+   * @returns {void} No value is returned.
+   */
   const flushClaude = () => {
     flushThoughts();
     if (!body.length) return;
@@ -669,7 +671,7 @@ function renderClaudeAssistantSegment(segment) {
 
 /**
  * Handles codex request block.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -679,7 +681,7 @@ function codexRequestBlock(event) {
 
 /**
  * Handles codex response block.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {void} No value is returned.
  */
@@ -689,7 +691,7 @@ function codexResponseBlock(event) {
 
 /**
  * Renders Codex request sections.
-  *
+ *
  * @param {Object} callEvent - The call event value used by this operation.
  * @param {Object} resultEvent - The result event value used by this operation.
  * @param {Object} state - The state value used by this operation.
@@ -719,7 +721,7 @@ function renderCodexRequestSections(callEvent, resultEvent, state) {
 
 /**
  * Renders Codex file changes.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @returns {string} The text representation produced by `renderCodexFileChanges`.
  */
@@ -738,7 +740,7 @@ function renderCodexFileChanges(segment) {
 
 /**
  * Renders Codex main response.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @returns {string} The text representation produced by `renderCodexMainResponse`.
  */
@@ -759,7 +761,7 @@ function renderCodexMainResponse(segment) {
 
 /**
  * Renders Codex assistant segment.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @param {Object} state - The state value used by this operation.
  * @returns {string} The text representation produced by `renderCodexAssistantSegment`.
@@ -767,6 +769,7 @@ function renderCodexMainResponse(segment) {
 function renderCodexAssistantSegment(segment, state) {
   const sections = [];
   const results = toolResultByCallId(segment);
+  // Tracks Codex request/result event IDs rendered in request sections and excluded from the main response.
   const requestIds = new Set();
   for (const event of segment) {
     if (!codexRequestBlock(event)) continue;
@@ -785,7 +788,7 @@ function renderCodexAssistantSegment(segment, state) {
 
 /**
  * Renders assistant segment.
-  *
+ *
  * @param {Object} segment - The segment value used by this operation.
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @param {Object} state - The state value used by this operation.
@@ -800,7 +803,7 @@ function renderAssistantSegment(segment, events, state) {
 
 /**
  * Renders notice.
-  *
+ *
  * @param {Object} event - The event value used by this operation.
  * @returns {string} The text representation produced by `renderNotice`.
  */
@@ -811,20 +814,21 @@ function renderNotice(event) {
 
 /**
  * Renders canonical Markdown.
-  *
+ *
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @returns {string} The complete canonical Markdown transcript projection.
  */
 export function renderCanonicalMarkdown(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
   const sections = [];
+  // Per-render mutable numbering state for Codex question sections; it is not shared across render calls.
   const state = { codexQuestionNumber: 0 };
   let assistantSegment = [];
   /**
    * Implements `flushAssistant`.
-    *
- * @returns {void} No value is returned.
- */
+   *
+   * @returns {void} No value is returned.
+   */
   const flushAssistant = () => {
     if (!assistantSegment.length) return;
     sections.push(...renderAssistantSegment(assistantSegment, events, state));
