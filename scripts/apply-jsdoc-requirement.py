@@ -11,6 +11,10 @@ for root in ROOTS:
       FILES.append(path)
 
 SPECIAL = {
+  'textParts': ['Returns the string-valued text parts from a ChatGPT source record in source order.'],
+  'reasoningBlocks': ['Builds canonical reasoning-summary blocks from a ChatGPT `thoughts` record.'],
+  'parsedJson': ['Parses a JSON string when valid, otherwise returns no parsed value.'],
+  'launcherToken': ['Extracts the normalized executable/launcher token from the start of a persisted command string.'],
   'normalizedToolCallPresentation': [
     'Normalizes ChatGPT tool-call presentation without discarding the persisted source form.',
     '',
@@ -34,11 +38,44 @@ SPECIAL = {
     '- `multimodal_text` -> source parts preserved as an ordered array.',
     'The original ChatGPT content type is retained as `output_format`.'
   ],
-  'adaptChatGPTRecords': [
-    'Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.'
-  ],
+  'eventVisibility': ['Returns whether a ChatGPT source record is canonically visible or hidden.'],
+  'eventKind': ['Classifies a ChatGPT source record into its canonical event kind.'],
+  'eventBlocks': ['Builds the canonical content blocks for one classified ChatGPT source record.'],
+  'adaptChatGPTRecords': ['Adapts ordered ChatGPT provider records into ordered canonical events while preserving source identity and provenance.'],
+  'imagePointerSource': ['Returns the first usable image asset pointer exposed by a ChatGPT multimodal part.'],
+  'sedimentDownloadUrl': ['Converts a ChatGPT `sediment://file_*` pointer into its authenticated download URL.'],
+  'imageResource': ['Builds the canonical conversation-image resource for one ChatGPT image pointer part.'],
+  'sourceFor': ['Builds canonical ChatGPT source provenance for a derived event/block object.'],
   'normalizedUrl': ['Normalizes a URL for stable citation/search-result lookup.'],
-  'parsedJson': ['Parses a JSON string when valid, otherwise returns no parsed value.'],
+  'sourceRecordIdentity': ['Returns the stable source-record identity used to derive Claude canonical IDs.'],
+  'baseSource': ['Builds canonical source provenance for a Claude record or content block.'],
+  'textBlock': ['Builds a canonical text block from one Claude text content block.'],
+  'reasoningBlock': ['Builds a canonical reasoning-summary block from one Claude thinking block.'],
+  'toolCallEvent': ['Builds a canonical tool-call event from the provider-specific tool-call source record/block.'],
+  'toolResultEvent': ['Builds a canonical tool-result event from the provider-specific tool-result source record/block.'],
+  'messageEvent': ['Builds a canonical message/commentary event from provider-specific message content.'],
+  'reasoningEvent': ['Builds a canonical reasoning-summary event from provider-specific reasoning content.'],
+  'noticeEvent': ['Builds a canonical notice event from provider-specific synthetic notice content.'],
+  'textFromToolResult': ['Extracts displayable text from a Claude tool-result string or text-block array.'],
+  'agentIdFromResult': ['Extracts the internal Claude subagent ID embedded in an Agent tool result.'],
+  'cleanAgentResult': ['Removes the internal Agent-ID control line from Claude subagent output.'],
+  'subagentEvent': ['Builds a canonical subagent event from Claude Agent completion data.'],
+  'xmlTag': ['Returns the trimmed contents of one named XML-like tag from Claude queue-operation text.'],
+  'queueSubagentEvent': ['Converts a completed Claude queue-operation task notification into a canonical subagent event.'],
+  'sourceIdentity': ['Returns the stable source identity used to derive Codex canonical IDs.'],
+  'source': ['Builds canonical source provenance for a Codex source record.'],
+  'htmlEscape': ['Escapes text for safe insertion into generated HTML fragments.'],
+  'providerLabel': ['Returns the human-readable transcript speaker label for a canonical provider.'],
+  'resourceById': ['Finds one canonical event resource by resource ID.'],
+  'faviconDomain': ['Returns the origin used for a citation source favicon lookup.'],
+  'sourceTooltip': ['Builds citation-source tooltip text from the source title and snippet.'],
+  'sourceLabel': ['Returns the preferred visible label for a citation source.'],
+  'retrievedLineLabel': ['Extracts and normalizes a retrieved-file line-range label from citation marker text.'],
+  'textReplacements': ['Collects display replacements, citations, and generated-file links that apply to one text part.'],
+  'reasoningBody': ['Builds the Markdown body for canonical reasoning-summary blocks in one event.'],
+  'details': ['Wraps a summary and body in the HTML `details` structure used by Markdown output.'],
+  'thoughtSummary': ['Returns the singular/plural human-readable summary for a count of Claude thoughts.'],
+  'fencedCode': ['Wraps literal content in an adaptive Markdown code fence that cannot collide with backtick runs in the payload.'],
   'inferredToolLanguage': [
     'Selects the Markdown fence language from canonical tool-call semantics.',
     '',
@@ -72,15 +109,9 @@ def words(name):
   value = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', value)
   value = value.replace('_', ' ').replace('$', '').strip().lower()
   replacements = {
-    'chat gpt': 'ChatGPT',
-    'json': 'JSON',
-    'url': 'URL',
-    'id': 'ID',
-    'html': 'HTML',
-    'ansi': 'ANSI',
-    'markdown': 'Markdown',
-    'codex': 'Codex',
-    'claude': 'Claude'
+    'chat gpt': 'ChatGPT', 'json': 'JSON', 'url': 'URL', 'id': 'ID',
+    'html': 'HTML', 'ansi': 'ANSI', 'markdown': 'Markdown',
+    'codex': 'Codex', 'claude': 'Claude'
   }
   for old, new in replacements.items():
     value = re.sub(rf'\b{re.escape(old)}\b', new, value)
@@ -89,9 +120,19 @@ def words(name):
 def summary(name):
   for prefix, verb in PREFIXES:
     if name.startswith(prefix) and len(name) > len(prefix):
-      rest = words(name[len(prefix):])
-      return f'{verb} {rest}.'
-  return f'Implements `{name}`.'
+      return f'{verb} {words(name[len(prefix):])}.'
+  suffixes = [
+    ('Blocks', 'Builds {subject} blocks.'), ('Event', 'Builds a canonical {subject} event.'),
+    ('Identity', 'Returns the {subject} identity.'), ('Label', 'Returns the {subject} label.'),
+    ('Summary', 'Returns {subject} summary text.'), ('Body', 'Builds {subject} body text.'),
+    ('Resource', 'Builds the {subject} resource.'), ('Range', 'Returns the {subject} range.'),
+    ('Parts', 'Returns the {subject} parts.'), ('Url', 'Returns the {subject} URL.'),
+    ('Domain', 'Returns the {subject} domain.'), ('Tooltip', 'Builds {subject} tooltip text.')
+  ]
+  for suffix, template in suffixes:
+    if name.endswith(suffix) and len(name) > len(suffix):
+      return template.format(subject=words(name[:-len(suffix)]))
+  return f'Handles {words(name)}.'
 
 def jsdoc(indent, name):
   lines = SPECIAL.get(name, [summary(name)])
@@ -102,23 +143,23 @@ def jsdoc(indent, name):
   return '\n'.join(out)
 
 def has_jsdoc_before(text, start):
-  prefix = text[:start]
-  return bool(re.search(r'/\*\*[\s\S]*?\*/\s*$', prefix))
+  return bool(re.search(r'/\*\*[\s\S]*?\*/\s*$', text[:start]))
 
-DECL = re.compile(
-  r'(?m)^(?P<indent>[ \t]*)(?:(?:export\s+)?(?:async\s+)?function\*?\s+(?P<name>[A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{)'
-)
-ARROW = re.compile(
-  r'(?m)^(?P<indent>[ \t]*)(?:(?:export\s+)?const\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>)'
-)
+DECL = re.compile(r'(?m)^(?P<indent>[ \t]*)(?:(?:export\s+)?(?:async\s+)?function\*?\s+(?P<name>[A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{)')
+ARROW = re.compile(r'(?m)^(?P<indent>[ \t]*)(?:(?:export\s+)?const\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>)')
 
 for path in sorted(FILES):
   text = path.read_text(encoding='utf-8')
   matches = []
   for pattern in (DECL, ARROW):
     for match in pattern.finditer(text):
+      name = match.group('name')
       if not has_jsdoc_before(text, match.start()):
-        matches.append((match.start(), match.group('indent'), match.group('name')))
+        matches.append((match.start(), match.group('indent'), name))
+      else:
+        generic = f'/**\n * Implements `{name}`.\n */'
+        if generic in text:
+          text = text.replace(generic, jsdoc('', name).rstrip('\n'), 1)
   for start, indent, name in sorted(matches, reverse=True):
     text = text[:start] + jsdoc(indent, name) + text[start:]
   path.write_text(text, encoding='utf-8')
