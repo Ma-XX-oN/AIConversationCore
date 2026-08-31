@@ -1,0 +1,107 @@
+name: Apply issue 59 heading metadata colours
+
+on:
+  push:
+    paths:
+      - '.github/workflows/issue-59-heading-colours.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch metadata field styling
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/projections/markdown.js')
+          text = path.read_text(encoding='utf-8')
+          old = '''function projectedHeadingMetadataSuffix(event) {
+            const projection = event?.projection ?? {};
+            const metadata = projection.heading_metadata ?? {};
+            const fields = [];
+            if (metadata.timestamp != null) fields.push(`[${metadata.timestamp}]:`);
+            if (metadata.record_number != null) fields.push(`${metadata.record_number}:`);
+            if (metadata.show_turn_id && event?.source_record_id != null) {
+              fields.push(`<!-- turn_id=${event.source_record_id} -->`);
+            }
+            const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
+            return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
+          }
+          '''
+          new = '''function projectedHeadingMetadataSuffix(event) {
+            const projection = event?.projection ?? {};
+            const metadata = projection.heading_metadata ?? {};
+            const colors = projection.colors ?? {};
+            const reset = colors.reset ?? '';
+            const styled = (text, colorName) => {
+              const color = colors[colorName] ?? '';
+              return color ? `${color}${text}${reset}` : text;
+            };
+            const fields = [];
+            if (metadata.timestamp != null) {
+              fields.push(styled(`[${metadata.timestamp}]:`, 'timestamp'));
+            }
+            if (metadata.record_number != null) {
+              fields.push(styled(`${metadata.record_number}:`, 'record_number'));
+            }
+            if (metadata.show_turn_id && event?.source_record_id != null) {
+              fields.push(`<!-- turn_id=${event.source_record_id} -->`);
+            }
+            const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
+            return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
+          }
+          '''
+          if old not in text:
+            raise SystemExit('structured heading metadata helper not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test_path = Path('tests/heading-metadata-projection.test.js')
+          tests = test_path.read_text(encoding='utf-8')
+          marker = "test('source turn id is omitted when the provider event has no source record id', () => {"
+          addition = r'''test('structured timestamp and record number preserve consumer ANSI colours', () => {
+            const event = messageEvent('chatgpt', 'chatgpt-message-id', {
+              heading_metadata: {
+                timestamp: '2026-08-31 15:00:00',
+                record_number: ' 2'
+              },
+              colors: {
+                user: '\u001b[33m',
+                timestamp: '\u001b[36m',
+                record_number: '\u001b[2m',
+                reset: '\u001b[0m'
+              }
+            });
+            const markdown = renderCanonicalMarkdown([event]);
+            assert.match(
+              markdown,
+              /^\u001b\[33m## User\u001b\[0m \u001b\[36m\[2026-08-31 15:00:00\]:\u001b\[0m \u001b\[2m 2:\u001b\[0m$/m
+            );
+          });
+
+          '''
+          if marker not in tests:
+            raise SystemExit('test insertion marker not found')
+          tests = tests.replace(marker, addition + marker, 1)
+          test_path.write_text(tests, encoding='utf-8')
+      - name: Build browser bundle
+        run: npm run build:browser
+      - name: Run tests
+        run: npm test
+      - name: Commit implementation and remove helper
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/issue-59-heading-colours.yml
+          git add src/projections/markdown.js dist/aiconversationcore.chatgpt.browser.js tests/heading-metadata-projection.test.js
+          git commit -m 'projection: preserve heading metadata colours'
+          git push
