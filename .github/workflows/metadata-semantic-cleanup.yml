@@ -1,0 +1,69 @@
+name: Metadata semantic cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/metadata-semantic-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply semantic cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/projections/markdown.js')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+            "    fields.push(`<!-- turn_id=${event.source_record_id} -->`);",
+            "    fields.push(`turn_id=${event.source_record_id}`);",
+            1,
+          )
+          text = text.replace(
+            " * DownloadConversation-compatible `turn_id` and `record_index` field names.\n * `turn_id` is the provider/source record identity retained as\n * `source_record_id`; it is not the separately derived canonical turn ID.",
+            " * `record_id` and `record_index` field names. `record_id` is the native\n * provider/source record identity retained as `source_record_id`; it is\n * deliberately distinct from first-class turn identity.",
+            1,
+          )
+          text = text.replace(
+            "fields.push(`turn_id=${event.source_record_id}`);",
+            "fields.push(`record_id=${event.source_record_id}`);",
+            1,
+          )
+          path.write_text(text, encoding='utf-8')
+
+          test = Path('tests/heading-metadata-projection.test.js')
+          text = test.read_text(encoding='utf-8').replace(
+            r"/^## User \\[2026-08-31 15:00:00\\]: 2: <!-- turn_id=chatgpt-message-id -->$/m",
+            r"/^## User \\[2026-08-31 15:00:00\\]: 2: turn_id=chatgpt-message-id$/m",
+            1,
+          )
+          test.write_text(text, encoding='utf-8')
+
+          for test in Path('tests').glob('*.js'):
+            text = test.read_text(encoding='utf-8')
+            text = text.replace('<!-- turn_id=', '<!-- record_id=')
+            test.write_text(text, encoding='utf-8')
+      - name: Build and test
+        run: |
+          npm test
+          npm run build:browser
+          npm test
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/projections/markdown.js tests dist
+          git commit -m 'projection: separate turn id from debug record provenance'
+          git push
