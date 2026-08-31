@@ -38,6 +38,25 @@ function headingLabel(turn) {
 }
 
 /**
+ * Returns the first provider/source turn identity retained by a derived turn.
+ *
+ * Source turn identity is deliberately distinct from the canonical derived
+ * `turn:<event>` identity.  ChatGPT and Claude preserve native source-record
+ * IDs here; Codex currently has no suitable per-rendered-record UUID-like ID
+ * and therefore returns null.
+ *
+ * @param {Object<string, *>} turn - The derived canonical turn to inspect.
+ * @returns {string|null} The provider/source turn identity, or null when absent.
+ */
+function sourceTurnId(turn) {
+  const records = Array.isArray(turn?.source?.records) ? turn.source.records : [];
+  for (const record of records) {
+    if (typeof record?.turn_id === 'string' && record.turn_id) return record.turn_id;
+  }
+  return null;
+}
+
+/**
  * Builds turn header components.
  *
  * @param {Object<string, *>} turn - The derived canonical turn whose identity or header is being projected.
@@ -72,11 +91,14 @@ export function buildTurnHeaderComponents(turn, options = {}) {
   }
 
   if (options.showTurnId) {
-    components.push({
-      type: 'turn-id',
-      styleRole: STYLE_ROLES.TURN_ID,
-      text: `turn_id=${turn.id}`
-    });
+    const turnId = options.turnId ?? sourceTurnId(turn);
+    if (turnId != null && String(turnId).length > 0) {
+      components.push({
+        type: 'turn-id',
+        styleRole: STYLE_ROLES.TURN_ID,
+        text: `turn_id=${turnId}`
+      });
+    }
   }
 
   return components;
