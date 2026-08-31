@@ -2013,7 +2013,7 @@ function renderChatGPTCommentarySegment(segment, events) {
     if (event.kind === 'commentary') {
       flushRun();
       const text = renderMessageBlocks(event);
-      if (text) body.push(projectedSection(event, `### ChatGPT Commentary\n\n${quoteMarkdown(text)}`));
+      if (text) body.push(projectedSection(event, `${projectedHeading(event, '### ChatGPT Commentary')}\n\n${quoteMarkdown(text)}`));
     }
   }
   flushRun();
