@@ -25,34 +25,55 @@ jobs:
 
           path = Path('src/projections/markdown.js')
           text = path.read_text(encoding='utf-8')
-          text = text.replace(
-            "    fields.push(`<!-- turn_id=${event.source_record_id} -->`);",
-            "    fields.push(`turn_id=${event.source_record_id}`);",
-            1,
-          )
-          text = text.replace(
-            " * DownloadConversation-compatible `turn_id` and `record_index` field names.\n * `turn_id` is the provider/source record identity retained as\n * `source_record_id`; it is not the separately derived canonical turn ID.",
-            " * `record_id` and `record_index` field names. `record_id` is the native\n * provider/source record identity retained as `source_record_id`; it is\n * deliberately distinct from first-class turn identity.",
-            1,
-          )
-          text = text.replace(
-            "fields.push(`turn_id=${event.source_record_id}`);",
-            "fields.push(`record_id=${event.source_record_id}`);",
-            1,
-          )
+          normal_old = """  if (metadata.show_turn_id && event?.source_record_id != null) {
+    fields.push(`<!-- turn_id=${event.source_record_id} -->`);
+  }
+"""
+          normal_new = """  if (metadata.show_turn_id && event?.source_record_id != null) {
+    fields.push(`turn_id=${event.source_record_id}`);
+  }
+"""
+          if normal_old not in text:
+            raise SystemExit('normal turn-id projection point not found')
+          text = text.replace(normal_old, normal_new, 1)
+
+          comment_old = """ * DownloadConversation-compatible `turn_id` and `record_index` field names.
+ * `turn_id` is the provider/source record identity retained as
+ * `source_record_id`; it is not the separately derived canonical turn ID.
+"""
+          comment_new = """ * `record_id` and `record_index` field names. `record_id` is the native
+ * provider/source record identity retained as `source_record_id`; it is
+ * deliberately distinct from first-class turn identity.
+"""
+          if comment_old not in text:
+            raise SystemExit('debug provenance documentation point not found')
+          text = text.replace(comment_old, comment_new, 1)
+
+          debug_old = """  if (event?.source_record_id != null) fields.push(`turn_id=${event.source_record_id}`);
+  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);
+"""
+          debug_new = """  if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
+  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);
+"""
+          if debug_old not in text:
+            raise SystemExit('debug provenance projection point not found')
+          text = text.replace(debug_old, debug_new, 1)
           path.write_text(text, encoding='utf-8')
 
-          test = Path('tests/heading-metadata-projection.test.js')
-          text = test.read_text(encoding='utf-8').replace(
-            r"/^## User \\[2026-08-31 15:00:00\\]: 2: <!-- turn_id=chatgpt-message-id -->$/m",
-            r"/^## User \\[2026-08-31 15:00:00\\]: 2: turn_id=chatgpt-message-id$/m",
-            1,
-          )
-          test.write_text(text, encoding='utf-8')
+          heading_test = Path('tests/heading-metadata-projection.test.js')
+          text = heading_test.read_text(encoding='utf-8')
+          old = r"/^## User \[2026-08-31 15:00:00\]: 2: <!-- turn_id=chatgpt-message-id -->$/m"
+          new = r"/^## User \[2026-08-31 15:00:00\]: 2: turn_id=chatgpt-message-id$/m"
+          if old not in text:
+            raise SystemExit('first-class turn-id expectation not found')
+          heading_test.write_text(text.replace(old, new, 1), encoding='utf-8')
 
           for test in Path('tests').glob('*.js'):
+            if test == heading_test:
+              continue
             text = test.read_text(encoding='utf-8')
             text = text.replace('<!-- turn_id=', '<!-- record_id=')
+            text = text.replace(' turn_id=', ' record_id=')
             test.write_text(text, encoding='utf-8')
       - name: Build and test
         run: |
