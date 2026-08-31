@@ -51,3 +51,18 @@ test('debug provenance is absent when the flag is disabled', () => {
   assert.equal(markdown.includes('turn_id='), false);
   assert.equal(markdown.includes('record_index='), false);
 });
+
+test('ChatGPT response heading projection can differ from first commentary heading projection', () => {
+  const commentary = event(30, 'commentary', 'assistant', 'interim');
+  commentary.projection = {
+    heading_suffix: ' <!-- turn_id=commentary-30 -->',
+    response_heading_suffix: ' <!-- turn_id=final-31 -->'
+  };
+  const final = event(31, 'message', 'assistant', 'final');
+  final.projection = {};
+  const markdown = renderCanonicalMarkdown([commentary, final]);
+
+  assert.match(markdown, /^## ChatGPT <!-- turn_id=final-31 -->/m);
+  assert.match(markdown, /^### ChatGPT Commentary <!-- turn_id=commentary-30 -->/m);
+  assert.equal((markdown.match(/^## ChatGPT(?: |$)/gm) ?? []).length, 1);
+});

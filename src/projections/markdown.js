@@ -618,7 +618,17 @@ function renderChatGPTAssistantSegment(segment, events) {
   }
   if (!body.length) return [];
   const headingEvent = segment[0];
-  return [projectedSection(headingEvent, `${projectedHeading(headingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
+  // Consumer response-heading metadata may differ from the first activity event's own heading metadata.
+  const responseHeadingEvent = headingEvent?.projection?.response_heading_suffix != null
+    ? {
+        ...headingEvent,
+        projection: {
+          ...headingEvent.projection,
+          heading_suffix: headingEvent.projection.response_heading_suffix
+        }
+      }
+    : headingEvent;
+  return [projectedSection(responseHeadingEvent, `${projectedHeading(responseHeadingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
 }
 
 /**
