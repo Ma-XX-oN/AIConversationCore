@@ -43,13 +43,26 @@ function providerLabel(provider) {
  * @param {string} label - The canonical Markdown heading label before consumer decoration.
  * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
  */
+function projectedHeadingMetadataSuffix(event) {
+  const projection = event?.projection ?? {};
+  const metadata = projection.heading_metadata ?? {};
+  const fields = [];
+  if (metadata.timestamp != null) fields.push(`[${metadata.timestamp}]:`);
+  if (metadata.record_number != null) fields.push(`${metadata.record_number}:`);
+  if (metadata.show_turn_id && event?.source_record_id != null) {
+    fields.push(`<!-- turn_id=${event.source_record_id} -->`);
+  }
+  const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
+  return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
+}
+
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
   const color = label === '## User' ? colors.user : (label.includes(' Sub-agent ') ? '' : colors.ai);
   const reset = colors.reset ?? '';
   const heading = color ? `${color}${label}${reset}` : label;
-  return `${heading}${projection.heading_suffix ?? ''}`;
+  return `${heading}${projectedHeadingMetadataSuffix(event)}`;
 }
 
 /**
@@ -64,7 +77,7 @@ function projectedThoughtHeading(event, number) {
   const colors = projection.colors ?? {};
   const label = `### Thought ${number}`;
   const heading = colors.thought ? `${colors.thought}${label}${colors.reset ?? ''}` : label;
-  return `${heading}${projection.heading_suffix ?? ''}`;
+  return `${heading}${projectedHeadingMetadataSuffix(event)}`;
 }
 
 /**
