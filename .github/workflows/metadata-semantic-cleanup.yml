@@ -25,36 +25,20 @@ jobs:
 
           path = Path('src/projections/markdown.js')
           text = path.read_text(encoding='utf-8')
-          normal_old = """  if (metadata.show_turn_id && event?.source_record_id != null) {
-    fields.push(`<!-- turn_id=${event.source_record_id} -->`);
-  }
-"""
-          normal_new = """  if (metadata.show_turn_id && event?.source_record_id != null) {
-    fields.push(`turn_id=${event.source_record_id}`);
-  }
-"""
+          normal_old = "  if (metadata.show_turn_id && event?.source_record_id != null) {\n    fields.push(`<!-- turn_id=${event.source_record_id} -->`);\n  }\n"
+          normal_new = "  if (metadata.show_turn_id && event?.source_record_id != null) {\n    fields.push(`turn_id=${event.source_record_id}`);\n  }\n"
           if normal_old not in text:
             raise SystemExit('normal turn-id projection point not found')
           text = text.replace(normal_old, normal_new, 1)
 
-          comment_old = """ * DownloadConversation-compatible `turn_id` and `record_index` field names.
- * `turn_id` is the provider/source record identity retained as
- * `source_record_id`; it is not the separately derived canonical turn ID.
-"""
-          comment_new = """ * `record_id` and `record_index` field names. `record_id` is the native
- * provider/source record identity retained as `source_record_id`; it is
- * deliberately distinct from first-class turn identity.
-"""
+          comment_old = " * DownloadConversation-compatible `turn_id` and `record_index` field names.\n * `turn_id` is the provider/source record identity retained as\n * `source_record_id`; it is not the separately derived canonical turn ID.\n"
+          comment_new = " * `record_id` and `record_index` field names. `record_id` is the native\n * provider/source record identity retained as `source_record_id`; it is\n * deliberately distinct from first-class turn identity.\n"
           if comment_old not in text:
             raise SystemExit('debug provenance documentation point not found')
           text = text.replace(comment_old, comment_new, 1)
 
-          debug_old = """  if (event?.source_record_id != null) fields.push(`turn_id=${event.source_record_id}`);
-  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);
-"""
-          debug_new = """  if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
-  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);
-"""
+          debug_old = "  if (event?.source_record_id != null) fields.push(`turn_id=${event.source_record_id}`);\n  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);\n"
+          debug_new = "  if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);\n  if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);\n"
           if debug_old not in text:
             raise SystemExit('debug provenance projection point not found')
           text = text.replace(debug_old, debug_new, 1)
