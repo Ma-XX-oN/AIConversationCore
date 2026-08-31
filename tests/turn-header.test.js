@@ -11,19 +11,51 @@ import {
 } from '../src/index.js';
 
 const PROVIDER_TURNS = [
-  { id: 'turn:chatgpt:user-1', role: 'user', source: { provider: 'chatgpt' } },
-  { id: 'turn:chatgpt:final-1', role: 'assistant', source: { provider: 'chatgpt' } },
-  { id: 'turn:claude:a-1', role: 'assistant', source: { provider: 'claude' } },
-  { id: 'turn:codex:a-1', role: 'assistant', source: { provider: 'codex' } }
+  {
+    id: 'turn:chatgpt:user-1',
+    role: 'user',
+    source: {
+      provider: 'chatgpt',
+      records: [{ turn_id: 'chatgpt-user-source-id' }]
+    }
+  },
+  {
+    id: 'turn:chatgpt:final-1',
+    role: 'assistant',
+    source: {
+      provider: 'chatgpt',
+      records: [{ turn_id: 'chatgpt-assistant-source-id' }]
+    }
+  },
+  {
+    id: 'turn:claude:a-1',
+    role: 'assistant',
+    source: {
+      provider: 'claude',
+      records: [{ turn_id: 'claude-record-uuid' }]
+    }
+  },
+  {
+    id: 'turn:codex:a-1',
+    role: 'assistant',
+    source: {
+      provider: 'codex',
+      records: [{ turn_id: null }]
+    }
+  }
 ];
 
-test('turn_id is optional and uses canonical derived turn identity', () => {
+test('turn_id is optional and uses provider source identity', () => {
   const turn = PROVIDER_TURNS[1];
 
   assert.equal(renderTurnHeader(turn), '## ChatGPT');
   assert.equal(
     renderTurnHeader(turn, { showTurnId: true }),
-    '## ChatGPT turn_id=turn:chatgpt:final-1'
+    '## ChatGPT turn_id=chatgpt-assistant-source-id'
+  );
+  assert.doesNotMatch(
+    renderTurnHeader(turn, { showTurnId: true }),
+    /turn:chatgpt:final-1/
   );
 });
 
@@ -36,7 +68,7 @@ test('timestamp, record number, and turn id compose independently', () => {
       recordNumber: 2,
       showTurnId: true
     }),
-    '## Claude [2026-01-02 12:00:02]: 2: turn_id=turn:claude:a-1'
+    '## Claude [2026-01-02 12:00:02]: 2: turn_id=claude-record-uuid'
   );
 
   assert.equal(
@@ -45,15 +77,20 @@ test('timestamp, record number, and turn id compose independently', () => {
   );
 });
 
-test('all supported providers use the same semantic heading projection', () => {
-  assert.deepEqual(
-    PROVIDER_TURNS.map(turn => renderTurnHeader(turn, { showTurnId: true })),
-    [
-      '## User turn_id=turn:chatgpt:user-1',
-      '## ChatGPT turn_id=turn:chatgpt:final-1',
-      '## Claude turn_id=turn:claude:a-1',
-      '## Codex turn_id=turn:codex:a-1'
-    ]
+test('providers without a suitable source turn id omit the component', () => {
+  assert.equal(
+    renderTurnHeader(PROVIDER_TURNS[3], { showTurnId: true }),
+    '## Codex'
+  );
+});
+
+test('an explicit source turn id override can be projected when supplied', () => {
+  assert.equal(
+    renderTurnHeader(PROVIDER_TURNS[3], {
+      showTurnId: true,
+      turnId: 'explicit-source-id'
+    }),
+    '## Codex turn_id=explicit-source-id'
   );
 });
 
@@ -86,13 +123,13 @@ test('default ANSI mapping preserves existing colours and gives turn id magenta'
     '\u001b[32m## ChatGPT\u001b[0m ' +
     '\u001b[36m[2026-01-02 12:00:02]:\u001b[0m ' +
     '\u001b[2m2:\u001b[0m ' +
-    '\u001b[35mturn_id=turn:chatgpt:final-1\u001b[0m'
+    '\u001b[35mturn_id=chatgpt-assistant-source-id\u001b[0m'
   );
 });
 
 test('HTML uses stable semantic classes instead of ANSI concepts', () => {
   resetProjectionTheme();
-  const rendered = renderTurnHeader(PROVIDER_TURNS[3], {
+  const rendered = renderTurnHeader(PROVIDER_TURNS[2], {
     format: 'html',
     timestamp: '2026-01-02 00:00:02',
     recordNumber: 2,
@@ -101,10 +138,10 @@ test('HTML uses stable semantic classes instead of ANSI concepts', () => {
 
   assert.equal(
     rendered,
-    '<h2><span class="transcript-assistant-heading">Codex</span> ' +
+    '<h2><span class="transcript-assistant-heading">Claude</span> ' +
     '<span class="transcript-timestamp">[2026-01-02 00:00:02]:</span> ' +
     '<span class="transcript-record-number">2:</span> ' +
-    '<span class="transcript-turn-id">turn_id=turn:codex:a-1</span></h2>'
+    '<span class="transcript-turn-id">turn_id=claude-record-uuid</span></h2>'
   );
 });
 
