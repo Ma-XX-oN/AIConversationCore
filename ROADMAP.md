@@ -116,6 +116,21 @@ parity, portable direct-file regressions, core tests, and diff hygiene gate the
 integration.  The production migration was committed in AI-General-Memory as
 `5c299cdbf0265024994cd3601eb73df14e5ad623`.
 
+**Phase 7 is complete.** Permanent cross-consumer final-render CI now exercises
+AIConversationCore direct rendering, the production `AI-transcript.py` entry point,
+and DownloadConversation's production Markdown renderer against shared source
+fixtures at the complete output boundary.  Exact comparisons cover the rich
+ChatGPT canonical golden, a real multi-exchange Markdown-shape fixture, and an
+adversarial fixture for nested/adaptive fences, literal heading text inside opaque
+tool output, real `role=tool` records, tool-language/structured-input
+normalization, generated sandbox paths containing parentheses, source heading
+identity, and the explicitly declared DownloadConversation one-newline EOF
+transport policy.  Phase 7 also separated enclosing-response heading projection
+from commentary-heading projection so both retain the correct source identity.
+AIConversationCore CI run `33354354535`, AI-General-Memory parity run
+`33353774957`, and DownloadConversation CI run `33354379357` record the final
+post-cleanup green gates.
+
 ## Working principles
 
 - Work is staged; do not perform a wholesale rewrite.
@@ -310,22 +325,38 @@ and output routing in `AI-transcript.py`.
 
 ## Phase 7 — Cross-consumer parity gate
 
-Use the same source fixtures through all relevant entry points and compare
-canonical outputs/projections.
+**Status: COMPLETE.**
 
-At minimum, protect against regressions involving:
+Permanent CI compares complete final rendered output through all three migrated
+consumer boundaries: direct AIConversationCore rendering, production
+`AI-transcript.py`, and DownloadConversation's production Markdown renderer.  The
+gate uses declared consumer projections only; it does not normalize arbitrary
+whitespace or rewrite structure to force equality.
 
-- code-fence language selection
-- HTML/Markdown escaping
-- citation formatting
-- favicon/decorative markup differences
-- sandbox URL conversion
-- provider file-pointer resolution
-- trailing-newline and blank-line policy
-- hidden/commentary/tool/subagent handling
-- turn ordering/identity
+Verified coverage includes:
 
-No migration slice is complete until parity and regression tests pass.
+- adaptive code-fence sizing around nested/literal backtick payloads;
+- HTML/Markdown structure including headings, blockquotes, tables, lists, code
+  blocks, details/summary structures, and footnotes;
+- citation formatting, favicon/decorative markup, and browser `URL` semantics;
+- sandbox/generated-file conversion including paths containing parentheses;
+- provider image/file-pointer resource rendering and browser recovery-state
+  enrichment;
+- exact trailing-newline/blank-line policy, including DownloadConversation's
+  declared single-EOF-newline transport projection;
+- hidden, commentary, thought, tool-call, and real `role=tool` source shapes;
+- tool-call language/structured-payload normalization including flattened Python
+  `-c` and JSON-shaped API-tool input;
+- opaque literal `## ChatGPT` text inside tool output without structural leakage;
+- response/commentary source heading identity and turn/source ordering; and
+- existing Claude sub-agent/debug projection behaviour through the core and
+  `AI-transcript.py` regression suites.
+
+The permanent DownloadConversation cross-consumer job runs three independent
+whole-output cases: the checked-in rich ChatGPT canonical golden, a real
+multi-exchange Markdown-shape fixture, and an adversarial containment/normalization
+fixture.  Relevant AIConversationCore, AI-transcript.py, and DownloadConversation
+regression suites are green after removal of the temporary Phase 7 patch workflows.
 
 ## Phase 8 — AgentPanelSpeaker integration
 
