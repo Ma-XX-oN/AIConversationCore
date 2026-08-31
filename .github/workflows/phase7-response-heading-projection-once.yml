@@ -1,0 +1,42 @@
+name: Phase 7 response heading projection once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/phase7-response-heading-projection.py'
+      - '.github/workflows/phase7-response-heading-projection-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply response-heading projection change
+        run: python scripts/phase7-response-heading-projection.py
+      - name: Rebuild browser bundle
+        run: npm run build:browser
+      - name: Core tests
+        run: npm test
+      - name: Phase 2 integrity
+        run: node scripts/verify-phase2-integrity.mjs
+      - name: Diff hygiene
+        run: |
+          git diff --check
+          git status --short
+      - name: Commit verified core change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/projections/markdown.js tests/phase6-rendering-contract.test.js dist/aiconversationcore.chatgpt.browser.js
+          git diff --cached --exit-code && exit 1 || true
+          git commit -m 'phase7: separate response and commentary heading projections'
+          git push origin HEAD:main
