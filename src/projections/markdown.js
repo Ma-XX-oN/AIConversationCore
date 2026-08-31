@@ -46,9 +46,19 @@ function providerLabel(provider) {
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
   const metadata = projection.heading_metadata ?? {};
+  const colors = projection.colors ?? {};
+  const reset = colors.reset ?? '';
+  const styled = (text, colorName) => {
+    const color = colors[colorName] ?? '';
+    return color ? `${color}${text}${reset}` : text;
+  };
   const fields = [];
-  if (metadata.timestamp != null) fields.push(`[${metadata.timestamp}]:`);
-  if (metadata.record_number != null) fields.push(`${metadata.record_number}:`);
+  if (metadata.timestamp != null) {
+    fields.push(styled(`[${metadata.timestamp}]:`, 'timestamp'));
+  }
+  if (metadata.record_number != null) {
+    fields.push(styled(`${metadata.record_number}:`, 'record_number'));
+  }
   if (metadata.show_turn_id && event?.source_record_id != null) {
     fields.push(`<!-- turn_id=${event.source_record_id} -->`);
   }

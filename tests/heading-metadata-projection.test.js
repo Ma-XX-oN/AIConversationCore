@@ -37,6 +37,26 @@ test('structured heading metadata composes timestamp, record number, and source 
   );
 });
 
+test('structured timestamp and record number preserve consumer ANSI colours', () => {
+  const event = messageEvent('chatgpt', 'chatgpt-message-id', {
+    heading_metadata: {
+      timestamp: '2026-08-31 15:00:00',
+      record_number: ' 2'
+    },
+    colors: {
+      user: '\u001b[33m',
+      timestamp: '\u001b[36m',
+      record_number: '\u001b[2m',
+      reset: '\u001b[0m'
+    }
+  });
+  const markdown = renderCanonicalMarkdown([event]);
+  assert.match(
+    markdown,
+    /^\u001b\[33m## User\u001b\[0m \u001b\[36m\[2026-08-31 15:00:00\]:\u001b\[0m \u001b\[2m 2:\u001b\[0m$/m
+  );
+});
+
 test('source turn id is omitted when the provider event has no source record id', () => {
   const event = messageEvent('codex', null, {
     heading_metadata: { show_turn_id: true }
