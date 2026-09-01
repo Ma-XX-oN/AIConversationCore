@@ -1,0 +1,60 @@
+name: Turn ID metadata override gate
+
+on:
+  push:
+    paths:
+      - .github/workflows/turn-id-metadata-override.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply narrow turn-id override support
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+            count = text.count(old)
+            if count != 1:
+              raise RuntimeError(f'{label}: expected one match, found {count}')
+            return text.replace(old, new, 1)
+
+          path = Path('src/projections/markdown.js')
+          text = path.read_text(encoding='utf-8')
+          text = replace_once(
+            text,
+            "  if (metadata.show_turn_id && event?.source_record_id != null) {\n    fields.push(`turn_id=${event.source_record_id}`);\n  }",
+            "  const turnId = metadata.turn_id ?? event?.source_record_id;\n  if (metadata.show_turn_id && turnId != null) {\n    fields.push(`turn_id=${turnId}`);\n  }",
+            'heading turn-id override')
+          path.write_text(text, encoding='utf-8')
+
+          test_path = Path('tests/heading-metadata-projection.test.js')
+          text = test_path.read_text(encoding='utf-8')
+          marker = "test('structured timestamp and record number preserve consumer ANSI colours', () => {"
+          addition = """test('structured heading metadata can override visible turn id without changing event provenance', () => {\n  const event = messageEvent('chatgpt', 'activity-record-id', {\n    heading_metadata: {\n      show_turn_id: true,\n      turn_id: 'response-message-id'\n    }\n  });\n  const markdown = renderCanonicalMarkdown([event]);\n  assert.match(markdown, /^## User turn_id=response-message-id$/m);\n  assert.doesNotMatch(markdown, /turn_id=activity-record-id/);\n  assert.equal(event.source_record_id, 'activity-record-id');\n});\n\n"""
+          text = replace_once(text, marker, addition + marker, 'override regression')
+          test_path.write_text(text, encoding='utf-8')
+          PY
+      - name: Build browser bundle
+        run: npm run build:browser
+      - name: Core regression suite
+        run: npm test
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Commit product change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/projections/markdown.js tests/heading-metadata-projection.test.js dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "projection: allow explicit visible turn id metadata"
+          git push
