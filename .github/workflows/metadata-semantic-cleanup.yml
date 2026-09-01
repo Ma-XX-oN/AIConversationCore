@@ -71,7 +71,6 @@ jobs:
             test.write_text(text, encoding='utf-8')
       - name: Build and test
         run: |
-          npm test
           npm run build:browser
           npm test
           git diff --check
