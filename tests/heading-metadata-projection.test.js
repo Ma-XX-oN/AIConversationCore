@@ -37,6 +37,19 @@ test('structured heading metadata composes timestamp, record number, and source 
   );
 });
 
+test('structured heading metadata can override visible turn id without changing event provenance', () => {
+  const event = messageEvent('chatgpt', 'activity-record-id', {
+    heading_metadata: {
+      show_turn_id: true,
+      turn_id: 'response-message-id'
+    }
+  });
+  const markdown = renderCanonicalMarkdown([event]);
+  assert.match(markdown, /^## User turn_id=response-message-id$/m);
+  assert.doesNotMatch(markdown, /turn_id=activity-record-id/);
+  assert.equal(event.source_record_id, 'activity-record-id');
+});
+
 test('structured timestamp and record number preserve consumer ANSI colours', () => {
   const event = messageEvent('chatgpt', 'chatgpt-message-id', {
     heading_metadata: {

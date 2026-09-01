@@ -59,8 +59,9 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.record_number != null) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
-  if (metadata.show_turn_id && event?.source_record_id != null) {
-    fields.push(`turn_id=${event.source_record_id}`);
+  const turnId = metadata.turn_id ?? event?.source_record_id;
+  if (metadata.show_turn_id && turnId != null) {
+    fields.push(`turn_id=${turnId}`);
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
