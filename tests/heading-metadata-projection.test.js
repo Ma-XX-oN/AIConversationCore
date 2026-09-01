@@ -33,7 +33,7 @@ test('structured heading metadata composes timestamp, record number, and source 
   });
   assert.match(
     renderCanonicalMarkdown([event]),
-    /^## User \[2026-08-31 15:00:00\]: 2: <!-- turn_id=chatgpt-message-id -->$/m
+    /^## User \[2026-08-31 15:00:00\]: 2: turn_id=chatgpt-message-id$/m
   );
 });
 

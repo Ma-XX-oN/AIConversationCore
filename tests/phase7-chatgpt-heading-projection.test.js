@@ -28,18 +28,18 @@ test('ChatGPT response and commentary headings both honour consumer heading suff
       index: 0,
       kind: 'tool_call',
       blocks: [{ type: 'tool_call', name: 'api_tool', input: 'inspect()', language: 'javascript' }],
-      projection: { heading_suffix: ' <!-- turn_id=response-source -->' }
+      projection: { heading_suffix: ' <!-- record_id=response-source -->' }
     }),
     event({
       id: 'commentary-source',
       index: 1,
       kind: 'commentary',
       blocks: [{ type: 'text', text: 'Continuing.' }],
-      projection: { heading_suffix: ' <!-- turn_id=commentary-source -->' }
+      projection: { heading_suffix: ' <!-- record_id=commentary-source -->' }
     })
   ];
 
   const rendered = renderCanonicalMarkdown(events);
-  assert.match(rendered, /^## ChatGPT <!-- turn_id=response-source -->/);
-  assert.match(rendered, /^### ChatGPT Commentary <!-- turn_id=commentary-source -->$/m);
+  assert.match(rendered, /^## ChatGPT <!-- record_id=response-source -->/);
+  assert.match(rendered, /^### ChatGPT Commentary <!-- record_id=commentary-source -->$/m);
 });

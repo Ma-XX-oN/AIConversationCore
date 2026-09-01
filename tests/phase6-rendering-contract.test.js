@@ -35,11 +35,11 @@ test('ChatGPT response starts once and commentary breaks thought consecutiveness
   const markdown = renderCanonicalMarkdown(events);
 
   assert.equal((markdown.match(/^## ChatGPT(?: |$)/gm) ?? []).length, 1);
-  assert.match(markdown, /^## ChatGPT <!-- turn_id=turn-17 record_index=17 -->/m);
+  assert.match(markdown, /^## ChatGPT <!-- record_id=turn-17 record_index=17 -->/m);
   assert.match(markdown, /<summary>Having 2 thoughts<\/summary>|<summary>Having 2 thoughts<\/summary>/);
-  assert.match(markdown, /<summary>Having 2 thoughts<\/summary> <!-- turn_id=turn-17 record_index=17 -->\n<!-- turn_id=turn-18 record_index=18 -->/);
-  assert.match(markdown, /### ChatGPT Commentary <!-- turn_id=turn-19 record_index=19 -->/);
-  assert.match(markdown, /<summary>Having a thought<\/summary> <!-- turn_id=turn-20 record_index=20 -->/);
+  assert.match(markdown, /<summary>Having 2 thoughts<\/summary> <!-- record_id=turn-17 record_index=17 -->\n<!-- record_id=turn-18 record_index=18 -->/);
+  assert.match(markdown, /### ChatGPT Commentary <!-- record_id=turn-19 record_index=19 -->/);
+  assert.match(markdown, /<summary>Having a thought<\/summary> <!-- record_id=turn-20 record_index=20 -->/);
   assert.ok(markdown.indexOf('Having 2 thoughts') < markdown.indexOf('ChatGPT Commentary'));
   assert.ok(markdown.indexOf('ChatGPT Commentary') < markdown.indexOf('Having a thought'));
 });
@@ -55,14 +55,14 @@ test('debug provenance is absent when the flag is disabled', () => {
 test('ChatGPT response heading projection can differ from first commentary heading projection', () => {
   const commentary = event(30, 'commentary', 'assistant', 'interim');
   commentary.projection = {
-    heading_suffix: ' <!-- turn_id=commentary-30 -->',
-    response_heading_suffix: ' <!-- turn_id=final-31 -->'
+    heading_suffix: ' <!-- record_id=commentary-30 -->',
+    response_heading_suffix: ' <!-- record_id=final-31 -->'
   };
   const final = event(31, 'message', 'assistant', 'final');
   final.projection = {};
   const markdown = renderCanonicalMarkdown([commentary, final]);
 
-  assert.match(markdown, /^## ChatGPT <!-- turn_id=final-31 -->/m);
-  assert.match(markdown, /^### ChatGPT Commentary <!-- turn_id=commentary-30 -->/m);
+  assert.match(markdown, /^## ChatGPT <!-- record_id=final-31 -->/m);
+  assert.match(markdown, /^### ChatGPT Commentary <!-- record_id=commentary-30 -->/m);
   assert.equal((markdown.match(/^## ChatGPT(?: |$)/gm) ?? []).length, 1);
 });

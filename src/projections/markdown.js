@@ -60,7 +60,7 @@ function projectedHeadingMetadataSuffix(event) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
   if (metadata.show_turn_id && event?.source_record_id != null) {
-    fields.push(`<!-- turn_id=${event.source_record_id} -->`);
+    fields.push(`turn_id=${event.source_record_id}`);
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
@@ -94,9 +94,9 @@ function projectedThoughtHeading(event, number) {
  * Returns the optional source-record debug provenance comment for an event.
  *
  * Debug provenance is formatted centrally so every renderer uses the same
- * DownloadConversation-compatible `turn_id` and `record_index` field names.
- * `turn_id` is the provider/source record identity retained as
- * `source_record_id`; it is not the separately derived canonical turn ID.
+ * `record_id` and `record_index` field names. `record_id` is the native
+ * provider/source record identity retained as `source_record_id`; it is
+ * deliberately distinct from first-class turn identity.
  *
  * @param {Object<string, *>} event - The canonical event whose source provenance is being rendered.
  * @param {boolean} quoted - Whether the comment must remain inside an existing Markdown blockquote.
@@ -106,7 +106,7 @@ function projectedComment(event, quoted = false) {
   const projection = event?.projection ?? {};
   if (!projection.debug_provenance) return '';
   const fields = [];
-  if (event?.source_record_id != null) fields.push(`turn_id=${event.source_record_id}`);
+  if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
   if (Number.isInteger(event?.source_index)) fields.push(`record_index=${event.source_index}`);
   if (!fields.length) return '';
   const comment = `<!-- ${fields.join(' ')} -->`;
