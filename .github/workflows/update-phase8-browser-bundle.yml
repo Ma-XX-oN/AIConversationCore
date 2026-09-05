@@ -1,0 +1,46 @@
+name: Update Phase 8 browser bundle
+
+on:
+  push:
+    branches:
+      - feature/agentpanelspeaker-phase8
+    paths:
+      - scripts/build-browser-bundle.mjs
+      - src/derive/turns.js
+      - src/projections/markdown.js
+      - src/projections/structured.js
+      - .github/workflows/update-phase8-browser-bundle.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/agentpanelspeaker-phase8
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Rebuild browser bundle
+        run: npm run build:browser
+
+      - name: Commit generated browser bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- dist/aiconversationcore.chatgpt.browser.js; then
+            echo 'Browser bundle already matches sources.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dist/aiconversationcore.chatgpt.browser.js
+          git commit -m 'rebuild browser bundle for structured projection'
+          git push origin HEAD:feature/agentpanelspeaker-phase8
