@@ -77,6 +77,14 @@ test('presentation model exposes grouped reasoning as one atomic structural unit
   assert.equal(response.children[1].kind, 'message');
 });
 
+test('presentation model uses the same singular thought label as canonical Markdown', () => {
+  const events = [reasoningEvent(1), finalMessage()];
+  const presentation = buildCanonicalPresentation(events);
+  assert.equal(presentation.units[0].children[0].label, 'Having a thought');
+  const markdown = renderConversation(events, { format: RENDER_FORMATS.MARKDOWN });
+  assert.match(markdown.content, /<summary>Having a thought<\/summary>/);
+});
+
 test('Markdown and HTML high-level rendering share grouped-reasoning semantics', () => {
   const events = groupedReasoningEvents();
   const markdown = renderConversation(events, { format: RENDER_FORMATS.MARKDOWN });
@@ -85,9 +93,16 @@ test('Markdown and HTML high-level rendering share grouped-reasoning semantics',
   assert.match(markdown.content, /<details><summary>Having 3 thoughts<\/summary>/);
   assert.match(html.markdown, /<details><summary>Having 3 thoughts<\/summary>/);
   assert.match(html.content, /<details><summary>Having 3 thoughts<\/summary>/);
-  assert.match(html.content, /Reasoning body 1/);
-  assert.match(html.content, /Reasoning body 2/);
-  assert.match(html.content, /Reasoning body 3/);
+  assert.doesNotMatch(html.content, /<p>\s*<details/);
+  assert.doesNotMatch(html.content, /<\/details>\s*<\/p>/);
+  const detailsStart = html.content.indexOf('<details>');
+  const detailsEnd = html.content.indexOf('</details>', detailsStart);
+  assert.ok(detailsStart >= 0);
+  assert.ok(detailsEnd > detailsStart);
+  const details = html.content.slice(detailsStart, detailsEnd);
+  assert.match(details, /Reasoning body 1/);
+  assert.match(details, /Reasoning body 2/);
+  assert.match(details, /Reasoning body 3/);
   assert.deepEqual(html.presentation, markdown.presentation);
 });
 
