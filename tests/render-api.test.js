@@ -91,8 +91,8 @@ test('Markdown and HTML high-level rendering share grouped-reasoning semantics',
   const markdown = renderConversation(events, { format: RENDER_FORMATS.MARKDOWN });
   const html = renderConversation(events, { format: RENDER_FORMATS.HTML });
 
-  assert.match(markdown.content, /<details><summary>Having 3 thoughts<\/summary>/);
-  assert.match(html.markdown, /<details><summary>Having 3 thoughts<\/summary>/);
+  assert.match(markdown.content, /<details[^>]*><summary>Having 3 thoughts<\/summary>/);
+  assert.match(html.markdown, /<details[^>]*><summary>Having 3 thoughts<\/summary>/);
   const reasoningUnit = html.presentation.units[0].children[0];
   assert.match(html.content, /data-ai-boundary=\"atomic\"/);
   assert.match(html.content, new RegExp(`data-ai-unit-id=\"${reasoningUnit.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\"`));
