@@ -50,6 +50,18 @@ function stripClaudeInjectedText(text) {
 }
 
 /**
+ * Removes the IDE/request wrapper Codex may prepend to a user message.
+ *
+ * @param {string} text - Provider text.
+ * @returns {string} User-authored request text.
+ */
+function stripCodexUserPreamble(text) {
+  const value = String(text ?? '');
+  const match = value.match(/## My request for Codex:\s*\r?\n([\s\S]+)/);
+  return (match?.[1] ?? value).trim();
+}
+
+/**
  * Reads text parts from a Claude queued-command prompt.
  *
  * @param {*} prompt - Provider queued-command prompt value.
@@ -209,40 +221,177 @@ function claudeAgentStartEvents(record, sourceIndex) {
 }
 
 /**
+ * Returns one trimmed XML-like element from provider task-notification text.
+ *
+ * @param {string} content - Provider task notification text.
+ * @param {string} name - Element local name.
+ * @returns {string|null} Trimmed element contents or null.
+ */
+function xmlTag(content, name) {
+  if (typeof content !== 'string') return null;
+  const match = content.match(new RegExp(`<${name}>([\\s\\S]*?)<\\/${name}>`, 'i'));
+  return match ? match[1].trim() : null;
+}
+
+/**
  * Extracts completed Claude task duration from queue-operation XML-like text.
  *
  * @param {Object<string, *>} record - Claude source record.
  * @returns {number|null} Duration in milliseconds or null.
  */
 function queueDurationMilliseconds(record) {
-  if (record?.type !== 'queue-operation' || typeof record?.content !== 'string') return null;
-  const match = record.content.match(/<duration_ms>\s*(\d+)\s*<\/duration_ms>/i);
-  if (!match) return null;
-  const value = Number(match[1]);
+  const text = record?.type === 'queue-operation' ? xmlTag(record?.content, 'duration_ms') : null;
+  if (!text) return null;
+  const value = Number(text);
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
 /**
- * Adds evidenced Claude subagent duration metadata to a canonical completion.
+ * Returns the user-facing task description from a Claude completion summary.
+ *
+ * @param {Object<string, *>} record - Claude source record.
+ * @returns {string|null} Task description or null.
+ */
+function queueTaskDescription(record) {
+  if (record?.type !== 'queue-operation') return null;
+  const summary = xmlTag(record?.content, 'summary');
+  if (!summary) return null;
+  const match = summary.match(/^Agent\s+["“]([\s\S]+?)["”]\s+came to rest$/i);
+  return match?.[1]?.trim() ?? summary.trim();
+}
+
+/**
+ * Removes an agent-authored timing footer from returned subagent text.
+ *
+ * @param {string} text - Subagent output.
+ * @returns {string} Output without the reported timing footer.
+ */
+function stripReportedTimingFooter(text) {
+  return String(text ?? '').replace(
+    /\s*```text\s*START=[\s\S]*?END=[\s\S]*?ELAPSED=[\s\S]*?```\s*$/i,
+    ''
+  ).trim();
+}
+
+/**
+ * Adds evidenced Claude subagent timing and normalized interactive output.
  *
  * @param {Object<string, *>} event - Canonical Claude event.
  * @param {Array<Object<string, *>>} records - Ordered Claude records.
- * @returns {Object<string, *>} Event clone with duration metadata when available.
+ * @returns {Object<string, *>} Interactive event clone.
  */
-function withClaudeSubagentDuration(event, records) {
+function withClaudeSubagentSemantics(event, records) {
   if (event?.kind !== 'subagent' || !Number.isInteger(event?.source_index)) return event;
   const record = records[event.source_index];
   const direct = Number(record?.toolUseResult?.totalDurationMs);
   const durationMs = Number.isFinite(direct) && direct >= 0
     ? direct
     : queueDurationMilliseconds(record);
-  if (!Number.isFinite(durationMs) || durationMs < 0) return event;
+  const description = queueTaskDescription(record);
   return {
     ...event,
-    blocks: (event.blocks ?? []).map(block => block?.type === 'subagent'
-      ? { ...block, duration_ms: durationMs }
+    blocks: (event.blocks ?? []).map(block => {
+      if (block?.type !== 'subagent') return block;
+      return {
+        ...block,
+        ...(Number.isFinite(durationMs) && durationMs >= 0 ? { duration_ms: durationMs } : {}),
+        ...(description ? { description } : {}),
+        output: stripReportedTimingFooter(block.output)
+      };
+    })
+  };
+}
+
+/**
+ * Cleans ordinary Claude User message blocks for interactive consumers.
+ *
+ * @param {Object<string, *>} event - Canonical Claude event.
+ * @returns {Object<string, *>} Interactive event clone.
+ */
+function normalizeClaudeUserEvent(event) {
+  if (event?.role !== 'user' || event?.kind !== 'message') return event;
+  return {
+    ...event,
+    blocks: (event.blocks ?? []).map(block => block?.type === 'text'
+      ? { ...block, text: stripClaudeInjectedText(block.text) }
       : block)
   };
+}
+
+/**
+ * Parses a Codex function-call argument value into an object when possible.
+ *
+ * @param {*} value - Provider arguments value.
+ * @returns {Object<string, *>|null} Parsed object or null.
+ */
+function parseObject(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Adds interactive-only Codex semantics needed by AgentPanelSpeaker.
+ *
+ * @param {Object<string, *>} event - Timestamp-enriched canonical Codex event.
+ * @param {Array<Object<string, *>>} records - Ordered Codex records.
+ * @returns {Object<string, *>} Interactive event clone.
+ */
+function normalizeCodexEvent(event, records) {
+  if (!Number.isInteger(event?.source_index)) return event;
+  const record = records[event.source_index];
+  let normalized = event;
+
+  if (event?.role === 'user' && event?.kind === 'message' &&
+      event?.content_type === 'user_message') {
+    normalized = {
+      ...normalized,
+      blocks: (normalized.blocks ?? []).map(block => block?.type === 'text'
+        ? { ...block, text: stripCodexUserPreamble(block.text) }
+        : block)
+    };
+  }
+
+  if (event?.content_type === 'agent_message' &&
+      typeof record?.payload?.phase === 'string' && record.payload.phase) {
+    normalized = { ...normalized, channel: record.payload.phase };
+  }
+
+  if (event?.kind === 'tool_call') {
+    const callBlockIndex = (normalized.blocks ?? []).findIndex(block =>
+      block?.type === 'tool_call' && block?.name === 'request_user_input');
+    if (callBlockIndex >= 0) {
+      const argumentsObject = parseObject(record?.payload?.arguments);
+      const sourceQuestions = Array.isArray(argumentsObject?.questions)
+        ? argumentsObject.questions
+        : [];
+      const blocks = [...normalized.blocks];
+      const block = blocks[callBlockIndex];
+      const questions = Array.isArray(block?.request_user_input?.questions)
+        ? block.request_user_input.questions
+        : [];
+      blocks[callBlockIndex] = {
+        ...block,
+        request_user_input: {
+          ...(block.request_user_input ?? {}),
+          questions: questions.map((question, index) => ({
+            ...question,
+            is_secret: Boolean(
+              sourceQuestions[index]?.isSecret ?? sourceQuestions[index]?.is_secret
+            )
+          }))
+        }
+      };
+      normalized = { ...normalized, blocks };
+    }
+  }
+
+  return normalized;
 }
 
 /**
@@ -254,7 +403,9 @@ function withClaudeSubagentDuration(event, records) {
 function adaptClaudeSession(records) {
   const base = adaptClaudeRecords(records)
     .filter(event => !records[event.source_index]?.isSidechain)
-    .map(event => withClaudeSubagentDuration(withTimestamp(event, records), records));
+    .map(event => normalizeClaudeUserEvent(
+      withClaudeSubagentSemantics(withTimestamp(event, records), records)
+    ));
   const synthetic = [];
   records.forEach((record, sourceIndex) => {
     if (record?.isSidechain) return;
@@ -355,7 +506,8 @@ function codexCompletedPlanEvent(record, sourceIndex) {
  * @returns {Array<Object<string, *>>} Enriched canonical events in source order.
  */
 function adaptCodexSession(records) {
-  const base = adaptCodexRecords(records).map(event => withTimestamp(event, records));
+  const base = adaptCodexRecords(records)
+    .map(event => normalizeCodexEvent(withTimestamp(event, records), records));
   const synthetic = [];
   records.forEach((record, sourceIndex) => {
     const completion = codexTaskCompleteEvent(record, sourceIndex);
