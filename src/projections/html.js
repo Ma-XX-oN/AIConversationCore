@@ -66,13 +66,22 @@ function renderInline(text) {
 }
 
 /**
- * Returns whether one line is a canonical block-level raw HTML boundary.
+ * Returns whether one line is canonical block-level raw HTML.
+ *
+ * Canonical disclosure openings may contain their complete summary on the same
+ * line (`<details><summary>…</summary>`). Treating that line as paragraph text
+ * would create invalid `<p><details>` nesting, so disclosure openings/closings
+ * are classified as block HTML even when the summary shares the opening line.
  *
  * @param {string} line - Markdown source line being classified.
- * @returns {boolean} True for details/summary/comments and other standalone HTML tags.
+ * @returns {boolean} True for canonical block-level raw HTML boundaries.
  */
 function isRawHtmlBlockLine(line) {
-  return /^\s*(?:<!--[\s\S]*-->|<\/?(?:details|summary|section|article|div|aside|figure|figcaption|table|thead|tbody|tr|th|td)\b[^>]*>)\s*$/i.test(line);
+  const trimmed = line.trim();
+  if (/^<!--[\s\S]*-->$/.test(trimmed)) return true;
+  if (/^<details\b[^>]*>(?:<summary\b[^>]*>[\s\S]*<\/summary>)?$/.test(trimmed)) return true;
+  if (/^<\/details>$/.test(trimmed)) return true;
+  return /^<\/?(?:summary|section|article|div|aside|figure|figcaption|table|thead|tbody|tr|th|td)\b[^>]*>$/.test(trimmed);
 }
 
 /**
