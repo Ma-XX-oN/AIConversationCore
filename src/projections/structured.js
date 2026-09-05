@@ -1,5 +1,6 @@
 import { deriveTurns } from '../derive/turns.js';
 import { renderCanonicalMarkdown } from './markdown.js';
+import { buildCanonicalPresentation } from './presentation.js';
 
 /**
  * Clones one canonical event with renderer provenance enabled.
@@ -73,13 +74,14 @@ function projectBlock(event, block, blockIndex) {
  * Projects canonical events into one deterministic structured consumer payload.
  *
  * This is deliberately a projection of the existing canonical model, not a
- * second provider-neutral semantic schema.  `events` retain the canonical data,
- * `units` provide flattened event/block identity for interactive consumers,
- * `turns` reuse the canonical turn derivation, and `markdown` reuses the canonical
- * renderer with explicit source provenance comments enabled.
+ * second provider-neutral semantic schema. `events` retain canonical data,
+ * `units` provide flattened event/block identity, `turns` reuse canonical turn
+ * derivation, `presentation` exposes renderer-safe structural boundaries and all
+ * source aliases, and `markdown` reuses the canonical renderer with explicit
+ * source provenance enabled.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical events.
- * @returns {Object<string, *>} Structured canonical consumer projection.
+ * @returns {Object<string, *>} Structured canonical consumer projection including structural presentation metadata.
  */
 export function projectCanonicalConversation(events) {
   if (!Array.isArray(events)) {
@@ -95,10 +97,11 @@ export function projectCanonicalConversation(events) {
   }
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     events,
     turns: deriveTurns(events),
     units,
+    presentation: buildCanonicalPresentation(events),
     markdown: renderCanonicalMarkdown(events.map(withRenderProvenance))
   };
 }
