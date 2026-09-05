@@ -19,8 +19,10 @@ test('structured projection preserves Claude canonical identity and render prove
   const events = adaptClaudeRecords(records);
   const projection = projectCanonicalConversation(events);
 
-  assert.equal(projection.schema_version, 1);
+  assert.equal(projection.schema_version, 2);
   assert.equal(projection.events, events);
+  assert.equal(projection.presentation.schema_version, 1);
+  assert.ok(Array.isArray(projection.presentation.units));
   assert.deepEqual(projection.turns.map(turn => turn.event_ids), [
     [events[0].id],
     [events[1].id, events.at(-1).id]
@@ -36,6 +38,13 @@ test('structured projection preserves Claude canonical identity and render prove
   assert.equal(unit.block_type, 'subagent');
   assert.equal(unit.block.agent_id, subagent.blocks[0].agent_id);
 
+  const structuralSource = projection.presentation.units
+    .flatMap(item => [item, ...(item.children ?? [])])
+    .flatMap(item => item.sources ?? [])
+    .find(source => source.event_id === subagent.id);
+  assert.ok(structuralSource);
+  assert.equal(structuralSource.record_id, subagent.source_record_id);
+
   assert.match(projection.markdown, /<!-- record_index=0 -->/);
   assert.match(projection.markdown, /Claude Sub-agent/);
 });
@@ -45,6 +54,8 @@ test('structured projection preserves Codex request input and source indexes', a
   const events = adaptCodexRecords(records);
   const projection = projectCanonicalConversation(events);
 
+  assert.equal(projection.schema_version, 2);
+  assert.equal(projection.presentation.schema_version, 1);
   const requestUnit = projection.units.find(item =>
     item.block_type === 'tool_call' && item.block.name === 'request_user_input');
   assert.ok(requestUnit);
