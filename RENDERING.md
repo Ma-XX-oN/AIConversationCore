@@ -64,6 +64,8 @@ A presentation unit has:
 - semantic `kind`;
 - parent identity where applicable;
 - `boundary`, including `atomic` for indivisible structures;
+- `split_policy`, explicitly declaring whether splitting is safe before, after,
+  or inside the unit;
 - human-readable label when the structure defines one;
 - canonical source event IDs; and
 - provider/source record aliases.
@@ -72,6 +74,23 @@ Grouped reasoning is an important example.  Several source reasoning records may
 render as one `Having N thoughts` disclosure.  The group is therefore one atomic
 presentation unit even though every original source identity remains separately
 addressable for speech, search, provenance, or navigation.
+
+### Rendered structural markers
+
+When an atomic reasoning unit is emitted as a disclosure, the core carries the
+same structural identity into the generated markup.  The outer `<details>` element
+contains stable `data-ai-*` markers for:
+
+- the presentation unit ID;
+- the `atomic` boundary declaration;
+- participating canonical event IDs;
+- participating provider/source record IDs; and
+- participating provider/source record indexes.
+
+Those markers are declarations from the core, not boundaries inferred by the
+host from HTML tag names.  A virtualizing host may use them to locate the exact
+rendered extent of a core-declared unit while continuing to use its own finer
+record/word mappings for speech, search, and navigation.
 
 ## Display settings and themes
 
