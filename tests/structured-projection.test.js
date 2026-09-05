@@ -36,6 +36,26 @@ test('structured projection preserves Claude canonical identity and render prove
   assert.equal(unit.block_type, 'subagent');
   assert.equal(unit.block.agent_id, subagent.blocks[0].agent_id);
 
+  assert.equal(projection.presentation.schema_version, 1);
+  assert.equal(
+    projection.presentation.split_policy,
+    'record-anchor-except-declared-atomic-unit'
+  );
+  assert.equal(
+    projection.presentation.structural_unit_marker_class,
+    'aicore-structural-unit'
+  );
+  assert.ok(projection.presentation.structural_units.length > 0);
+  for (const structuralUnit of projection.presentation.structural_units) {
+    assert.equal(structuralUnit.kind, 'details');
+    assert.equal(structuralUnit.atomic, true);
+    assert.ok(structuralUnit.source_indexes.length > 0);
+    assert.match(
+      projection.markdown,
+      new RegExp(`data-aicore-unit-id="${structuralUnit.id}"`)
+    );
+  }
+
   assert.match(projection.markdown, /<!-- record_index=0 -->/);
   assert.match(projection.markdown, /Claude Sub-agent/);
 });
