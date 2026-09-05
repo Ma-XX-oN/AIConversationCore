@@ -86,7 +86,7 @@ function createUnit(kind, events, ordinal, options = {}) {
  * @returns {string} Canonical singular or plural disclosure label.
  */
 function reasoningLabel(count) {
-  return `Having ${count} thought${count === 1 ? '' : 's'}`;
+  return count === 1 ? 'Having a thought' : `Having ${count} thoughts`;
 }
 
 /**
