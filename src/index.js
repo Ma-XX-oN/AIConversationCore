@@ -19,3 +19,4 @@ export { adaptChatGPTRecords } from './adapters/chatgpt.js';
 export { adaptClaudeRecords, adaptClaudeToolEvents } from './adapters/claude.js';
 export { adaptCodexRecords, adaptCodexToolEvents } from './adapters/codex.js';
 export { adaptInteractiveSessionRecords } from './adapters/session.js';
+export { adaptSpeechSessionRecords } from './adapters/speech-session.js';
