@@ -2,7 +2,9 @@
 // Source modules:
 // - src/adapters/chatgpt-base.js
 // - src/adapters/chatgpt.js
+// - src/derive/turns.js
 // - src/projections/markdown.js
+// - src/projections/structured.js
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
@@ -1421,6 +1423,118 @@ function adaptChatGPTRecords(records) {
 }
 
 /**
+ * Checks whether visible turn event.
+ *
+ * @param {Object<string, *>|null} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {boolean} Whether the canonical event is a visible User/Assistant turn event.
+ */
+function isVisibleTurnEvent(event) {
+  return event?.visibility === 'visible' &&
+    (event?.role === 'user' || event?.role === 'assistant') &&
+    (event?.kind === 'message' || event?.kind === 'commentary' || event?.kind === 'reasoning_summary');
+}
+
+/**
+ * Handles source record.
+ *
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {Object<string, *>} The normalized source-provenance record carried by a derived turn.
+ */
+function sourceRecord(event) {
+  const source = event?.source && typeof event.source === 'object' ? event.source : {};
+  const sourceIndex = Number.isInteger(event?.source_index)
+    ? event.source_index
+    : Number.isInteger(source.record_index) ? source.record_index : null;
+  const recordId = event?.source_record_id ?? source.record_id ?? null;
+
+  return {
+    record_id: recordId,
+    record_index: sourceIndex,
+    turn_id: source.turn_id ?? recordId,
+    create_time: source.create_time ?? null,
+    update_time: source.update_time ?? null,
+    turn_exchange_id: source.turn_exchange_id ?? event?.relationships?.turn_exchange_id ?? null,
+    working_turn_id: source.working_turn_id ?? event?.relationships?.working_turn_id ?? null
+  };
+}
+
+/**
+ * Handles append event.
+ *
+ * @param {Object<string, *>} turn - The derived canonical turn whose identity or header is being projected.
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @returns {void} No value is returned; the supplied turn is updated in place.
+ */
+function appendEvent(turn, event) {
+  turn.event_ids.push(event.id);
+  turn.source.record_ids.push(event.source_record_id);
+  turn.source.records.push(sourceRecord(event));
+}
+
+/**
+ * Handles new turn.
+ *
+ * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
+ * @param {number} turnIndex - The zero-based turn index.
+ * @returns {Object<string, *>} A new derived turn initialized from the supplied canonical event.
+ */
+function newTurn(event, turnIndex) {
+  return {
+    id: `turn:${event.id}`,
+    index: turnIndex,
+    role: event.role,
+    event_ids: [event.id],
+    source: {
+      provider: event.source?.provider ?? event.provider ?? null,
+      record_ids: [event.source_record_id],
+      records: [sourceRecord(event)]
+    }
+  };
+}
+
+/**
+ * Derives turns.
+ *
+ * @param {Array<Object<string, *>>} events - The ordered canonical events to process.
+ * @returns {Array<Object<string, *>>} Derived turns in the same canonical event order, with contiguous Assistant activity grouped into its turn.
+ */
+function deriveTurns(events) {
+  if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
+
+  // Derived turns are accumulated in canonical event order; no provider event reordering occurs here.
+  const turns = [];
+  // Tracks turn indexes that already contain a visible message so later assistant activity is attached correctly.
+  const turnsWithMessage = new Set();
+  for (const event of events) {
+    if (!isVisibleTurnEvent(event)) continue;
+
+    const current = turns.at(-1);
+    if (event.kind === 'reasoning_summary' && event.role === 'assistant' &&
+        current?.role === 'assistant' && !turnsWithMessage.has(current.id)) {
+      appendEvent(current, event);
+      continue;
+    }
+
+    if (event.kind === 'commentary' && current?.role === 'assistant') {
+      appendEvent(current, event);
+      continue;
+    }
+
+    if (event.kind === 'message' && event.role === 'assistant' &&
+        current?.role === 'assistant' && !turnsWithMessage.has(current.id)) {
+      appendEvent(current, event);
+      turnsWithMessage.add(current.id);
+      continue;
+    }
+
+    const turn = newTurn(event, turns.length);
+    turns.push(turn);
+    if (event.kind === 'message') turnsWithMessage.add(turn.id);
+  }
+  return turns;
+}
+
+/**
  * Escapes text for safe insertion into generated HTML fragments.
  *
  * @param {string} value - The input value to process.
@@ -1459,17 +1573,23 @@ function providerLabel(provider) {
 
 
 /**
- * Renders a transcript heading with optional consumer-supplied projection metadata.
+ * Renders the optional metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
- * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
+ * @returns {string} The consumer-specific heading metadata suffix.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
   const metadata = projection.heading_metadata ?? {};
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
+  /**
+   * Applies one configured ANSI colour to heading metadata.
+   *
+   * @param {string} text - Metadata text to style.
+   * @param {string} colorName - Projection colour field name.
+   * @returns {string} Styled text, or the original text when no colour is configured.
+   */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
     return color ? `${color}${text}${reset}` : text;
@@ -1489,6 +1609,13 @@ function projectedHeadingMetadataSuffix(event) {
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
+/**
+ * Renders a transcript heading with optional consumer projection styling.
+ *
+ * @param {Object<string, *>} event - The canonical event being headed.
+ * @param {string} label - Canonical Markdown heading label.
+ * @returns {string} The consumer-decorated transcript heading.
+ */
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
@@ -2515,8 +2642,195 @@ function renderCanonicalMarkdown(events) {
   return sections.join('\n\n') + '\n\n';
 }
 
+/** Version of the shared presentation-boundary contract. */
+const PRESENTATION_SCHEMA_VERSION = 1;
+/** Policy identifying record anchors that may be split by consumers. */
+const PRESENTATION_SPLIT_POLICY = 'record-anchor-except-declared-atomic-unit';
+/** CSS class used by invisible structural-unit declaration markers. */
+const STRUCTURAL_UNIT_MARKER_CLASS = 'aicore-structural-unit';
+
+/**
+ * Enables renderer provenance without mutating the caller's canonical events.
+ *
+ * @param {Object<string, *>} event - Canonical event to project.
+ * @returns {Object<string, *>} Shallow event copy with debug provenance enabled.
+ */
+function withRenderProvenance(event) {
+  return {
+    ...event,
+    projection: {
+      ...(event?.projection ?? {}),
+      debug_provenance: true
+    }
+  };
+}
+
+/**
+ * Returns the canonical source block index when one exists.
+ *
+ * @param {Object<string, *>} block - Canonical block.
+ * @returns {number|null} Source block index or null.
+ */
+function sourceBlockIndex(block) {
+  const value = block?.source?.block_index;
+  return Number.isInteger(value) ? value : null;
+}
+
+/**
+ * Projects one canonical block into the flattened interactive-consumer shape.
+ *
+ * @param {Object<string, *>} event - Canonical owner event.
+ * @param {Object<string, *>} block - Canonical block.
+ * @param {number} blockIndex - Canonical block ordinal within the event.
+ * @returns {Object<string, *>} Flattened canonical unit.
+ */
+function projectBlock(event, block, blockIndex) {
+  return {
+    id: block?.id ?? `${event.id}:block:${blockIndex}`,
+    event_id: event.id,
+    provider: event.provider ?? null,
+    source_record_id: event.source_record_id ?? event?.source?.record_id ?? null,
+    source_index: Number.isInteger(event.source_index)
+      ? event.source_index
+      : Number.isInteger(event?.source?.record_index)
+        ? event.source.record_index
+        : null,
+    source_block_index: sourceBlockIndex(block),
+    event_kind: event.kind ?? null,
+    role: event.role ?? null,
+    channel: event.channel ?? null,
+    visibility: event.visibility ?? null,
+    content_type: event.content_type ?? null,
+    block_type: block?.type ?? null,
+    block
+  };
+}
+
+/**
+ * Reads all source indexes encoded in one renderer provenance line.
+ *
+ * @param {string} line - Rendered Markdown line.
+ * @returns {number[]} Source indexes in textual order.
+ */
+function provenanceIndexes(line) {
+  const indexes = [];
+  const regex = /record_index=(\d+)/g;
+  for (const match of line.matchAll(regex)) indexes.push(Number(match[1]));
+  return indexes;
+}
+
+/**
+ * Adds invisible structural-unit markers to core-generated details disclosures.
+ *
+ * projectedDetails() always places the first debug-provenance comment on the
+ * summary line, followed immediately by any additional source comments. That
+ * lets this projection layer identify renderer-owned disclosures without
+ * treating arbitrary provider/user-authored <details> markup as core structure.
+ *
+ * @param {string} markdown - Canonical Markdown rendered with provenance.
+ * @param {Array<Object<string, *>>} events - Ordered canonical events.
+ * @returns {Object<string, *>} Annotated Markdown and declared units.
+ */
+function declareStructuralUnits(markdown, events) {
+  const sourceIds = new Map();
+  for (const event of events) {
+    if (!Number.isInteger(event?.source_index)) continue;
+    const sourceId = event?.source_record_id ?? event?.source?.record_id ?? null;
+    if (sourceId != null) sourceIds.set(event.source_index, String(sourceId));
+  }
+
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  const units = [];
+  for (let index = 0; index < lines.length; ++index) {
+    const detailsOffset = lines[index].indexOf('<details>');
+    if (detailsOffset < 0) continue;
+
+    let summaryIndex = index;
+    if (!lines[summaryIndex].includes('<summary>')) {
+      summaryIndex += 1;
+      if (summaryIndex >= lines.length || !lines[summaryIndex].includes('<summary>')) continue;
+    }
+
+    const indexes = provenanceIndexes(lines[summaryIndex]);
+    let markerIndex = summaryIndex + 1;
+    while (markerIndex < lines.length && /<!--\s*record_(?:id|index)=/.test(lines[markerIndex])) {
+      indexes.push(...provenanceIndexes(lines[markerIndex]));
+      markerIndex += 1;
+    }
+    const uniqueIndexes = [...new Set(indexes)];
+    if (!uniqueIndexes.length) continue;
+
+    const unitId = `details-${units.length}`;
+    const sourceRecordIds = uniqueIndexes
+      .map(sourceIndex => sourceIds.get(sourceIndex))
+      .filter(sourceId => sourceId != null);
+    const quoted = /^\s*>\s?/.test(lines[index]);
+    const prefix = quoted ? `${lines[index].match(/^\s*>\s?/)?.[0] ?? '> '}` : '';
+    const encodedIds = sourceRecordIds.map(encodeURIComponent).join(',');
+    lines.splice(
+      markerIndex,
+      0,
+      `${prefix}<span hidden class="${STRUCTURAL_UNIT_MARKER_CLASS}" ` +
+        `data-aicore-unit-id="${unitId}" ` +
+        `data-aicore-source-record-ids="${encodedIds}"></span>`
+    );
+
+    units.push({
+      id: unitId,
+      kind: 'details',
+      atomic: true,
+      source_indexes: uniqueIndexes,
+      source_record_ids: sourceRecordIds
+    });
+    index = markerIndex;
+  }
+
+  return {
+    markdown: lines.join('\n'),
+    units
+  };
+}
+
+/**
+ * Projects canonical events for interactive consumers while retaining the
+ * canonical event/turn model and shared Markdown presentation.
+ *
+ * @param {Array<Object<string, *>>} events - Ordered canonical events.
+ * @returns {Object<string, *>} Structured projection.
+ */
+function projectCanonicalConversation(events) {
+  if (!Array.isArray(events)) {
+    throw new TypeError('projectCanonicalConversation expects an event array');
+  }
+
+  const units = [];
+  for (const event of events) {
+    const blocks = Array.isArray(event?.blocks) ? event.blocks : [];
+    for (let blockIndex = 0; blockIndex < blocks.length; ++blockIndex) {
+      units.push(projectBlock(event, blocks[blockIndex], blockIndex));
+    }
+  }
+
+  const rendered = renderCanonicalMarkdown(events.map(withRenderProvenance));
+  const structural = declareStructuralUnits(rendered, events);
+  return {
+    schema_version: 1,
+    events,
+    turns: deriveTurns(events),
+    units,
+    presentation: {
+      schema_version: PRESENTATION_SCHEMA_VERSION,
+      split_policy: PRESENTATION_SPLIT_POLICY,
+      structural_unit_marker_class: STRUCTURAL_UNIT_MARKER_CLASS,
+      structural_units: structural.units
+    },
+    markdown: structural.markdown
+  };
+}
+
   global.AIConversationCore = Object.freeze({
     adaptChatGPTRecords,
-    renderCanonicalMarkdown
+    renderCanonicalMarkdown,
+    projectCanonicalConversation
   });
 })(globalThis);
