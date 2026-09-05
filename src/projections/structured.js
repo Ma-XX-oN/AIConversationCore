@@ -1,8 +1,11 @@
 import { deriveTurns } from '../derive/turns.js';
 import { renderCanonicalMarkdown } from './markdown.js';
 
+/** Version of the shared presentation-boundary contract. */
 const PRESENTATION_SCHEMA_VERSION = 1;
+/** Policy identifying record anchors that may be split by consumers. */
 const PRESENTATION_SPLIT_POLICY = 'record-anchor-except-declared-atomic-unit';
+/** CSS class used by invisible structural-unit declaration markers. */
 const STRUCTURAL_UNIT_MARKER_CLASS = 'aicore-structural-unit';
 
 /**
@@ -85,7 +88,7 @@ function provenanceIndexes(line) {
  *
  * @param {string} markdown - Canonical Markdown rendered with provenance.
  * @param {Array<Object<string, *>>} events - Ordered canonical events.
- * @returns {{markdown: string, units: Array<Object<string, *>>}} Annotated Markdown and declared units.
+ * @returns {Object<string, *>} Annotated Markdown and declared units.
  */
 function declareStructuralUnits(markdown, events) {
   const sourceIds = new Map();

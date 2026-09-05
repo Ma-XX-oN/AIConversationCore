@@ -82,7 +82,7 @@ function queuedPromptText(prompt) {
  * Separates Claude's generated quoted queued-command card from user text.
  *
  * @param {string} text - Cleaned queued-command text.
- * @returns {{generated_context:string,user_text:string}} Structured queue text.
+ * @returns {Object<string, string>} Structured queue text.
  */
 function splitQueuedCommandText(text) {
   const normalized = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
