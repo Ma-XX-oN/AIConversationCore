@@ -13,13 +13,6 @@ const placeholderDescriptions = [
   'structured value produced by',
   'the value produced by'
 ];
-// Exact documentation failures already present on main before the canonical render API work began.
-const legacyFailures = new Set([
-  'src/projections/markdown.js: projectedHeadingMetadataSuffix: expected 1 typed @param tags, found 2',
-  'src/projections/markdown.js: projectedHeading: missing immediate JSDoc',
-  'src/projections/markdown.js: styled: missing immediate JSDoc'
-]);
-
 for (const root of roots) {
   if (!fs.existsSync(root)) continue;
   const walk = directory => {
@@ -194,12 +187,9 @@ for (const file of files.sort()) {
   }
 }
 
-const actionableFailures = failures.filter(failure => !legacyFailures.has(failure));
+const actionableFailures = failures;
 if (actionableFailures.length) {
   console.error('Documentation contract failures:\n' + actionableFailures.join('\n'));
   process.exit(1);
-}
-if (failures.length) {
-  console.warn('Known pre-existing documentation debt:\n' + failures.join('\n'));
 }
 console.log(`Documentation audit passed for ${functionCount} named production functions and ${variableCount} top-level variables.`);
