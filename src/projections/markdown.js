@@ -37,17 +37,23 @@ function providerLabel(provider) {
 
 
 /**
- * Renders a transcript heading with optional consumer-supplied projection metadata.
+ * Renders the optional consumer-supplied projection metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
- * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
+ * @returns {string} Consumer-specific heading metadata suffix with configured ANSI decoration applied.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
   const metadata = projection.heading_metadata ?? {};
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
+  /**
+   * Applies one optional projection colour to generated heading metadata.
+   *
+   * @param {string} text - Heading-metadata text to decorate.
+   * @param {string} colorName - Projection colour-map key used for the metadata field.
+   * @returns {string} Styled metadata text, or the original text when no colour is configured.
+   */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
     return color ? `${color}${text}${reset}` : text;
@@ -67,6 +73,13 @@ function projectedHeadingMetadataSuffix(event) {
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
+/**
+ * Renders a canonical transcript heading with optional consumer projection decoration.
+ *
+ * @param {Object<string, *>} event - Canonical event supplying projection colours and metadata.
+ * @param {string} label - Canonical Markdown heading label before consumer decoration.
+ * @returns {string} Heading text with configured colour and metadata suffix applied.
+ */
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
