@@ -1,0 +1,33 @@
+name: Apply render API source patch
+
+on:
+  push:
+    branches:
+      - feature/canonical-render-api-work
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/canonical-render-api-work
+          fetch-depth: 0
+
+      - name: Apply pending source patch
+        shell: bash
+        run: |
+          if git apply --check scripts/fix-legacy-markdown-jsdoc.patch; then
+            git apply scripts/fix-legacy-markdown-jsdoc.patch
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/projections/markdown.js
+            git commit -m "docs: repair Markdown projection JSDoc contract"
+            git push origin HEAD:feature/canonical-render-api-work
+          else
+            echo "Source patch already applied or no longer applicable."
+          fi
