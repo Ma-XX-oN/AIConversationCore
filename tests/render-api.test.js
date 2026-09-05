@@ -97,10 +97,12 @@ test('Markdown and HTML high-level rendering share grouped-reasoning semantics',
   assert.match(html.content, /data-ai-boundary=\"atomic\"/);
   assert.match(html.content, new RegExp(`data-ai-unit-id=\"${reasoningUnit.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\"`));
   assert.match(html.content, /data-ai-source-event-ids=\"event-r1 event-r2 event-r3\"/);
+  assert.match(html.content, /data-ai-source-record-ids=\"record-r1 record-r2 record-r3\"/);
+  assert.match(html.content, /data-ai-source-record-indexes=\"0 1 2\"/);
   assert.match(html.content, /<summary>Having 3 thoughts<\/summary>/);
   assert.doesNotMatch(html.content, /<p>\s*<details/);
   assert.doesNotMatch(html.content, /<\/details>\s*<\/p>/);
-  const detailsStart = html.content.indexOf('<details>');
+  const detailsStart = html.content.indexOf('<details');
   const detailsEnd = html.content.indexOf('</details>', detailsStart);
   assert.ok(detailsStart >= 0);
   assert.ok(detailsEnd > detailsStart);

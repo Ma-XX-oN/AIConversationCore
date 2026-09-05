@@ -445,7 +445,7 @@ function projectedDetails(summary, body, sourceEvents, quoted = false, inlineOpe
   const events = Array.isArray(sourceEvents) ? sourceEvents : [];
   const reasoningGroup = events.some(event => event?.kind === 'reasoning_summary');
   const unitAttributes = reasoningGroup && events.length
-    ? ` data-ai-unit-id="${htmlEscape(presentationUnitId('reasoning_group', events))}" data-ai-boundary="atomic" data-ai-source-event-ids="${htmlEscape(events.map(event => event?.id ?? '').filter(Boolean).join(' '))}"`
+    ? ` data-ai-unit-id="${htmlEscape(presentationUnitId('reasoning_group', events))}" data-ai-boundary="atomic" data-ai-source-event-ids="${htmlEscape(events.map(event => event?.id ?? '').filter(Boolean).join(' '))}" data-ai-source-record-ids="${htmlEscape(events.map(event => event?.source_record_id ?? '').filter(Boolean).join(' '))}" data-ai-source-record-indexes="${htmlEscape(events.map(event => Number.isInteger(event?.source_index) ? event.source_index : '').filter(value => value !== '').join(' '))}"`
     : '';
   const comments = events.map(event => projectedComment(event, quoted)).filter(Boolean);
   const first = comments.shift() ?? '';
