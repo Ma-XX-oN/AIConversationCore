@@ -1,15 +1,15 @@
 import { deriveTurns } from '../derive/turns.js';
 import { renderCanonicalMarkdown } from './markdown.js';
 
+const PRESENTATION_SCHEMA_VERSION = 1;
+const PRESENTATION_SPLIT_POLICY = 'record-anchor-except-declared-atomic-unit';
+const STRUCTURAL_UNIT_MARKER_CLASS = 'aicore-structural-unit';
+
 /**
- * Clones one canonical event with renderer provenance enabled.
- *
- * The canonical event itself remains unchanged.  The clone is used only for the
- * Markdown projection so consumers can associate renderer-generated structures
- * with source records without reinterpreting provider-native JSON.
+ * Enables renderer provenance without mutating the caller's canonical events.
  *
  * @param {Object<string, *>} event - Canonical event to project.
- * @returns {Object<string, *>} Canonical event clone with debug provenance enabled.
+ * @returns {Object<string, *>} Shallow event copy with debug provenance enabled.
  */
 function withRenderProvenance(event) {
   return {
@@ -22,30 +22,23 @@ function withRenderProvenance(event) {
 }
 
 /**
- * Returns the zero-based source block index when canonical provenance supplies it.
+ * Returns the canonical source block index when one exists.
  *
- * @param {Object<string, *>} block - Canonical content block.
- * @returns {number|null} Source block index, or null when unavailable.
+ * @param {Object<string, *>} block - Canonical block.
+ * @returns {number|null} Source block index or null.
  */
 function sourceBlockIndex(block) {
-  return Number.isInteger(block?.source?.block_index)
-    ? block.source.block_index
-    : Number.isInteger(block?.source?.part_index)
-      ? block.source.part_index
-      : null;
+  const value = block?.source?.block_index;
+  return Number.isInteger(value) ? value : null;
 }
 
 /**
- * Projects one canonical block into a C#-friendly structured unit.
+ * Projects one canonical block into the flattened interactive-consumer shape.
  *
- * The original canonical block is retained verbatim in `block`.  Convenience
- * identity fields are copied beside it so consumers do not need to rediscover
- * source/event relationships from Markdown or provider-native records.
- *
- * @param {Object<string, *>} event - Canonical event that owns the block.
- * @param {Object<string, *>} block - Canonical block to project.
- * @param {number} blockIndex - Zero-based canonical block index in the event.
- * @returns {Object<string, *>} Structured canonical projection unit.
+ * @param {Object<string, *>} event - Canonical owner event.
+ * @param {Object<string, *>} block - Canonical block.
+ * @param {number} blockIndex - Canonical block ordinal within the event.
+ * @returns {Object<string, *>} Flattened canonical unit.
  */
 function projectBlock(event, block, blockIndex) {
   return {
@@ -70,35 +63,123 @@ function projectBlock(event, block, blockIndex) {
 }
 
 /**
- * Projects canonical events into one deterministic structured consumer payload.
+ * Reads all source indexes encoded in one renderer provenance line.
  *
- * This is deliberately a projection of the existing canonical model, not a
- * second provider-neutral semantic schema.  `events` retain the canonical data,
- * `units` provide flattened event/block identity for interactive consumers,
- * `turns` reuse the canonical turn derivation, and `markdown` reuses the canonical
- * renderer with explicit source provenance comments enabled.
+ * @param {string} line - Rendered Markdown line.
+ * @returns {number[]} Source indexes in textual order.
+ */
+function provenanceIndexes(line) {
+  const indexes = [];
+  const regex = /record_index=(\d+)/g;
+  for (const match of line.matchAll(regex)) indexes.push(Number(match[1]));
+  return indexes;
+}
+
+/**
+ * Adds invisible structural-unit markers to core-generated details disclosures.
+ *
+ * projectedDetails() always places the first debug-provenance comment on the
+ * summary line, followed immediately by any additional source comments. That
+ * lets this projection layer identify renderer-owned disclosures without
+ * treating arbitrary provider/user-authored <details> markup as core structure.
+ *
+ * @param {string} markdown - Canonical Markdown rendered with provenance.
+ * @param {Array<Object<string, *>>} events - Ordered canonical events.
+ * @returns {{markdown: string, units: Array<Object<string, *>>}} Annotated Markdown and declared units.
+ */
+function declareStructuralUnits(markdown, events) {
+  const sourceIds = new Map();
+  for (const event of events) {
+    if (!Number.isInteger(event?.source_index)) continue;
+    const sourceId = event?.source_record_id ?? event?.source?.record_id ?? null;
+    if (sourceId != null) sourceIds.set(event.source_index, String(sourceId));
+  }
+
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  const units = [];
+  for (let index = 0; index < lines.length; ++index) {
+    const detailsOffset = lines[index].indexOf('<details>');
+    if (detailsOffset < 0) continue;
+
+    let summaryIndex = index;
+    if (!lines[summaryIndex].includes('<summary>')) {
+      summaryIndex += 1;
+      if (summaryIndex >= lines.length || !lines[summaryIndex].includes('<summary>')) continue;
+    }
+
+    const indexes = provenanceIndexes(lines[summaryIndex]);
+    let markerIndex = summaryIndex + 1;
+    while (markerIndex < lines.length && /<!--\s*record_(?:id|index)=/.test(lines[markerIndex])) {
+      indexes.push(...provenanceIndexes(lines[markerIndex]));
+      markerIndex += 1;
+    }
+    const uniqueIndexes = [...new Set(indexes)];
+    if (!uniqueIndexes.length) continue;
+
+    const unitId = `details-${units.length}`;
+    const sourceRecordIds = uniqueIndexes
+      .map(sourceIndex => sourceIds.get(sourceIndex))
+      .filter(sourceId => sourceId != null);
+    const quoted = /^\s*>\s?/.test(lines[index]);
+    const prefix = quoted ? `${lines[index].match(/^\s*>\s?/)?.[0] ?? '> '}` : '';
+    const encodedIds = sourceRecordIds.map(encodeURIComponent).join(',');
+    lines.splice(
+      markerIndex,
+      0,
+      `${prefix}<span hidden class="${STRUCTURAL_UNIT_MARKER_CLASS}" ` +
+        `data-aicore-unit-id="${unitId}" ` +
+        `data-aicore-source-record-ids="${encodedIds}"></span>`
+    );
+
+    units.push({
+      id: unitId,
+      kind: 'details',
+      atomic: true,
+      source_indexes: uniqueIndexes,
+      source_record_ids: sourceRecordIds
+    });
+    index = markerIndex;
+  }
+
+  return {
+    markdown: lines.join('\n'),
+    units
+  };
+}
+
+/**
+ * Projects canonical events for interactive consumers while retaining the
+ * canonical event/turn model and shared Markdown presentation.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical events.
- * @returns {Object<string, *>} Structured canonical consumer projection.
+ * @returns {Object<string, *>} Structured projection.
  */
 export function projectCanonicalConversation(events) {
   if (!Array.isArray(events)) {
-    throw new TypeError('Canonical events must be an array.');
+    throw new TypeError('projectCanonicalConversation expects an event array');
   }
 
   const units = [];
   for (const event of events) {
     const blocks = Array.isArray(event?.blocks) ? event.blocks : [];
-    blocks.forEach((block, blockIndex) => {
-      units.push(projectBlock(event, block, blockIndex));
-    });
+    for (let blockIndex = 0; blockIndex < blocks.length; ++blockIndex) {
+      units.push(projectBlock(event, blocks[blockIndex], blockIndex));
+    }
   }
 
+  const rendered = renderCanonicalMarkdown(events.map(withRenderProvenance));
+  const structural = declareStructuralUnits(rendered, events);
   return {
     schema_version: 1,
     events,
     turns: deriveTurns(events),
     units,
-    markdown: renderCanonicalMarkdown(events.map(withRenderProvenance))
+    presentation: {
+      schema_version: PRESENTATION_SCHEMA_VERSION,
+      split_policy: PRESENTATION_SPLIT_POLICY,
+      structural_unit_marker_class: STRUCTURAL_UNIT_MARKER_CLASS,
+      structural_units: structural.units
+    },
+    markdown: structural.markdown
   };
 }
