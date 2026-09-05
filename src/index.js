@@ -12,6 +12,7 @@ export {
 } from './projections/turn-header.js';
 
 export { renderCanonicalMarkdown } from './projections/markdown.js';
+export { projectCanonicalConversation } from './projections/structured.js';
 
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
