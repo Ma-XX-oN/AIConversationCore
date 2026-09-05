@@ -69,6 +69,7 @@ test('presentation model exposes grouped reasoning as one atomic structural unit
   const reasoning = response.children[0];
   assert.equal(reasoning.kind, 'reasoning_group');
   assert.equal(reasoning.boundary, 'atomic');
+  assert.deepEqual(reasoning.split_policy, { before: true, after: true, inside: false });
   assert.equal(reasoning.label, 'Having 3 thoughts');
   assert.deepEqual(
     reasoning.sources.map(source => source.record_id),
@@ -92,7 +93,11 @@ test('Markdown and HTML high-level rendering share grouped-reasoning semantics',
 
   assert.match(markdown.content, /<details><summary>Having 3 thoughts<\/summary>/);
   assert.match(html.markdown, /<details><summary>Having 3 thoughts<\/summary>/);
-  assert.match(html.content, /<details><summary>Having 3 thoughts<\/summary>/);
+  const reasoningUnit = html.presentation.units[0].children[0];
+  assert.match(html.content, /data-ai-boundary=\"atomic\"/);
+  assert.match(html.content, new RegExp(`data-ai-unit-id=\"${reasoningUnit.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\"`));
+  assert.match(html.content, /data-ai-source-event-ids=\"event-r1 event-r2 event-r3\"/);
+  assert.match(html.content, /<summary>Having 3 thoughts<\/summary>/);
   assert.doesNotMatch(html.content, /<p>\s*<details/);
   assert.doesNotMatch(html.content, /<\/details>\s*<\/p>/);
   const detailsStart = html.content.indexOf('<details>');

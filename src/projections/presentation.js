@@ -1,5 +1,5 @@
 /** Canonical presentation-model schema version. */
-export const PRESENTATION_SCHEMA_VERSION = 1;
+export const PRESENTATION_SCHEMA_VERSION = 2;
 
 /**
  * Returns whether one canonical event is eligible for visible presentation.
@@ -47,7 +47,7 @@ function sourceIdentity(event) {
  * @param {number} ordinal - Zero-based unit ordinal used only when source identity is unavailable.
  * @returns {string} Deterministic presentation-unit identifier.
  */
-function unitId(kind, events, ordinal) {
+export function presentationUnitId(kind, events, ordinal = 0) {
   const first = events.find(event => event?.id || event?.source_record_id);
   const last = [...events].reverse().find(event => event?.id || event?.source_record_id);
   const start = first?.id ?? first?.source_record_id ?? `ordinal-${ordinal}`;
@@ -67,11 +67,16 @@ function unitId(kind, events, ordinal) {
 function createUnit(kind, events, ordinal, options = {}) {
   const sourceEvents = events.filter(Boolean);
   return {
-    id: unitId(kind, sourceEvents, ordinal),
+    id: presentationUnitId(kind, sourceEvents, ordinal),
     kind,
     provider: sourceEvents.find(event => event?.provider)?.provider ?? options.provider ?? null,
     parent_id: options.parent_id ?? null,
     boundary: options.boundary ?? 'normal',
+    split_policy: {
+      before: true,
+      after: true,
+      inside: (options.boundary ?? 'normal') !== 'atomic'
+    },
     label: options.label ?? null,
     source_event_ids: sourceEvents.map(event => event?.id ?? null).filter(Boolean),
     sources: sourceEvents.map(sourceIdentity),

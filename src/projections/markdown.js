@@ -1,3 +1,5 @@
+import { presentationUnitId } from './presentation.js';
+
 /**
  * Escapes text for safe insertion into generated HTML fragments.
  *
@@ -441,10 +443,14 @@ function details(summary, body) {
  */
 function projectedDetails(summary, body, sourceEvents, quoted = false, inlineOpening = false) {
   const events = Array.isArray(sourceEvents) ? sourceEvents : [];
+  const reasoningGroup = events.some(event => event?.kind === 'reasoning_summary');
+  const unitAttributes = reasoningGroup && events.length
+    ? ` data-ai-unit-id="${htmlEscape(presentationUnitId('reasoning_group', events))}" data-ai-boundary="atomic" data-ai-source-event-ids="${htmlEscape(events.map(event => event?.id ?? '').filter(Boolean).join(' '))}"`
+    : '';
   const comments = events.map(event => projectedComment(event, quoted)).filter(Boolean);
   const first = comments.shift() ?? '';
   const summaryLine = `<summary>${summary}</summary>${first ? ` ${first.replace(/^> /, '')}` : ''}`;
-  const opening = inlineOpening ? `<details>${summaryLine}` : `<details>\n${summaryLine}`;
+  const opening = inlineOpening ? `<details${unitAttributes}>${summaryLine}` : `<details${unitAttributes}>\n${summaryLine}`;
   const extra = comments.length ? `\n${comments.join('\n')}` : '';
   return `${opening}${extra}\n\n${body}\n\n</details>`;
 }
@@ -600,7 +606,7 @@ function renderChatGPTCommentarySegment(segment, events) {
       body.push(projectedDetails(
         thoughtSummary(thoughtEvents.length),
         rendered,
-        thoughtEvents,
+        run.map(item => item.event),
         false,
         true
       ));
