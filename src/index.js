@@ -11,7 +11,7 @@ export {
   renderTurnHeader
 } from './projections/turn-header.js';
 
-export { renderCanonicalMarkdown } from './projections/markdown.js';
+export { renderCanonicalMarkdown } from './projections/markdown-revisions.js';
 export { buildCanonicalPresentation } from './projections/presentation-revisions.js';
 export { projectCanonicalConversation } from './projections/structured.js';
 
