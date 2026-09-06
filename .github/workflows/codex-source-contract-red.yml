@@ -39,3 +39,4 @@ jobs:
         run: python tests/validate-provider-example-regressions.py
       - name: Diff hygiene
         run: git diff --check
+      # Temporary branch validation gate; remove after the full run is green.
