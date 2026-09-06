@@ -61,19 +61,22 @@ test('browser bundle exposes the shared structural presentation contract', async
   const events = core.adaptChatGPTRecords(records);
   const projection = core.projectCanonicalConversation(events);
 
-  assert.equal(projection.presentation.schema_version, 1);
+  assert.equal(projection.schema_version, 2);
+  assert.equal(projection.presentation.schema_version, 2);
   assert.equal(
     projection.presentation.split_policy,
-    'record-anchor-except-declared-atomic-unit'
+    'presentation-tree'
   );
-  assert.equal(
-    projection.presentation.structural_unit_marker_class,
-    'aicore-structural-unit'
-  );
+  assert.equal(projection.presentation.tree.schema_version, 2);
+  assert.equal(projection.presentation.tree.kind, 'conversation');
   assert.ok(projection.presentation.structural_units.length > 0);
-  const unit = projection.presentation.structural_units[0];
-  assert.equal(unit.kind, 'details');
-  assert.equal(unit.atomic, true);
-  assert.match(projection.markdown, /class="aicore-structural-unit"/);
-  assert.match(projection.markdown, new RegExp(`data-aicore-unit-id="${unit.id}"`));
+  assert.ok(projection.presentation.structural_units.some(unit =>
+    unit.kind === 'reasoning_group' && unit.atomic === true));
+
+  const assistantTurn = projection.presentation.tree.turns.find(turn =>
+    turn.actor?.role === 'assistant');
+  assert.ok(assistantTurn);
+  assert.equal(assistantTurn.children[0].kind, 'reasoning_group');
+  assert.equal(assistantTurn.children[0].thought_count, 1);
+  assert.equal(assistantTurn.children[1].kind, 'markdown');
 });
