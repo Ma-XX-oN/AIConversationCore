@@ -28,7 +28,7 @@ function source(record, sourceIndex) {
  * Checks whether tool call.
  *
  * @param {Object<string, *>} payload - The provider payload object being classified as a tool call or tool result.
- * @returns {boolean} Whether the source record represents a supported ChatGPT tool call.
+ * @returns {boolean} Whether the source record represents a supported Codex tool call.
  */
 function isToolCall(payload) {
   return payload?.type === 'function_call' || payload?.type === 'custom_tool_call';
@@ -38,7 +38,7 @@ function isToolCall(payload) {
  * Checks whether tool result.
  *
  * @param {Object<string, *>} payload - The provider payload object being classified as a tool call or tool result.
- * @returns {boolean} Whether the source record represents a supported ChatGPT tool result.
+ * @returns {boolean} Whether the source record represents a supported Codex tool result.
  */
 function isToolResult(payload) {
   return payload?.type === 'function_call_output' || payload?.type === 'custom_tool_call_output';
@@ -143,9 +143,7 @@ function toolCallEvent(record, sourceIndex) {
     blocks: [block],
     citations: [],
     resources: [],
-    relationships: {
-      tool_call_id: callId
-    },
+    relationships: { tool_call_id: callId },
     source: sourceInfo
   };
 }
@@ -187,9 +185,7 @@ function toolResultEvent(record, sourceIndex) {
     blocks: [block],
     citations: [],
     resources: [],
-    relationships: {
-      tool_call_id: callId
-    },
+    relationships: { tool_call_id: callId },
     source: sourceInfo
   };
 }
@@ -234,38 +230,12 @@ function messageEvent(record, sourceIndex, role, kind, channel, text, contentTyp
 }
 
 /**
- * Adapts Codex tool events.
+ * Adapts Codex records without applying branch-history semantics.
  *
- * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
- * @returns {Array<Object<string, *>>} Canonical Codex tool events in provider source order.
+ * @param {Array<Object<string, *>>} records - Ordered Codex source records.
+ * @returns {Array<Object<string, *>>} Base canonical Codex events in provider source order.
  */
-export function adaptCodexToolEvents(records) {
-  if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
-
-  // Canonical events are appended in source order while Codex records are normalized.
-  const events = [];
-
-  records.forEach((record, sourceIndex) => {
-    if (record?.type !== 'response_item') return;
-    const payload = record?.payload;
-    if (!payload || typeof payload !== 'object') return;
-    if (isToolCall(payload)) events.push(toolCallEvent(record, sourceIndex));
-    if (isToolResult(payload)) events.push(toolResultEvent(record, sourceIndex));
-  });
-
-  return events;
-}
-
-/**
- * Adapts Codex records.
- *
- * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
- * @returns {Array<Object<string, *>>} Canonical Codex events in provider source order.
- */
-export function adaptCodexRecords(records) {
-  if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
-
-  // Canonical events are appended in source order while Codex records are normalized.
+function adaptBaseCodexRecords(records) {
   const events = [];
   records.forEach((record, sourceIndex) => {
     const payload = record?.payload;
@@ -295,6 +265,233 @@ export function adaptCodexRecords(records) {
         payload.message, 'agent_message'));
     }
   });
-
   return events;
+}
+
+/**
+ * Formats a Codex model identifier for human-readable presentation.
+ *
+ * @param {string|null} model - Provider model identifier.
+ * @returns {string} Human-readable model label.
+ */
+function modelLabel(model) {
+  if (typeof model !== 'string') return '';
+  return model.replace(/^gpt-/i, 'GPT-');
+}
+
+/**
+ * Creates a visible canonical notice for an evidenced model transition.
+ *
+ * @param {Object<string, *>} record - Replacement User source record.
+ * @param {number} sourceIndex - Replacement User source index.
+ * @param {string} previousModel - Previous revision model identifier.
+ * @param {string} currentModel - Replacement revision model identifier.
+ * @returns {Object<string, *>} Canonical model-change notice.
+ */
+function modelChangeEvent(record, sourceIndex, previousModel, currentModel) {
+  const sourceInfo = source(record, sourceIndex);
+  const text = `Model changed from ${modelLabel(previousModel)} to ${modelLabel(currentModel)}`;
+  return {
+    id: `codex:record:${sourceIndex}:model_change`,
+    provider: 'codex',
+    source_record_id: null,
+    source_index: sourceIndex,
+    kind: 'notice',
+    role: 'system',
+    channel: null,
+    visibility: 'visible',
+    content_type: 'model_change',
+    blocks: [{
+      id: `codex:record:${sourceIndex}:model_change:block`,
+      type: 'text',
+      text,
+      source: sourceInfo
+    }],
+    citations: [],
+    resources: [],
+    relationships: { tool_call_id: null },
+    source: sourceInfo
+  };
+}
+
+/**
+ * Applies Codex rollback, edit, abort, and model-change semantics to canonical events.
+ *
+ * @param {Array<Object<string, *>>} records - Ordered Codex source records.
+ * @param {Array<Object<string, *>>} baseEvents - Base canonical events in source order.
+ * @param {Object<string, *>} options - Codex normalization options.
+ * @returns {Array<Object<string, *>>} Canonical events with Codex revision semantics.
+ */
+function applyRevisionSemantics(records, baseEvents, options) {
+  const includeRolledBackTurns = options?.includeRolledBackTurns === true;
+  const eventsBySource = new Map();
+  for (const event of baseEvents) {
+    const list = eventsBySource.get(event.source_index) ?? [];
+    list.push(event);
+    eventsBySource.set(event.source_index, list);
+  }
+
+  const interactions = [];
+  const active = [];
+  const interactionBySource = new Map();
+  const modelNotices = new Map();
+  let currentInteraction = null;
+  let currentModel = null;
+  let pendingHistory = [];
+
+  records.forEach((record, sourceIndex) => {
+    const payload = record?.payload;
+    if (record?.type === 'turn_context' && typeof payload?.model === 'string') {
+      currentModel = payload.model;
+      return;
+    }
+
+    if (record?.type === 'event_msg' && payload?.type === 'turn_aborted') {
+      if (currentInteraction) currentInteraction.execution_status = 'aborted';
+      return;
+    }
+
+    if (record?.type === 'event_msg' && payload?.type === 'thread_rolled_back') {
+      const count = Number.isInteger(payload?.num_turns) && payload.num_turns > 0
+        ? payload.num_turns
+        : 0;
+      const popped = [];
+      for (let index = 0; index < count && active.length; index += 1) {
+        const interaction = active.pop();
+        interaction.rolled_back = true;
+        popped.unshift(interaction);
+      }
+      if (popped.length) {
+        const inherited = popped.flatMap(interaction => interaction.history.length
+          ? [...interaction.history, interaction]
+          : [interaction]);
+        pendingHistory = inherited.filter((interaction, index, list) =>
+          list.indexOf(interaction) === index);
+        currentInteraction = active.at(-1) ?? null;
+      }
+      return;
+    }
+
+    if (record?.type === 'event_msg' && payload?.type === 'user_message') {
+      const previous = pendingHistory.at(-1) ?? null;
+      const interaction = {
+        start_index: sourceIndex,
+        model: currentModel,
+        history: pendingHistory,
+        rolled_back: false,
+        revision_status: pendingHistory.length ? 'edited' : 'normal',
+        execution_status: 'completed'
+      };
+      if (pendingHistory.length) {
+        pendingHistory.forEach((historical, index) => {
+          historical.revision_status = index === 0 ? 'original' : 'superseded';
+        });
+        if (previous?.model && interaction.model && previous.model !== interaction.model) {
+          modelNotices.set(sourceIndex,
+            modelChangeEvent(record, sourceIndex, previous.model, interaction.model));
+        }
+      }
+      pendingHistory = [];
+      interactions.push(interaction);
+      active.push(interaction);
+      currentInteraction = interaction;
+    }
+
+    if (currentInteraction && eventsBySource.has(sourceIndex)) {
+      interactionBySource.set(sourceIndex, currentInteraction);
+    }
+  });
+
+  if (pendingHistory.length) {
+    pendingHistory.forEach((historical, index) => {
+      historical.revision_status = index === 0 ? 'original' : 'superseded';
+    });
+  }
+
+  const output = [];
+  for (const event of baseEvents) {
+    const interaction = interactionBySource.get(event.source_index);
+    if (interaction?.rolled_back && !includeRolledBackTurns) continue;
+    if (event.role === 'user' && event.kind === 'message') {
+      const notice = modelNotices.get(event.source_index);
+      if (notice) output.push(notice);
+    }
+    if (!interaction) {
+      output.push(event);
+      continue;
+    }
+    output.push({
+      ...event,
+      revision_status: interaction.revision_status,
+      execution_status: interaction.execution_status,
+      model: interaction.model
+    });
+  }
+  return output;
+}
+
+/**
+ * Resolves Codex session metadata from a rollout and optional session index records.
+ *
+ * The caller owns source discovery. The core owns interpretation of the supplied
+ * Codex records and does not depend on where either source originated.
+ *
+ * @param {Array<Object<string, *>>} records - Ordered Codex rollout records.
+ * @param {Array<Object<string, *>>} sessionIndexRecords - Ordered Codex session-index records.
+ * @returns {Object<string, string|null>} Canonical Codex session metadata.
+ */
+export function resolveCodexSessionMetadata(records, sessionIndexRecords = []) {
+  if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
+  if (!Array.isArray(sessionIndexRecords)) {
+    throw new TypeError('Codex session-index records must be an array.');
+  }
+
+  let sessionId = null;
+  for (const record of records) {
+    if (record?.type === 'session_meta' && typeof record?.payload?.id === 'string' &&
+        record.payload.id.trim()) {
+      sessionId = record.payload.id.trim();
+      break;
+    }
+  }
+
+  let title = null;
+  if (sessionId) {
+    for (const record of sessionIndexRecords) {
+      if (record?.id !== sessionId || typeof record?.thread_name !== 'string') continue;
+      const candidate = record.thread_name.trim();
+      if (candidate) title = candidate;
+    }
+  }
+
+  return {
+    session_id: sessionId,
+    title,
+    title_source: title ? 'codex-session-index' : 'none'
+  };
+}
+
+/**
+ * Adapts Codex tool events.
+ *
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Array<Object<string, *>>} Canonical Codex tool events in provider source order.
+ */
+export function adaptCodexToolEvents(records) {
+  if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
+  return adaptBaseCodexRecords(records).filter(event =>
+    event.kind === 'tool_call' || event.kind === 'tool_result');
+}
+
+/**
+ * Adapts Codex records.
+ *
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @param {Object<string, *>} options - Optional Codex normalization options.
+ * @returns {Array<Object<string, *>>} Canonical Codex events in provider source order.
+ */
+export function adaptCodexRecords(records, options = {}) {
+  if (!Array.isArray(records)) throw new TypeError('Codex records must be an array.');
+  const baseEvents = adaptBaseCodexRecords(records);
+  return applyRevisionSemantics(records, baseEvents, options);
 }
