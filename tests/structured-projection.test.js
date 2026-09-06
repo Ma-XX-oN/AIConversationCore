@@ -19,7 +19,7 @@ test('structured projection preserves Claude canonical identity and render prove
   const events = adaptClaudeRecords(records);
   const projection = projectCanonicalConversation(events);
 
-  assert.equal(projection.schema_version, 1);
+  assert.equal(projection.schema_version, 2);
   assert.equal(projection.events, events);
   assert.deepEqual(projection.turns.map(turn => turn.event_ids), [
     [events[0].id],
@@ -36,24 +36,22 @@ test('structured projection preserves Claude canonical identity and render prove
   assert.equal(unit.block_type, 'subagent');
   assert.equal(unit.block.agent_id, subagent.blocks[0].agent_id);
 
-  assert.equal(projection.presentation.schema_version, 1);
+  assert.equal(projection.presentation.schema_version, 2);
   assert.equal(
     projection.presentation.split_policy,
-    'record-anchor-except-declared-atomic-unit'
+    'presentation-tree'
   );
-  assert.equal(
-    projection.presentation.structural_unit_marker_class,
-    'aicore-structural-unit'
-  );
+  assert.equal(projection.presentation.tree.schema_version, 2);
   assert.ok(projection.presentation.structural_units.length > 0);
   for (const structuralUnit of projection.presentation.structural_units) {
-    assert.equal(structuralUnit.kind, 'details');
     assert.equal(structuralUnit.atomic, true);
+    assert.ok([
+      'reasoning_group',
+      'reasoning',
+      'tool'
+    ].includes(structuralUnit.kind));
     assert.ok(structuralUnit.source_indexes.length > 0);
-    assert.match(
-      projection.markdown,
-      new RegExp(`data-aicore-unit-id="${structuralUnit.id}"`)
-    );
+    assert.ok(structuralUnit.source_record_ids.length > 0);
   }
 
   assert.match(projection.markdown, /<!-- record_index=0 -->/);
