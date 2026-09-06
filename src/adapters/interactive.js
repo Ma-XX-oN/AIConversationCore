@@ -54,24 +54,38 @@ function parseObject(value) {
 }
 
 /**
- * Adds interactive request-user-input secret metadata without changing recorded text.
+ * Adds interactive Codex metadata without changing recorded text.
+ *
+ * Agent-message phase is retained as the canonical channel used by speech
+ * consumers. request_user_input retains source `isSecret` metadata that is not
+ * represented by the ordinary provider adapter.
  *
  * @param {Object<string, *>} event - Canonical Codex event.
  * @param {Array<Object<string, *>>} records - Ordered Codex source records.
  * @returns {Object<string, *>} Enriched event clone.
  */
 function withCodexInteractiveSemantics(event, records) {
-  if (!Number.isInteger(event?.source_index) || event?.kind !== 'tool_call') return event;
-  const callBlockIndex = (event.blocks ?? []).findIndex(block =>
-    block?.type === 'tool_call' && block?.name === 'request_user_input');
-  if (callBlockIndex < 0) return event;
-
+  if (!Number.isInteger(event?.source_index)) return event;
   const record = records[event.source_index];
+  let enriched = event;
+
+  if (record?.type === 'event_msg' &&
+      record?.payload?.type === 'agent_message' &&
+      typeof record?.payload?.phase === 'string' &&
+      record.payload.phase) {
+    enriched = { ...enriched, channel: record.payload.phase };
+  }
+
+  if (enriched?.kind !== 'tool_call') return enriched;
+  const callBlockIndex = (enriched.blocks ?? []).findIndex(block =>
+    block?.type === 'tool_call' && block?.name === 'request_user_input');
+  if (callBlockIndex < 0) return enriched;
+
   const argumentsObject = parseObject(record?.payload?.arguments);
   const sourceQuestions = Array.isArray(argumentsObject?.questions)
     ? argumentsObject.questions
     : [];
-  const blocks = [...event.blocks];
+  const blocks = [...enriched.blocks];
   const block = blocks[callBlockIndex];
   const questions = Array.isArray(block?.request_user_input?.questions)
     ? block.request_user_input.questions
@@ -86,7 +100,7 @@ function withCodexInteractiveSemantics(event, records) {
       }))
     }
   };
-  return { ...event, blocks };
+  return { ...enriched, blocks };
 }
 
 /**
