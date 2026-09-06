@@ -89,11 +89,12 @@ function isInteractiveTool(block) {
  *
  * @param {Object<string, *>} event - Canonical visible content event.
  * @param {string} kind - Presentation node kind.
+ * @param {Array<Object<string, *>>|null} blocksOverride - Optional block subset.
  * @returns {Object<string, *>} Presentation content node.
  */
-function contentNode(event, kind = 'markdown') {
+function contentNode(event, kind = 'markdown', blocksOverride = null) {
   return {
-    id: `presentation:${event.id}`,
+    id: `presentation:${event.id}:${kind}`,
     kind,
     atomic: false,
     event_id: event.id,
@@ -101,10 +102,38 @@ function contentNode(event, kind = 'markdown') {
     role: event.role ?? null,
     channel: event.channel ?? null,
     content_type: event.content_type ?? null,
-    blocks: event.blocks ?? [],
+    blocks: blocksOverride ?? event.blocks ?? [],
     citations: event.citations ?? [],
     resources: event.resources ?? []
   };
+}
+
+/**
+ * Builds ordered User-turn children with attachments before Markdown body text.
+ *
+ * Existing verified transcript presentation places uploaded images/attachments
+ * before the User body. Canonical source block order remains retained on the
+ * event, but presentation does not invent arbitrary inline attachment semantics.
+ *
+ * @param {Object<string, *>} event - Canonical User message event.
+ * @returns {Array<Object<string, *>>} Ordered User presentation children.
+ */
+function userChildren(event) {
+  const blocks = Array.isArray(event?.blocks) ? event.blocks : [];
+  const attachments = blocks.filter(block =>
+    block?.type === 'image' ||
+    block?.type === 'attachment' ||
+    block?.type === 'file'
+  );
+  const body = blocks.filter(block => !attachments.includes(block));
+  const children = [];
+  if (attachments.length) {
+    children.push(contentNode(event, 'attachments', attachments));
+  }
+  if (body.length || !attachments.length) {
+    children.push(contentNode(event, 'markdown', body));
+  }
+  return children;
 }
 
 /**
@@ -316,7 +345,7 @@ export function buildCanonicalPresentation(events) {
       closeReasoning();
       currentTurn = createTurn(event, turns.length, 'user');
       addTurnSource(currentTurn, event);
-      currentTurn.children.push(contentNode(event));
+      currentTurn.children.push(...userChildren(event));
       turns.push(currentTurn);
       currentTurn = null;
       reasoningGroupIndex = 0;
