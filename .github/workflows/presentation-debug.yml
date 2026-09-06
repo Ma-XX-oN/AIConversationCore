@@ -5,6 +5,9 @@ on:
     branches:
       - feature/canonical-presentation-html
 
+permissions:
+  contents: write
+
 jobs:
   debug:
     runs-on: ubuntu-latest
@@ -13,43 +16,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Capture documentation audit
-        shell: bash
-        run: |
-          set +e
-          node scripts/check-jsdoc.mjs > jsdoc.log 2>&1
-          echo $? > jsdoc.status
-          exit 0
-      - name: Capture core tests
-        shell: bash
-        run: |
-          set +e
-          npm test > tests.log 2>&1
-          echo $? > tests.status
-          exit 0
-      - name: Capture structural units
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE' > structural-units.json
-          import { readFile } from 'node:fs/promises';
-          import { adaptClaudeRecords, projectCanonicalConversation } from './src/index.js';
-          const text = await readFile('./tests/fixtures/claude/claude-rich-subagent.jsonl', 'utf8');
-          const records = text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
-          const projection = projectCanonicalConversation(adaptClaudeRecords(records));
-          console.log(JSON.stringify(projection.presentation.structural_units, null, 2));
-          NODE
-      - name: Generate browser bundle
+      - name: Generate and commit browser bundle
         shell: bash
         run: |
           node scripts/build-browser-bundle.mjs
-          cp dist/aiconversationcore.chatgpt.browser.js browser.generated.js
-      - uses: actions/upload-artifact@v4
-        with:
-          name: presentation-debug
-          path: |
-            jsdoc.log
-            jsdoc.status
-            tests.log
-            tests.status
-            structural-units.json
-            browser.generated.js
+          if git diff --quiet -- dist/aiconversationcore.chatgpt.browser.js; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "regenerate browser bundle for presentation tree"
+          git push
