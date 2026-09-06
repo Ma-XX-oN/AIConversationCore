@@ -17,5 +17,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run presentation-tree regression
-        run: node --test tests/presentation-tree.test.js
+      - name: Run full core regression suite
+        run: npm test
+      - name: Validate Phase 2 baseline
+        run: python tests/validate-phase2-baseline.py
+      - name: Diff hygiene
+        run: git diff --check
