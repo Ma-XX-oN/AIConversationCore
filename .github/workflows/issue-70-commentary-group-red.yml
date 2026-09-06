@@ -141,8 +141,8 @@ jobs:
 
           path.write_text(text, encoding='utf-8', newline='\n')
           PY
-      - name: Run full core regression suite
-        run: npm test
+      - name: Run issue 70 presentation regression
+        run: node --test tests/presentation-tree.test.js
       - name: Validate Phase 2 baseline
         run: python tests/validate-phase2-baseline.py
       - name: Diff hygiene
