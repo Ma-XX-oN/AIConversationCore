@@ -1,0 +1,20 @@
+name: Codex source contract red gate
+
+on:
+  push:
+    paths:
+      - .github/workflows/codex-source-contract-red.yml
+
+permissions:
+  contents: read
+
+jobs:
+  red-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Codex source-contract regression
+        run: node --test tests/codex-source-contract.test.js
