@@ -301,7 +301,7 @@ introducing a competing `record_id` output field.
 
 ## D016 — ChatGPT response and thought/commentary grammar
 
-**Status:** Accepted
+**Status:** Accepted, generalized by D017
 
 **Decision:** Each rendered ChatGPT response begins with exactly one `## ChatGPT`
 heading.  Commentary inside that response is headed `### ChatGPT Commentary`.
@@ -314,3 +314,55 @@ thought activity begins a new group.
 **Reason:** This is the user-selected canonical ChatGPT transcript grammar for the
 Phase 6 migration and resolves the previously undecided difference surfaced by the
 strict historical AI-transcript.py parity gate on 2026-08-30.
+
+## D017 — Provider-independent presentation tree and rendering grammar
+
+**Status:** Accepted
+
+**Decision:** Provider-specific rendering differences end at canonical normalization
+unless a provider exposes a semantic that cannot be represented by the shared model.
+ChatGPT, Claude, Codex, subagents, and future agents use one presentation grammar
+after normalization.
+
+Each rendered User/Agent/Subagent turn has one heading and one outer response
+container. User attachments are presented before the User Markdown body unless
+actual provider evidence establishes inline-media semantics. Agent content remains
+in source order inside the same outer response container.
+
+Consecutive reasoning activity forms one `reasoning_group`. Ordinary tool calls and
+results occurring during that reasoning run are children of the reasoning group and
+are therefore hidden when the group is collapsed; a tool may itself use a nested
+disclosure for its payload. A visible response/commentary item ends the current
+reasoning run but does not end the surrounding Agent turn. Later reasoning starts
+another reasoning group in that same turn.
+
+A reasoning group serializes to one `<details>` disclosure whose summary is
+`Having a thought` for one reasoning item or `Having N thoughts` for multiple
+reasoning items. Paragraphs within one reasoning record are paragraphs, not
+separate thoughts. Renderers must not insert synthetic separators such as `***` or
+horizontal rules between reasoning records unless that separator exists in source
+content or a separately accepted presentation decision explicitly requires it.
+
+Textual User/Agent content is Markdown content. HTML consumers render structural
+HTML directly from the canonical presentation tree and run only textual content
+nodes through a Markdown-to-HTML parser. Fenced code is recognized as a code block;
+its payload is escaped/prettified rather than recursively interpreted as Markdown
+or HTML. Canonical Markdown is an independent serialization/output target and must
+never be used as the semantic interchange representation from which an HTML
+consumer reconstructs turn, reasoning, tool, or source-identity structure.
+
+Source identity and structural identity remain explicit on presentation-tree nodes
+so interactive consumers can map search, speech, highlighting, virtualization, and
+navigation without relocating Markdown comments or inferring `<details>` ownership
+from rendered text.
+
+D016's thought-run rule is generalized by this decision; its ChatGPT-specific
+wording describes the historical case that established the grammar, not a
+provider-specific exception.
+
+**Reason:** Equivalent canonical semantics must render equivalently across
+providers. Provider-specific Markdown assembly caused structural divergence,
+synthetic separators, invalid disclosure boundaries, and consumer-side
+reparsing/repair. A shared presentation tree makes the semantic grouping
+authoritative once and allows HTML, Markdown, speech, and other projections to
+serialize the same structure without rediscovering it.
