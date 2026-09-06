@@ -1,4 +1,4 @@
-import { adaptInteractiveSessionRecords } from './session.js';
+import { adaptInteractiveSessionRecords } from './interactive.js';
 
 /**
  * Returns whether a Claude direct Agent completion has the provider evidence
@@ -67,10 +67,11 @@ function withClaudeSpeechMetadata(event, records) {
  *
  * @param {string} provider - Canonical provider identifier.
  * @param {Array<Object<string, *>>} records - Ordered provider/source records.
+ * @param {Object<string, *>} options - Optional provider normalization options.
  * @returns {Array<Object<string, *>>} Canonical events with speech metadata.
  */
-export function adaptSpeechSessionRecords(provider, records) {
-  const events = adaptInteractiveSessionRecords(provider, records);
+export function adaptSpeechSessionRecords(provider, records, options = {}) {
+  const events = adaptInteractiveSessionRecords(provider, records, options);
   if (provider !== 'claude') return events;
   return events.map(event => withClaudeSpeechMetadata(event, records));
 }
