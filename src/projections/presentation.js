@@ -280,9 +280,10 @@ function createSubagentTurn(event, turnIndex) {
  * Builds the provider-independent canonical presentation tree.
  *
  * User/Agent turns preserve canonical event order. Consecutive reasoning and
- * ordinary tool activity form one reasoning group. Visible Assistant
- * response/commentary closes the current reasoning group but remains inside the
- * same Agent turn. Later reasoning starts a new group in that same turn.
+ * ordinary tool activity form one reasoning group. Assistant commentary that
+ * is followed by more ordinary reasoning/tool activity stays inside that group.
+ * Terminal commentary and visible Assistant responses close the group but remain
+ * inside the same Agent turn. Later reasoning starts a new group in that turn.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical event stream.
  * @returns {Object<string, *>} Canonical presentation tree.
@@ -296,16 +297,8 @@ export function buildCanonicalPresentation(events) {
   let currentTurn = null;
   let reasoningGroup = null;
   let reasoningGroupIndex = 0;
+  let pendingCommentary = [];
   const toolsByCallId = new Map();
-
-  /**
-   * Closes the current reasoning run without ending the surrounding turn.
-   *
-   * @returns {void} The active reasoning-group reference is cleared.
-   */
-  const closeReasoning = () => {
-    reasoningGroup = null;
-  };
 
   /**
    * Ensures that an Agent turn exists for the supplied event.
@@ -326,6 +319,49 @@ export function buildCanonicalPresentation(events) {
   };
 
   /**
+   * Emits buffered commentary into the active reasoning group because later
+   * ordinary reasoning/tool activity proved that the reasoning run continued.
+   *
+   * @returns {void} Buffered commentary is consumed in source order.
+   */
+  const flushCommentaryIntoReasoning = () => {
+    if (!reasoningGroup || pendingCommentary.length === 0) return;
+    for (const event of pendingCommentary) {
+      ensureAgentTurn(event);
+      reasoningGroup.children.push(contentNode(event, 'commentary'));
+      reasoningGroup.source.push(sourceRef(event));
+    }
+    pendingCommentary = [];
+  };
+
+  /**
+   * Emits buffered commentary as ordinary visible Agent content when no later
+   * reasoning/tool activity continued the active group.
+   *
+   * @returns {void} Buffered commentary is consumed in source order.
+   */
+  const flushCommentaryOutsideReasoning = () => {
+    if (pendingCommentary.length === 0) return;
+    for (const event of pendingCommentary) {
+      const turn = ensureAgentTurn(event);
+      turn.children.push(contentNode(event, 'commentary'));
+    }
+    pendingCommentary = [];
+  };
+
+  /**
+   * Closes the current reasoning run without ending the surrounding turn.
+   * Pending commentary is emitted outside the group because no continuing
+   * ordinary reasoning/tool activity claimed it.
+   *
+   * @returns {void} The active reasoning-group reference is cleared.
+   */
+  const closeReasoning = () => {
+    flushCommentaryOutsideReasoning();
+    reasoningGroup = null;
+  };
+
+  /**
    * Ensures that a reasoning group exists at the current Agent position.
    *
    * @param {Object<string, *>} event - Canonical reasoning/tool event assigned to the group.
@@ -340,6 +376,7 @@ export function buildCanonicalPresentation(events) {
         reasoningGroupIndex++
       );
     }
+    flushCommentaryIntoReasoning();
     return reasoningGroup;
   };
 
@@ -395,6 +432,11 @@ export function buildCanonicalPresentation(events) {
       const callId = toolCallId(event);
       const existing = callId ? toolsByCallId.get(callId) : null;
       if (existing) {
+        if (existing.interactive) {
+          closeReasoning();
+        } else {
+          flushCommentaryIntoReasoning();
+        }
         attachToolResult(existing, event);
         addTurnSource(ensureAgentTurn(event), event);
         const group = currentTurn?.children?.find(child =>
@@ -417,14 +459,20 @@ export function buildCanonicalPresentation(events) {
       continue;
     }
 
-    if ((event.kind === 'message' || event.kind === 'commentary') &&
-        event.role === 'assistant') {
+    if (event.kind === 'commentary' && event.role === 'assistant') {
+      if (reasoningGroup) {
+        pendingCommentary.push(event);
+      } else {
+        const turn = ensureAgentTurn(event);
+        turn.children.push(contentNode(event, 'commentary'));
+      }
+      continue;
+    }
+
+    if (event.kind === 'message' && event.role === 'assistant') {
       closeReasoning();
       const turn = ensureAgentTurn(event);
-      turn.children.push(contentNode(
-        event,
-        event.kind === 'commentary' ? 'commentary' : 'markdown'
-      ));
+      turn.children.push(contentNode(event, 'markdown'));
       continue;
     }
 
@@ -434,6 +482,8 @@ export function buildCanonicalPresentation(events) {
       turn.children.push(contentNode(event, 'notice'));
     }
   }
+
+  closeReasoning();
 
   return {
     schema_version: PRESENTATION_SCHEMA_VERSION,
