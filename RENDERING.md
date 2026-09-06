@@ -25,6 +25,31 @@ semantics and HTML. HTML consumers must not parse a complete generated Markdown
 transcript to rediscover headings, response containers, reasoning groups, tools,
 or source-record boundaries.
 
+## Source ownership and loading
+
+Callers own **source discovery and origin**. The core owns **reading, parsing, and
+interpretation of sources that the caller supplies**. Provider-specific filesystem
+locations are therefore outside the core contract: the core does not search
+`~/.codex`, `CODEX_HOME`, Claude project directories, upload folders, or backups.
+
+Node consumers may use `loadConversationSources()` with a primary source and
+optional supplementary sources. A source may be supplied as `{ path }`, `{ text }`,
+or `{ records }`; a bare string is treated as a path. This preserves a lower-level
+records API for tests and embedded callers while allowing ordinary consumers to
+hand file paths to the core rather than implementing JSONL parsing themselves.
+
+For Codex, `supplementarySources.codexSessionIndex` is optional. When supplied,
+the core reads and parses the session index and resolves the last valid matching
+`thread_name` for the rollout/session UUID. Consumers discover the index path but
+do not duplicate its interpretation.
+
+Codex rollback history is hidden by default. Passing
+`options.includeRolledBackTurns = true` exposes historical revisions. Revision
+state (`original`, `superseded`, `edited`) and execution state (`aborted`) are
+independent canonical facts and are projected consistently into Markdown and the
+structured presentation tree. Recorded Codex IDE context is transcript content and
+must be preserved verbatim.
+
 ## Turn structure
 
 A visible User, Agent, or Subagent turn has one heading and one outer response
@@ -48,7 +73,7 @@ horizontal rule.
 A consecutive run of reasoning activity forms one collapsible reasoning group.
 The group ends when visible response/commentary content is emitted. Ending a
 reasoning group does not end the outer Agent turn. Later reasoning begins another
-reasoning group inside the same outer turn.
+reasoning group inside that same turn.
 
 Ordinary tool calls/results that occur during reasoning are children of the active
 reasoning group. They may themselves use nested collapsible presentation for tool
