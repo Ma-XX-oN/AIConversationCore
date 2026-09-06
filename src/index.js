@@ -14,6 +14,7 @@ export {
 export { renderCanonicalMarkdown } from './projections/markdown-revisions.js';
 export { buildCanonicalPresentation } from './projections/presentation-revisions.js';
 export { projectCanonicalConversation } from './projections/structured.js';
+export { loadConversationSources } from './sources/conversation.js';
 
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
