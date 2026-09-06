@@ -32,15 +32,17 @@ jobs:
 
           path = Path('src/projections/presentation.js')
           text = path.read_text(encoding='utf-8')
-          old = """    if (event.kind === 'reasoning_summary') {
-              const group = ensureReasoningGroup(event);
-          """
-          new = """    if (event.kind === 'reasoning_summary') {
-              if (pendingCommentary.length > 0) {
-                closeReasoning();
-              }
-              const group = ensureReasoningGroup(event);
-          """
+          old = (
+            "    if (event.kind === 'reasoning_summary') {\n"
+            "      const group = ensureReasoningGroup(event);\n"
+          )
+          new = (
+            "    if (event.kind === 'reasoning_summary') {\n"
+            "      if (pendingCommentary.length > 0) {\n"
+            "        closeReasoning();\n"
+            "      }\n"
+            "      const group = ensureReasoningGroup(event);\n"
+          )
           if old in text:
             text = text.replace(old, new, 1)
             path.write_text(text, encoding='utf-8', newline='\n')
