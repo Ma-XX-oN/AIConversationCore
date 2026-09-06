@@ -40,3 +40,4 @@ jobs:
       - name: Diff hygiene
         run: git diff --check
       # Temporary branch validation gate; remove after the full run is green.
+      # Rerun marker: restore original provider fixtures before validating.
