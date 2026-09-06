@@ -101,8 +101,8 @@ export async function buildBrowserBundle() {
   const structured = moduleBody(structuredSource, {
     importLines: [
       "import { deriveTurns } from '../derive/turns.js';",
-      "import { renderCanonicalMarkdown } from './markdown.js';",
-      "import { buildCanonicalPresentation } from './presentation.js';"
+      "import { renderCanonicalMarkdown } from './markdown-revisions.js';",
+      "import { buildCanonicalPresentation } from './presentation-revisions.js';"
     ],
     exportedFunction: 'projectCanonicalConversation',
     localFunction: 'projectCanonicalConversation'
