@@ -9,22 +9,33 @@ permissions:
   contents: write
 
 jobs:
-  debug:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Generate and commit browser bundle
+      - name: Verify core before finalizing diagnostics
         shell: bash
         run: |
-          node scripts/build-browser-bundle.mjs
-          if git diff --quiet -- dist/aiconversationcore.chatgpt.browser.js; then
-            exit 0
-          fi
+          node scripts/check-jsdoc.mjs
+          npm test
+      - name: Record generalized rendering decision and remove diagnostic workflow
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('DECISIONS.md')
+          text = path.read_text()
+          marker = '## D017 — Provider-independent presentation tree and rendering grammar'
+          if marker not in text:
+            text += '''\n\n## D017 — Provider-independent presentation tree and rendering grammar\n\n**Status:** Accepted\n\n**Decision:** Provider-specific rendering differences end at canonical normalization unless a provider exposes a semantic that cannot be represented by the shared model.  ChatGPT, Claude, Codex, subagents, and future agents use one presentation grammar after normalization.\n\nEach rendered User/Agent/Subagent turn has one heading and one outer response container.  User attachments are presented before the User Markdown body unless actual provider evidence establishes inline-media semantics.  Agent content remains in source order inside the same outer response container.\n\nConsecutive reasoning activity forms one `reasoning_group`.  Ordinary tool calls/results occurring during that reasoning run are children of the reasoning group and are therefore hidden when the group is collapsed; a tool may itself use a nested disclosure for its payload.  A visible response/commentary item ends the current reasoning run but does not end the surrounding Agent turn.  Later reasoning starts another reasoning group in that same turn.\n\nA reasoning group serializes to one `<details>` disclosure whose summary is `Having a thought` for one reasoning item or `Having N thoughts` for multiple reasoning items.  Paragraphs within one reasoning record are paragraphs, not separate thoughts.  Renderers must not insert synthetic separators such as `***` or horizontal rules between reasoning records unless that separator exists in source content or a separately accepted presentation decision explicitly requires it.\n\nTextual User/Agent content is Markdown content.  HTML consumers render structural HTML directly from the canonical presentation tree and run only the textual content nodes through a Markdown-to-HTML parser.  Fenced code is recognized as a code block; its payload is escaped/prettified rather than recursively interpreted as Markdown or HTML.  Canonical Markdown is an independent serialization/output target and must never be used as the semantic interchange representation from which an HTML consumer reconstructs turn, reasoning, tool, or source-identity structure.\n\nSource identity and structural identity remain explicit on presentation-tree nodes so interactive consumers can map search, speech, highlighting, virtualization, and navigation without relocating Markdown comments or inferring `<details>` ownership from rendered text.\n\nD016's thought-run rule is therefore generalized by this decision; its ChatGPT-specific wording describes the historical case that established the grammar, not a provider-specific exception.\n\n**Reason:** Equivalent canonical semantics must render equivalently across providers.  Provider-specific Markdown assembly caused structural divergence, synthetic separators, invalid disclosure boundaries, and consumer-side reparsing/repair.  A shared presentation tree makes the semantic grouping authoritative once and allows HTML, Markdown, speech, and other projections to serialize the same structure without rediscovering it.\n'''
+            path.write_text(text)
+          PY
+          git rm .github/workflows/presentation-debug.yml
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add dist/aiconversationcore.chatgpt.browser.js
-          git commit -m "regenerate browser bundle for presentation tree"
+          git add DECISIONS.md .github/workflows/presentation-debug.yml
+          git commit -m "record provider-independent rendering decision"
           git push
