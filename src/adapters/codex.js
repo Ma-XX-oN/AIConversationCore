@@ -315,6 +315,19 @@ function modelChangeEvent(record, sourceIndex, previousModel, currentModel) {
 }
 
 /**
+ * Returns a Markdown heading suffix for independent revision/execution status.
+ *
+ * @param {Object<string, *>} interaction - Canonical Codex interaction state.
+ * @returns {string} Parenthesized status suffix, or an empty string.
+ */
+function interactionHeadingSuffix(interaction) {
+  const statuses = [];
+  if (interaction.revision_status !== 'normal') statuses.push(interaction.revision_status);
+  if (interaction.execution_status === 'aborted') statuses.push('aborted');
+  return statuses.length ? ` (${statuses.join(', ')})` : '';
+}
+
+/**
  * Applies Codex rollback, edit, abort, and model-change semantics to canonical events.
  *
  * @param {Array<Object<string, *>>} records - Ordered Codex source records.
@@ -331,7 +344,6 @@ function applyRevisionSemantics(records, baseEvents, options) {
     eventsBySource.set(event.source_index, list);
   }
 
-  const interactions = [];
   const active = [];
   const interactionBySource = new Map();
   const modelNotices = new Map();
@@ -375,7 +387,6 @@ function applyRevisionSemantics(records, baseEvents, options) {
     if (record?.type === 'event_msg' && payload?.type === 'user_message') {
       const previous = pendingHistory.at(-1) ?? null;
       const interaction = {
-        start_index: sourceIndex,
         model: currentModel,
         history: pendingHistory,
         rolled_back: false,
@@ -392,7 +403,6 @@ function applyRevisionSemantics(records, baseEvents, options) {
         }
       }
       pendingHistory = [];
-      interactions.push(interaction);
       active.push(interaction);
       currentInteraction = interaction;
     }
@@ -420,11 +430,17 @@ function applyRevisionSemantics(records, baseEvents, options) {
       output.push(event);
       continue;
     }
+    const headingSuffix = event.role === 'user' && event.kind === 'message'
+      ? interactionHeadingSuffix(interaction)
+      : '';
     output.push({
       ...event,
       revision_status: interaction.revision_status,
       execution_status: interaction.execution_status,
-      model: interaction.model
+      model: interaction.model,
+      ...(headingSuffix
+        ? { projection: { ...(event.projection ?? {}), heading_suffix: headingSuffix } }
+        : {})
     });
   }
   return output;
