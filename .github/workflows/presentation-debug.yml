@@ -1,0 +1,37 @@
+name: Presentation debug
+
+on:
+  push:
+    branches:
+      - feature/canonical-presentation-html
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Capture documentation audit
+        shell: bash
+        run: |
+          set +e
+          node scripts/check-jsdoc.mjs > jsdoc.log 2>&1
+          echo $? > jsdoc.status
+          exit 0
+      - name: Capture core tests
+        shell: bash
+        run: |
+          set +e
+          npm test > tests.log 2>&1
+          echo $? > tests.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: presentation-debug
+          path: |
+            jsdoc.log
+            jsdoc.status
+            tests.log
+            tests.status
