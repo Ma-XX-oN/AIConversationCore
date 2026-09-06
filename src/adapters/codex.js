@@ -421,11 +421,11 @@ function applyRevisionSemantics(records, baseEvents, options) {
   const output = [];
   for (const event of baseEvents) {
     const interaction = interactionBySource.get(event.source_index);
-    if (interaction?.rolled_back && !includeRolledBackTurns) continue;
     if (event.role === 'user' && event.kind === 'message') {
       const notice = modelNotices.get(event.source_index);
       if (notice) output.push(notice);
     }
+    if (interaction?.rolled_back && !includeRolledBackTurns) continue;
     if (!interaction) {
       output.push(event);
       continue;
