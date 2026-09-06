@@ -1,3 +1,4 @@
+// Version of the provider-independent canonical presentation-tree contract.
 const PRESENTATION_SCHEMA_VERSION = 2;
 
 /**
