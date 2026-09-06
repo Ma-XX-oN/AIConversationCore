@@ -222,3 +222,31 @@ test('commentary between reasoning tools remains inside the active group', () =>
   assert.equal(turn.children[1].kind, 'markdown');
   assert.equal(turn.children[1].blocks[0].text, 'Final answer.');
 });
+
+test('commentary remains inside the active group when reasoning continues', () => {
+  const presentation = buildCanonicalPresentation([
+    reasoning('codex', 0, 'First thought.'),
+    toolCall('codex', 1, 'call-1', 'shell_command'),
+    toolResult('codex', 2, 'call-1', 'shell_command'),
+    message(
+      'codex',
+      3,
+      'assistant',
+      'I’ll load the local Codex memory for this turn, then answer plainly.',
+      'commentary'),
+    reasoning('codex', 4, 'Second thought.'),
+    message('codex', 5, 'assistant', 'Final answer.')
+  ]);
+
+  const turn = presentation.turns[0];
+  assert.equal(turn.children.length, 2);
+  const group = turn.children[0];
+  assert.equal(group.kind, 'reasoning_group');
+  assert.deepEqual(
+    group.children.map(child => child.kind),
+    ['reasoning', 'tool', 'commentary', 'reasoning']);
+  assert.equal(group.children[2].blocks[0].text,
+    'I’ll load the local Codex memory for this turn, then answer plainly.');
+  assert.equal(turn.children[1].kind, 'markdown');
+  assert.equal(turn.children[1].blocks[0].text, 'Final answer.');
+});
