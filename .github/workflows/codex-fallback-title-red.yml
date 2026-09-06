@@ -1,4 +1,4 @@
-name: Codex fallback title red gate
+name: Codex fallback title validation
 
 on:
   push:
@@ -9,11 +9,21 @@ permissions:
   contents: read
 
 jobs:
-  red-gate:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
       - run: node --test tests/codex-source-contract.test.js
+      - run: npm test
+      - run: node scripts/check-jsdoc.mjs
+      - run: python tests/validate-phase2-baseline.py
+      - run: python tests/validate-canonical-golden.py
+      - run: python tests/validate-claude-canonical-golden.py
+      - run: python tests/validate-codex-canonical-golden.py
+      - run: git diff --check
