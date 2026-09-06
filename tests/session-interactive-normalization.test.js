@@ -3,85 +3,84 @@ import test from 'node:test';
 
 import { adaptInteractiveSessionRecords } from '../src/index.js';
 
-function claudeRecord(type, timestamp, extra = {}) {
-  return {
-    type,
-    timestamp,
-    uuid: `${type}-${timestamp}`,
-    isSidechain: false,
-    ...extra
-  };
-}
-
-test('Claude interactive session excludes sidechain and preserves queued-command structure', () => {
+test('interactive Claude normalization removes injected user context and preserves queued-command split', () => {
   const records = [
-    claudeRecord('user', '2026-09-05T00:00:00Z', {
-      message: { role: 'user', content: [{ type: 'text', text: 'Visible request' }] }
-    }),
-    claudeRecord('assistant', '2026-09-05T00:00:01Z', {
-      isSidechain: true,
-      message: { role: 'assistant', content: [{ type: 'text', text: 'Sidechain' }] }
-    }),
-    claudeRecord('queue-operation', '2026-09-05T00:00:02Z', {
-      operation: 'enqueue',
-      content: 'Queued follow-up'
-    })
+    {
+      type: 'user',
+      uuid: 'user-1',
+      timestamp: '2026-09-05T00:00:00Z',
+      message: {
+        role: 'user',
+        content: [{
+          type: 'text',
+          text: '<system-reminder>generated</system-reminder>\nActual user text'
+        }]
+      }
+    },
+    {
+      type: 'attachment',
+      uuid: 'queue-1',
+      timestamp: '2026-09-05T00:00:01Z',
+      attachment: {
+        type: 'queued_command',
+        prompt: '> generated card\n> context\n\nQueued user text'
+      }
+    }
   ];
 
   const events = adaptInteractiveSessionRecords('claude', records);
-  assert.equal(events.some(event => event.blocks?.some(block => block.text === 'Sidechain')), false);
+  const user = events.find(event => event.source_index === 0 && event.kind === 'message');
   const queued = events.find(event => event.content_type === 'queued_command');
-  assert.equal(queued.blocks[0].text, 'Queued follow-up');
+
+  assert.equal(user.blocks[0].text, 'Actual user text');
+  assert.equal(user.source.timestamp, '2026-09-05T00:00:00Z');
+  assert.equal(queued.blocks[0].queued_command.generated_context, '> generated card\n> context');
+  assert.equal(queued.blocks[0].queued_command.user_text, 'Queued user text');
 });
 
-test('Claude interactive session exposes hidden Agent start and completion duration', () => {
+test('interactive Claude normalization exposes subagent lifecycle timing without timing footer speech', () => {
   const records = [
-    claudeRecord('assistant', '2026-09-05T00:00:00Z', {
+    {
+      type: 'assistant',
+      uuid: 'agent-call',
+      timestamp: '2026-09-05T00:00:00Z',
       message: {
         role: 'assistant',
-        content: [{ type: 'tool_use', id: 'tool-1', name: 'Task', input: { prompt: 'Work' } }]
+        content: [{
+          type: 'tool_use',
+          id: 'toolu-agent',
+          name: 'Agent',
+          input: { description: 'Inspect files' }
+        }]
       }
-    }),
-    claudeRecord('user', '2026-09-05T00:00:03Z', {
-      toolUseResult: {
-        agentId: 'agent-1',
-        agentType: 'general-purpose',
-        totalDurationMs: 3000,
-        content: 'Done.'
+    },
+    {
+      type: 'user',
+      uuid: 'agent-result',
+      timestamp: '2026-09-05T00:00:05Z',
+      toolUseResult: { agentType: 'general-purpose', totalDurationMs: 5000 },
+      message: {
+        role: 'user',
+        content: [{
+          type: 'tool_result',
+          tool_use_id: 'toolu-agent',
+          content: 'agentId: child-1 (internal ID - do not mention to user.)\nDone.\n```text\nSTART=x END=y ELAPSED=5s\n```'
+        }]
       }
-    })
+    }
   ];
 
   const events = adaptInteractiveSessionRecords('claude', records);
-  const started = events.find(event => event.content_type === 'agent_start');
-  const finished = events.find(event => event.content_type === 'agent_completion');
+  const started = events.find(event => event.content_type === 'subagent_start');
+  const finished = events.find(event => event.kind === 'subagent');
+
   assert.equal(started.visibility, 'hidden');
-  assert.equal(finished.lifecycle.duration_ms, 3000);
+  assert.equal(started.blocks[0].subagent_start.description, 'Inspect files');
+  assert.equal(finished.blocks[0].duration_ms, 5000);
   assert.equal(finished.blocks[0].output, 'Done.');
 });
 
-test('Claude queue completion retains duration metadata', () => {
-  const records = [
-    claudeRecord('queue-operation', '2026-09-05T00:00:00Z', {
-      operation: 'enqueue',
-      taskId: 'agent-1',
-      content: 'Background task'
-    }),
-    claudeRecord('queue-operation', '2026-09-05T00:00:02Z', {
-      operation: 'dequeue',
-      taskId: 'agent-1',
-      content: 'Done.',
-      totalDurationMs: 2000
-    })
-  ];
-
-  const events = adaptInteractiveSessionRecords('claude', records);
-  const finished = events.find(event => event.content_type === 'agent_completion');
-  assert.equal(finished.lifecycle.duration_ms, 2000);
-  assert.equal(finished.blocks[0].output, 'Done.');
-});
-
-test('interactive Codex normalization preserves speech-specific phase, IDE context, secret input, preamble and completion facts', () => {
+test('interactive Codex normalization preserves speech-specific phase, secret input, preamble and completion facts', () => {
   const userText = 'context\n## My request for Codex:\nActual request';
   const records = [
     {
