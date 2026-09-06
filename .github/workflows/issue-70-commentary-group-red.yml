@@ -1,16 +1,16 @@
-name: Issue 70 commentary grouping red proof
+name: Finalize commentary grouping browser bundle
 
 on:
   push:
     branches:
       - feature/canonical-presentation-html
-    paths:
-      - src/projections/presentation.js
-      - tests/presentation-tree.test.js
-      - .github/workflows/issue-70-commentary-group-red.yml
+
+permissions:
+  contents: write
 
 jobs:
-  regression:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,9 +20,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Regenerate browser bundle
+        run: npm run build:browser
       - name: Run full core regression suite
         run: npm test
       - name: Validate Phase 2 baseline
         run: python tests/validate-phase2-baseline.py
       - name: Diff hygiene
         run: git diff --check
+      - name: Commit generated bundle and remove temporary workflow
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/issue-70-commentary-group-red.yml
+          git add dist/aiconversationcore.chatgpt.browser.js
+          git diff --cached --check
+          git commit -m "build: refresh commentary grouping browser bundle"
+          git push
