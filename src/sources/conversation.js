@@ -81,6 +81,30 @@ function adapt(provider, records, options) {
 }
 
 /**
+ * Resolves a readable fallback title from the first recorded Codex User request.
+ *
+ * IDE context remains untouched in transcript content. This helper only derives
+ * session metadata from the already-recorded message and prefers text after the
+ * standard `## My request for Codex:` marker when present.
+ *
+ * @param {Array<Object<string, *>>} records - Ordered Codex rollout records.
+ * @returns {string|null} Readable fallback title or null.
+ */
+function codexUserFallbackTitle(records) {
+  for (const record of records) {
+    const payload = record?.type === 'event_msg' ? record?.payload : null;
+    if (payload?.type !== 'user_message' || typeof payload?.message !== 'string') continue;
+    let message = payload.message.replace(/\r\n/g, '\n');
+    const marker = '## My request for Codex:';
+    const markerIndex = message.indexOf(marker);
+    if (markerIndex >= 0) message = message.slice(markerIndex + marker.length);
+    const candidate = message.split('\n').map(line => line.trim()).find(Boolean) ?? '';
+    if (candidate) return candidate;
+  }
+  return null;
+}
+
+/**
  * Loads one conversation from caller-supplied primary and supplementary sources.
  *
  * The caller owns source discovery/origin. This function owns reading and JSONL
@@ -117,6 +141,16 @@ export function loadConversationSources({
       ? []
       : sourceRecords(indexSource, 'Codex session index');
     sessionMetadata = resolveCodexSessionMetadata(records, sessionIndexRecords);
+    if (!sessionMetadata.title) {
+      const title = codexUserFallbackTitle(records);
+      if (title) {
+        sessionMetadata = {
+          ...sessionMetadata,
+          title,
+          title_source: 'codex-user-message'
+        };
+      }
+    }
   }
 
   return {
