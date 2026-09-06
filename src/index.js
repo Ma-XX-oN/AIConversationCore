@@ -12,7 +12,7 @@ export {
 } from './projections/turn-header.js';
 
 export { renderCanonicalMarkdown } from './projections/markdown.js';
-export { buildCanonicalPresentation } from './projections/presentation.js';
+export { buildCanonicalPresentation } from './projections/presentation-revisions.js';
 export { projectCanonicalConversation } from './projections/structured.js';
 
 export { deriveTurns } from './derive/turns.js';
