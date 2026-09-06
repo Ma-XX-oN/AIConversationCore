@@ -1,0 +1,20 @@
+name: Issue 70 commentary grouping red proof
+
+on:
+  push:
+    branches:
+      - feature/canonical-presentation-html
+    paths:
+      - tests/presentation-tree.test.js
+      - .github/workflows/issue-70-commentary-group-red.yml
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run presentation-tree regression
+        run: node --test tests/presentation-tree.test.js
