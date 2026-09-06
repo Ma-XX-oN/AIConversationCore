@@ -280,10 +280,10 @@ function createSubagentTurn(event, turnIndex) {
  * Builds the provider-independent canonical presentation tree.
  *
  * User/Agent turns preserve canonical event order. Consecutive reasoning and
- * ordinary tool activity form one reasoning group. Assistant commentary that
- * is followed by more ordinary reasoning/tool activity stays inside that group.
- * Terminal commentary and visible Assistant responses close the group but remain
- * inside the same Agent turn. Later reasoning starts a new group in that turn.
+ * ordinary tool activity form one reasoning group. Assistant commentary emitted
+ * while that reasoning group is active is part of the thought/tool activity and
+ * remains inside the group. A visible Assistant response closes the group but
+ * remains inside the same Agent turn. Later reasoning starts a new group.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical event stream.
  * @returns {Object<string, *>} Canonical presentation tree.
@@ -297,7 +297,6 @@ export function buildCanonicalPresentation(events) {
   let currentTurn = null;
   let reasoningGroup = null;
   let reasoningGroupIndex = 0;
-  let pendingCommentary = [];
   const toolsByCallId = new Map();
 
   /**
@@ -319,45 +318,11 @@ export function buildCanonicalPresentation(events) {
   };
 
   /**
-   * Emits buffered commentary into the active reasoning group because later
-   * ordinary reasoning/tool activity proved that the reasoning run continued.
-   *
-   * @returns {void} Buffered commentary is consumed in source order.
-   */
-  const flushCommentaryIntoReasoning = () => {
-    if (!reasoningGroup || pendingCommentary.length === 0) return;
-    for (const event of pendingCommentary) {
-      ensureAgentTurn(event);
-      reasoningGroup.children.push(contentNode(event, 'commentary'));
-      reasoningGroup.source.push(sourceRef(event));
-    }
-    pendingCommentary = [];
-  };
-
-  /**
-   * Emits buffered commentary as ordinary visible Agent content when no later
-   * reasoning/tool activity continued the active group.
-   *
-   * @returns {void} Buffered commentary is consumed in source order.
-   */
-  const flushCommentaryOutsideReasoning = () => {
-    if (pendingCommentary.length === 0) return;
-    for (const event of pendingCommentary) {
-      const turn = ensureAgentTurn(event);
-      turn.children.push(contentNode(event, 'commentary'));
-    }
-    pendingCommentary = [];
-  };
-
-  /**
    * Closes the current reasoning run without ending the surrounding turn.
-   * Pending commentary is emitted outside the group because no continuing
-   * ordinary reasoning/tool activity claimed it.
    *
    * @returns {void} The active reasoning-group reference is cleared.
    */
   const closeReasoning = () => {
-    flushCommentaryOutsideReasoning();
     reasoningGroup = null;
   };
 
@@ -376,7 +341,6 @@ export function buildCanonicalPresentation(events) {
         reasoningGroupIndex++
       );
     }
-    flushCommentaryIntoReasoning();
     return reasoningGroup;
   };
 
@@ -434,8 +398,6 @@ export function buildCanonicalPresentation(events) {
       if (existing) {
         if (existing.interactive) {
           closeReasoning();
-        } else {
-          flushCommentaryIntoReasoning();
         }
         attachToolResult(existing, event);
         addTurnSource(ensureAgentTurn(event), event);
@@ -461,7 +423,9 @@ export function buildCanonicalPresentation(events) {
 
     if (event.kind === 'commentary' && event.role === 'assistant') {
       if (reasoningGroup) {
-        pendingCommentary.push(event);
+        ensureAgentTurn(event);
+        reasoningGroup.children.push(contentNode(event, 'commentary'));
+        reasoningGroup.source.push(sourceRef(event));
       } else {
         const turn = ensureAgentTurn(event);
         turn.children.push(contentNode(event, 'commentary'));
