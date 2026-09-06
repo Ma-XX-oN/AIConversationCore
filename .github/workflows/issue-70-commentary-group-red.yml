@@ -5,6 +5,7 @@ on:
     branches:
       - feature/canonical-presentation-html
     paths:
+      - src/projections/presentation.js
       - tests/presentation-tree.test.js
       - .github/workflows/issue-70-commentary-group-red.yml
 
