@@ -23,5 +23,5 @@ export {
   adaptCodexToolEvents,
   resolveCodexSessionMetadata
 } from './adapters/codex.js';
-export { adaptInteractiveSessionRecords } from './adapters/session.js';
+export { adaptInteractiveSessionRecords } from './adapters/interactive.js';
 export { adaptSpeechSessionRecords } from './adapters/speech-session-normalized.js';
