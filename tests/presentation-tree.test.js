@@ -193,3 +193,32 @@ test('ordinary tools are subordinate to the active reasoning group', () => {
   assert.equal(turn.children[0].children[1].result.output, '/tmp');
   assert.equal(turn.children[1].kind, 'markdown');
 });
+
+test('commentary between reasoning tools remains inside the active group', () => {
+  const presentation = buildCanonicalPresentation([
+    reasoning('codex', 0, 'Need to inspect local state.'),
+    toolCall('codex', 1, 'call-1', 'shell_command'),
+    toolResult('codex', 2, 'call-1', 'shell_command'),
+    message(
+      'codex',
+      3,
+      'assistant',
+      'I’ll load the local Codex memory for this turn, then answer plainly.',
+      'commentary'),
+    toolCall('codex', 4, 'call-2', 'shell_command'),
+    toolResult('codex', 5, 'call-2', 'shell_command'),
+    message('codex', 6, 'assistant', 'Final answer.')
+  ]);
+
+  const turn = presentation.turns[0];
+  assert.equal(turn.children.length, 2);
+  const group = turn.children[0];
+  assert.equal(group.kind, 'reasoning_group');
+  assert.deepEqual(
+    group.children.map(child => child.kind),
+    ['reasoning', 'tool', 'commentary', 'tool']);
+  assert.equal(group.children[2].blocks[0].text,
+    'I’ll load the local Codex memory for this turn, then answer plainly.');
+  assert.equal(turn.children[1].kind, 'markdown');
+  assert.equal(turn.children[1].blocks[0].text, 'Final answer.');
+});
