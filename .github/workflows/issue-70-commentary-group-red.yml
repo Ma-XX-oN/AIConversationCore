@@ -9,17 +9,59 @@ on:
       - tests/presentation-tree.test.js
       - .github/workflows/issue-70-commentary-group-red.yml
 
+permissions:
+  contents: write
+
 jobs:
   regression:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/canonical-presentation-html
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Apply narrow commentary continuation rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/projections/presentation.js')
+          text = path.read_text(encoding='utf-8')
+          old = """    if (event.kind === 'reasoning_summary') {
+              const group = ensureReasoningGroup(event);
+          """
+          new = """    if (event.kind === 'reasoning_summary') {
+              if (pendingCommentary.length > 0) {
+                closeReasoning();
+              }
+              const group = ensureReasoningGroup(event);
+          """
+          if old in text:
+            text = text.replace(old, new, 1)
+            path.write_text(text, encoding='utf-8', newline='\n')
+          elif new not in text:
+            raise SystemExit('reasoning_summary target did not match expected source')
+          PY
       - name: Run full core regression suite
         run: npm test
       - name: Validate Phase 2 baseline
         run: python tests/validate-phase2-baseline.py
       - name: Diff hygiene
         run: git diff --check
+      - name: Commit validated production fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/projections/presentation.js; then
+            exit 0
+          fi
+          git config user.name "Ma-XX-oN"
+          git config user.email "Ma-XX-oN@users.noreply.github.com"
+          git add src/projections/presentation.js
+          git commit -m "fix: preserve commentary boundary before later reasoning"
+          git push origin HEAD:feature/canonical-presentation-html
