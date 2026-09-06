@@ -27,6 +27,22 @@ jobs:
           npm test > tests.log 2>&1
           echo $? > tests.status
           exit 0
+      - name: Capture structural units
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE' > structural-units.json
+          import { readFile } from 'node:fs/promises';
+          import { adaptClaudeRecords, projectCanonicalConversation } from './src/index.js';
+          const text = await readFile('./tests/fixtures/claude/claude-rich-subagent.jsonl', 'utf8');
+          const records = text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
+          const projection = projectCanonicalConversation(adaptClaudeRecords(records));
+          console.log(JSON.stringify(projection.presentation.structural_units, null, 2));
+          NODE
+      - name: Generate browser bundle
+        shell: bash
+        run: |
+          node scripts/build-browser-bundle.mjs
+          cp dist/aiconversationcore.chatgpt.browser.js browser.generated.js
       - uses: actions/upload-artifact@v4
         with:
           name: presentation-debug
@@ -35,3 +51,5 @@ jobs:
             jsdoc.status
             tests.log
             tests.status
+            structural-units.json
+            browser.generated.js
