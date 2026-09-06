@@ -25,10 +25,11 @@ function normalizeVisibleClaudeUserEvent(event) {
  *
  * @param {string} provider - Canonical provider identifier.
  * @param {Array<Object<string, *>>} records - Ordered provider/source records.
+ * @param {Object<string, *>} options - Optional provider normalization options.
  * @returns {Array<Object<string, *>>} Canonical speech-session events.
  */
-export function adaptSpeechSessionRecords(provider, records) {
-  const events = adaptSpeechSessionRecordsRaw(provider, records);
+export function adaptSpeechSessionRecords(provider, records, options = {}) {
+  const events = adaptSpeechSessionRecordsRaw(provider, records, options);
   if (provider !== 'claude') return events;
   return events
     .map(normalizeVisibleClaudeUserEvent)
