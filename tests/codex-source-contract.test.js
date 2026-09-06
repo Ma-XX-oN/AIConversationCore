@@ -88,6 +88,31 @@ test('loadConversationSources reads caller-supplied Codex files and owns JSONL p
   }
 });
 
+test('Codex session metadata falls back to the first real request when no index title exists', () => {
+  const fallbackRecords = [
+    {
+      timestamp: '2026-09-06T20:00:00.000Z',
+      type: 'session_meta',
+      payload: { id: '01a07804-bcf3-7af3-8321-bdcf0c1ddc89' }
+    },
+    {
+      timestamp: '2026-09-06T20:00:01.000Z',
+      type: 'event_msg',
+      payload: {
+        type: 'user_message',
+        message: '# Context from my IDE setup:\n\n## Active file: example.jsonl\n\n## My request for Codex:\nWhat time is it in Paris?'
+      }
+    }
+  ];
+  const loaded = loadConversationSources({
+    provider: 'codex',
+    primarySource: { records: fallbackRecords }
+  });
+
+  assert.equal(loaded.session_metadata.title, 'What time is it in Paris?');
+  assert.equal(loaded.session_metadata.title_source, 'codex-user-message');
+});
+
 test('loadConversationSources accepts in-memory text and exposes rolled-back history only when requested', () => {
   const loaded = loadConversationSources({
     provider: 'codex',
