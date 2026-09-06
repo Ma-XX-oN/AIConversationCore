@@ -64,12 +64,14 @@ export async function buildBrowserBundle() {
     chatgptSource,
     turnsSource,
     markdownSource,
+    presentationSource,
     structuredSource
   ] = await Promise.all([
     readFile(resolve(ROOT, 'src/adapters/chatgpt-base.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/adapters/chatgpt.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/derive/turns.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/presentation.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8')
   ]);
 
@@ -92,10 +94,15 @@ export async function buildBrowserBundle() {
     exportedFunction: 'renderCanonicalMarkdown',
     localFunction: 'renderCanonicalMarkdown'
   });
+  const presentation = moduleBody(presentationSource, {
+    exportedFunction: 'buildCanonicalPresentation',
+    localFunction: 'buildCanonicalPresentation'
+  });
   const structured = moduleBody(structuredSource, {
     importLines: [
       "import { deriveTurns } from '../derive/turns.js';",
-      "import { renderCanonicalMarkdown } from './markdown.js';"
+      "import { renderCanonicalMarkdown } from './markdown.js';",
+      "import { buildCanonicalPresentation } from './presentation.js';"
     ],
     exportedFunction: 'projectCanonicalConversation',
     localFunction: 'projectCanonicalConversation'
@@ -107,6 +114,7 @@ export async function buildBrowserBundle() {
     `// - src/adapters/chatgpt.js\n` +
     `// - src/derive/turns.js\n` +
     `// - src/projections/markdown.js\n` +
+    `// - src/projections/presentation.js\n` +
     `// - src/projections/structured.js\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
     `  'use strict';\n\n` +
@@ -114,10 +122,12 @@ export async function buildBrowserBundle() {
     `${chatgpt}\n\n` +
     `${turns}\n\n` +
     `${markdown}\n\n` +
+    `${presentation}\n\n` +
     `${structured}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
     `    adaptChatGPTRecords,\n` +
     `    renderCanonicalMarkdown,\n` +
+    `    buildCanonicalPresentation,\n` +
     `    projectCanonicalConversation\n` +
     `  });\n` +
     `})(globalThis);\n`;
