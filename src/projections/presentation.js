@@ -297,12 +297,21 @@ export function buildCanonicalPresentation(events) {
   let reasoningGroupIndex = 0;
   const toolsByCallId = new Map();
 
-  /** Closes the current reasoning run without ending the surrounding turn. */
+  /**
+   * Closes the current reasoning run without ending the surrounding turn.
+   *
+   * @returns {void} The active reasoning-group reference is cleared.
+   */
   const closeReasoning = () => {
     reasoningGroup = null;
   };
 
-  /** Ensures that an Agent turn exists for the supplied event. */
+  /**
+   * Ensures that an Agent turn exists for the supplied event.
+   *
+   * @param {Object<string, *>} event - Canonical event assigned to the Agent turn.
+   * @returns {Object<string, *>} Existing or newly created Agent presentation turn.
+   */
   const ensureAgentTurn = event => {
     if (!currentTurn || currentTurn.actor.role !== 'assistant' ||
         currentTurn.actor.kind === 'subagent') {
@@ -315,7 +324,12 @@ export function buildCanonicalPresentation(events) {
     return currentTurn;
   };
 
-  /** Ensures that a reasoning group exists at the current Agent position. */
+  /**
+   * Ensures that a reasoning group exists at the current Agent position.
+   *
+   * @param {Object<string, *>} event - Canonical reasoning/tool event assigned to the group.
+   * @returns {Object<string, *>} Existing or newly created reasoning group.
+   */
   const ensureReasoningGroup = event => {
     const turn = ensureAgentTurn(event);
     if (!reasoningGroup) {
