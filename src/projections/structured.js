@@ -1,6 +1,6 @@
 import { deriveTurns } from '../derive/turns.js';
-import { renderCanonicalMarkdown } from './markdown.js';
-import { buildCanonicalPresentation } from './presentation.js';
+import { renderCanonicalMarkdown } from './markdown-revisions.js';
+import { buildCanonicalPresentation } from './presentation-revisions.js';
 
 /** Version of the structured interactive projection. */
 const STRUCTURED_SCHEMA_VERSION = 2;
