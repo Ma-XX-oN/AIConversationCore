@@ -39,19 +39,6 @@ function normalizedFixture() {
   return [NORMALIZED_USER_CONTEXT_EVENT];
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-function deterministicMarkdownFragment(markdown) {
-  return `<div class="markdown-fixture">${escapeHtml(markdown)}</div>`;
-}
-
 test('the same normalized User-context fixture renders through both Core paths', () => {
   const events = normalizedFixture();
 
@@ -71,20 +58,20 @@ test('the same normalized User-context fixture renders through both Core paths',
 
 I'm doing some testing. What time is it in Paris?`);
 
-  const html = renderCanonicalHtml(events, {
-    renderMarkdown: deterministicMarkdownFragment
-  });
+  const html = renderCanonicalHtml(events);
 
   assert.match(html, /<h2>User<\/h2>/);
   assert.match(html, /<blockquote class="transcript-turn-body">/);
   assert.match(html, /<blockquote class="user-context">\s*<details class="user-context-details"[^>]*>\s*<summary># Context from my IDE setup:<\/summary>/);
-  assert.match(html, /## Active file: sessions\/example\.jsonl/);
-  assert.match(html, /## Active selection of the file:/);
-  assert.match(html, /## Open tabs:/);
+  assert.match(html, /<h2>Active file: sessions\/example\.jsonl<\/h2>/);
+  assert.match(html, /<h2>Active selection of the file:<\/h2>/);
+  assert.match(html, /<h2>Open tabs:<\/h2>/);
+  assert.match(html, /<ul>\s*<li>example\.jsonl: sessions\/example\.jsonl<\/li>\s*<\/ul>/);
+  assert.equal(html.includes('## Active file:'), false);
   assert.equal(html.includes('## My request for Codex:'), false);
 
   const detailsEnd = html.indexOf('</details>');
-  const promptStart = html.indexOf('I&#39;m doing some testing. What time is it in Paris?');
+  const promptStart = html.indexOf("<p>I'm doing some testing. What time is it in Paris?</p>");
   assert.notEqual(detailsEnd, -1);
   assert.notEqual(promptStart, -1);
   assert.ok(promptStart > detailsEnd, 'The actual User prompt must remain outside the context disclosure.');
@@ -100,9 +87,7 @@ test('the same normalized no-context fixture emits no empty HTML disclosure', ()
   const events = [event];
 
   assert.equal(renderCanonicalMarkdown(events).trimEnd(), '## User\n\n> Plain user prompt.');
-  const html = renderCanonicalHtml(events, {
-    renderMarkdown: deterministicMarkdownFragment
-  });
+  const html = renderCanonicalHtml(events);
   assert.equal(html.includes('user-context-details'), false);
-  assert.match(html, /Plain user prompt\./);
+  assert.match(html, /<p>Plain user prompt\.<\/p>/);
 });
