@@ -65,6 +65,8 @@ export async function buildBrowserBundle() {
     turnsSource,
     markdownSource,
     presentationSource,
+    presentationRevisionsSource,
+    htmlSource,
     structuredSource
   ] = await Promise.all([
     readFile(resolve(ROOT, 'src/adapters/chatgpt-base.js'), 'utf8'),
@@ -72,6 +74,8 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/derive/turns.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/presentation.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/presentation-revisions.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/html.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8')
   ]);
 
@@ -96,7 +100,21 @@ export async function buildBrowserBundle() {
   });
   const presentation = moduleBody(presentationSource, {
     exportedFunction: 'buildCanonicalPresentation',
+    localFunction: 'buildBasePresentation'
+  });
+  const presentationRevisions = moduleBody(presentationRevisionsSource, {
+    importLines: [
+      "import { buildCanonicalPresentation as buildBasePresentation } from './presentation.js';"
+    ],
+    exportedFunction: 'buildCanonicalPresentation',
     localFunction: 'buildCanonicalPresentation'
+  });
+  const html = moduleBody(htmlSource, {
+    importLines: [
+      "import { buildCanonicalPresentation } from './presentation-revisions.js';"
+    ],
+    exportedFunction: 'renderCanonicalHtml',
+    localFunction: 'renderCanonicalHtml'
   });
   const structured = moduleBody(structuredSource, {
     importLines: [
@@ -115,6 +133,8 @@ export async function buildBrowserBundle() {
     `// - src/derive/turns.js\n` +
     `// - src/projections/markdown.js\n` +
     `// - src/projections/presentation.js\n` +
+    `// - src/projections/presentation-revisions.js\n` +
+    `// - src/projections/html.js\n` +
     `// - src/projections/structured.js\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
     `  'use strict';\n\n` +
@@ -123,10 +143,13 @@ export async function buildBrowserBundle() {
     `${turns}\n\n` +
     `${markdown}\n\n` +
     `${presentation}\n\n` +
+    `${presentationRevisions}\n\n` +
+    `${html}\n\n` +
     `${structured}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
     `    adaptChatGPTRecords,\n` +
     `    renderCanonicalMarkdown,\n` +
+    `    renderCanonicalHtml,\n` +
     `    buildCanonicalPresentation,\n` +
     `    projectCanonicalConversation\n` +
     `  });\n` +
