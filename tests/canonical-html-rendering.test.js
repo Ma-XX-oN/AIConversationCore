@@ -73,7 +73,7 @@ I'm doing some testing. What time is it in Paris?`);
   const detailsEnd = html.indexOf('</details>');
   const promptStart = html.indexOf("<p>I'm doing some testing. What time is it in Paris?</p>");
   assert.notEqual(detailsEnd, -1);
-  assert.notEqual(promptStart, -1);
+  assert.notEqual(promptStart, -1, `Canonical HTML omitted or transformed the User prompt unexpectedly:\n${html}`);
   assert.ok(promptStart > detailsEnd, 'The actual User prompt must remain outside the context disclosure.');
 });
 
