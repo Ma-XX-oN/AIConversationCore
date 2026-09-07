@@ -3280,17 +3280,71 @@ function htmlEscape(value) {
 }
 
 /**
+ * Adds an explicit resolved ordinal to every ordered-list item in a generated
+ * Markdown HTML fragment.
+ *
+ * HTML list markers are visual presentation and are not part of an item's text.
+ * Exposing the resolved ordinal as stable semantic metadata lets speech and
+ * accessibility integrations consume Core output without reparsing Markdown or
+ * recreating ordered-list numbering. Nested lists maintain independent ordinal
+ * counters and unordered lists remain unchanged.
+ *
+ * @param {string} html - Marked-generated HTML fragment.
+ * @returns {string} HTML with `data-list-ordinal` on ordered-list items.
+ */
+function annotateOrderedListOrdinals(html) {
+  const lists = [];
+  return String(html).replace(
+    /<(\/?)(ol|ul|li)\b([^>]*)>/gi,
+    (match, closing, rawTag, rawAttributes) => {
+      const tag = rawTag.toLowerCase();
+      const attributes = rawAttributes ?? '';
+
+      if (closing) {
+        if (tag === 'ol' || tag === 'ul') lists.pop();
+        return match;
+      }
+
+      if (tag === 'ol') {
+        const startMatch = attributes.match(
+          /\bstart\s*=\s*(?:"(-?\d+)"|'(-?\d+)'|(-?\d+))/i
+        );
+        const start = Number.parseInt(
+          startMatch?.[1] ?? startMatch?.[2] ?? startMatch?.[3] ?? '1',
+          10
+        );
+        lists.push({ ordered: true, next: Number.isFinite(start) ? start : 1 });
+        return match;
+      }
+
+      if (tag === 'ul') {
+        lists.push({ ordered: false, next: null });
+        return match;
+      }
+
+      const list = lists.at(-1);
+      if (!list?.ordered) return match;
+      const ordinal = list.next;
+      list.next += 1;
+      if (/\bdata-list-ordinal\s*=/i.test(attributes)) return match;
+      return `<li${attributes} data-list-ordinal="${ordinal}">`;
+    }
+  );
+}
+
+/**
  * Renders one canonical Markdown leaf to HTML inside Core.
  *
  * @param {string} markdown - Canonical Markdown leaf content.
  * @returns {string} HTML generated from the canonical Markdown content.
  */
 function renderMarkdown(markdown) {
-  return String(marked.parse(String(markdown ?? ''), {
+  const html = String(marked.parse(String(markdown ?? ''), {
     async: false,
     breaks: false,
     gfm: true
   }));
+  return annotateOrderedListOrdinals(html);
 }
 
 /**
