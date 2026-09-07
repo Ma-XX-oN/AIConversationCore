@@ -3,11 +3,41 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-import { adaptChatGPTRecords, renderCanonicalMarkdown } from '../src/index.js';
+import {
+  adaptChatGPTRecords,
+  renderCanonicalHtml,
+  renderCanonicalMarkdown
+} from '../src/index.js';
 import { buildBrowserBundle } from '../scripts/build-browser-bundle.mjs';
 
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', import.meta.url);
 const bundleUrl = new URL('../dist/aiconversationcore.chatgpt.browser.js', import.meta.url);
+
+const NORMALIZED_USER_CONTEXT_EVENT = Object.freeze({
+  id: 'event:user-context:browser',
+  provider: 'codex',
+  kind: 'message',
+  role: 'user',
+  channel: 'final',
+  content_type: 'text',
+  visibility: 'visible',
+  source_record_id: 'record:user-context:browser',
+  source_index: 0,
+  blocks: Object.freeze([
+    Object.freeze({
+      type: 'user_context',
+      summary: '# Context from my IDE setup:',
+      text: '## Active file: sessions/example.jsonl\n\n' +
+        '## Open tabs:\n- example.jsonl: sessions/example.jsonl'
+    }),
+    Object.freeze({
+      type: 'text',
+      text: "I'm doing some testing. What time is it in Paris?"
+    })
+  ]),
+  citations: Object.freeze([]),
+  resources: Object.freeze([])
+});
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
@@ -30,6 +60,7 @@ test('generated classic browser bundle exposes the required DownloadConversation
   assert.equal(typeof context.AIConversationCore, 'object');
   assert.equal(typeof context.AIConversationCore.adaptChatGPTRecords, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalMarkdown, 'function');
+  assert.equal(typeof context.AIConversationCore.renderCanonicalHtml, 'function');
 });
 
 test('generated browser bundle matches ESM ChatGPT normalization and Markdown rendering', async () => {
@@ -45,4 +76,18 @@ test('generated browser bundle matches ESM ChatGPT normalization and Markdown re
     context.AIConversationCore.renderCanonicalMarkdown(browserEvents),
     renderCanonicalMarkdown(esmEvents)
   );
+});
+
+test('generated browser bundle matches ESM canonical HTML for the same normalized User-context fixture', async () => {
+  const bundle = await buildBrowserBundle();
+  const context = vm.createContext({ URL });
+  vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
+
+  const events = [NORMALIZED_USER_CONTEXT_EVENT];
+  const expected = renderCanonicalHtml(events);
+  const actual = context.AIConversationCore.renderCanonicalHtml(plain(events));
+  assert.equal(actual, expected);
+  assert.match(actual, /<blockquote class="user-context">/);
+  assert.match(actual, /<summary># Context from my IDE setup:<\/summary>/);
+  assert.equal(actual.includes('## My request for Codex:'), false);
 });
