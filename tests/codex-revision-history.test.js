@@ -165,5 +165,8 @@ test('interactive Codex normalization never strips IDE context from recorded Use
   ]);
   const userEvent = events.find(event => event.role === 'user' && event.kind === 'message');
 
-  assert.equal(userEvent.blocks[0].text, message);
+  assert.deepEqual(userEvent.blocks.map(block => block.type), ['user_context', 'text']);
+  assert.equal(userEvent.blocks[0].summary, '# Context from my IDE setup:');
+  assert.equal(userEvent.blocks[0].text, '## Active file: example.txt');
+  assert.equal(userEvent.blocks[1].text, 'Keep all of this.');
 });

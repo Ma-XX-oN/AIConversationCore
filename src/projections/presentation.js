@@ -126,12 +126,17 @@ function userChildren(event) {
     block?.type === 'attachment' ||
     block?.type === 'file'
   );
-  const body = blocks.filter(block => !attachments.includes(block));
+  const contexts = blocks.filter(block => block?.type === 'user_context');
+  const body = blocks.filter(block =>
+    !attachments.includes(block) && !contexts.includes(block));
   const children = [];
   if (attachments.length) {
     children.push(contentNode(event, 'attachments', attachments));
   }
-  if (body.length || !attachments.length) {
+  if (contexts.length) {
+    children.push(contentNode(event, 'user_context', contexts));
+  }
+  if (body.length || (!attachments.length && !contexts.length)) {
     children.push(contentNode(event, 'markdown', body));
   }
   return children;

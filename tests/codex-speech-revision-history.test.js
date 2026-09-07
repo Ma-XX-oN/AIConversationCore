@@ -50,8 +50,10 @@ test('Codex speech seam hides rolled-back revisions by default without stripping
 
   assert.equal(users.length, 1);
   assert.equal(users[0].revision_status, 'edited');
-  assert.match(users[0].blocks[0].text, /^# Context from my IDE setup:/);
-  assert.match(users[0].blocks[0].text, /Replacement$/);
+  assert.deepEqual(users[0].blocks.map(block => block.type), ['user_context', 'text']);
+  assert.equal(users[0].blocks[0].summary, '# Context from my IDE setup:');
+  assert.equal(users[0].blocks[0].text, '');
+  assert.equal(users[0].blocks[1].text, 'Replacement');
 });
 
 test('Codex speech seam exposes original and edited revisions only when requested', () => {
@@ -64,5 +66,7 @@ test('Codex speech seam exposes original and edited revisions only when requeste
 
   assert.deepEqual(users.map(event => event.revision_status), ['original', 'edited']);
   assert.deepEqual(users.map(event => event.execution_status), ['aborted', 'completed']);
-  assert.match(users[0].blocks[0].text, /^# Context from my IDE setup:/);
+  assert.deepEqual(users[0].blocks.map(block => block.type), ['user_context', 'text']);
+  assert.equal(users[0].blocks[0].summary, '# Context from my IDE setup:');
+  assert.equal(users[0].blocks[1].text, 'Original');
 });
