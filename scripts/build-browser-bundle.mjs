@@ -10,11 +10,11 @@ const OUTPUT = resolve(ROOT, 'dist/aiconversationcore.chatgpt.browser.js');
 /**
  * Replaces exactly one expected source fragment while building the browser bundle.
  *
- * @param {string} text - The source text in which the replacement is made.
- * @param {string} search - The exact source fragment that must occur once.
- * @param {string} replacement - The replacement text to insert.
- * @param {string} label - The human-readable fragment name used in build errors.
- * @returns {string} The source text with exactly one expected fragment replaced.
+ * @param {string} text - Source text in which the replacement is made.
+ * @param {string} search - Exact source fragment that must occur once.
+ * @param {string} replacement - Replacement text to insert.
+ * @param {string} label - Human-readable fragment name used in build errors.
+ * @returns {string} Source text with exactly one expected fragment replaced.
  */
 function replaceOnce(text, search, replacement, label) {
   const index = text.indexOf(search);
@@ -26,66 +26,211 @@ function replaceOnce(text, search, replacement, label) {
 }
 
 /**
- * Converts one ESM source module into the local-function body used by the classic-script browser bundle.
+ * Removes one exact ESM import statement from a source module.
  *
- * @param {string} text - The complete UTF-8 ESM module source.
- * @param {Object<string, string|null>} options - Export/import rewriting options containing the optional import line plus exported and local function names.
- * @param {string|null} [options.importLine=null] - The exact import line to remove, or `null` when no import is removed.
- * @param {string} options.exportedFunction - The exported function name present in the ESM source.
- * @param {string} options.localFunction - The local function name to emit in the classic-script bundle.
- * @returns {string} The rewritten local-function module body used by the generated browser bundle.
+ * @param {string} text - Complete UTF-8 ESM module source.
+ * @param {string} importLine - Exact import statement without the trailing newline.
+ * @returns {string} Module source with the requested import removed.
  */
-function moduleBody(text, { importLine = null, exportedFunction, localFunction }) {
-  let result = text;
-  if (importLine) result = replaceOnce(result, `${importLine}\n\n`, '', 'module import');
-  result = replaceOnce(
-    result,
-    `export function ${exportedFunction}`,
-    `function ${localFunction}`,
-    `${exportedFunction} export`
-  );
-  return result.trim();
+function removeImport(text, importLine) {
+  return replaceOnce(text, `${importLine}\n`, '', `import ${importLine}`);
 }
 
 /**
- * Builds the deterministic classic-script ChatGPT browser bundle from the canonical ESM sources.
+ * Converts exported declarations into local declarations for classic-script namespacing.
  *
- * @returns {Promise<string>} A promise resolving to the complete generated browser-bundle source text.
+ * @param {string} text - ESM source module after its imports have been removed.
+ * @returns {string} Source with supported export declaration prefixes removed.
+ */
+function localizeExports(text) {
+  return text
+    .replaceAll('export async function ', 'async function ')
+    .replaceAll('export function ', 'function ')
+    .replaceAll('export const ', 'const ');
+}
+
+/**
+ * Wraps one localized source module in an isolated namespace factory.
+ *
+ * @param {string} name - Generated local namespace variable name.
+ * @param {string} body - Localized source module body.
+ * @param {Array<string>} exports - Local declaration names returned by the namespace factory.
+ * @param {Array<string>} parameters - Optional factory parameter names used to inject dependencies.
+ * @param {Array<string>} argumentsList - Optional dependency expressions supplied to the factory.
+ * @returns {string} Classic-script namespace factory source.
+ */
+function namespaceModule(name, body, exports, parameters = [], argumentsList = []) {
+  if (parameters.length !== argumentsList.length) {
+    throw new Error(`Browser bundle namespace ${name} dependency arity mismatch.`);
+  }
+  const parameterText = parameters.join(', ');
+  const argumentText = argumentsList.join(', ');
+  return `const ${name} = ((${parameterText}) => {\n${body.trim()}\n\n` +
+    `  return Object.freeze({ ${exports.join(', ')} });\n` +
+    `})(${argumentText});`;
+}
+
+/**
+ * Builds the deterministic classic-script ChatGPT browser bundle from authoritative ESM sources.
+ *
+ * Browser hosts receive the same canonical presentation model, Markdown renderer,
+ * HTML renderer, stylesheet/theme contract, and high-level renderConversation API
+ * as ESM consumers. Provider-record adaptation in this ChatGPT-specific artifact
+ * remains intentionally limited to ChatGPT; callers with canonical events may use
+ * every renderer regardless of where those canonical events were obtained.
+ *
+ * @returns {Promise<string>} Promise resolving to the complete generated browser-bundle source text.
  */
 export async function buildBrowserBundle() {
-  const [baseSource, chatgptSource, markdownSource] = await Promise.all([
+  const [
+    baseSource,
+    chatgptSource,
+    markdownSource,
+    styleSource,
+    presentationSource,
+    htmlSource,
+    renderSource
+  ] = await Promise.all([
     readFile(resolve(ROOT, 'src/adapters/chatgpt-base.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/adapters/chatgpt.js'), 'utf8'),
-    readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8')
+    readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/style.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/presentation.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/html.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/render.js'), 'utf8')
   ]);
 
-  const base = moduleBody(baseSource, {
-    exportedFunction: 'adaptChatGPTRecords',
-    localFunction: 'adaptBaseChatGPTRecords'
-  });
-  const chatgpt = moduleBody(chatgptSource, {
-    importLine: "import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.js';",
-    exportedFunction: 'adaptChatGPTRecords',
-    localFunction: 'adaptChatGPTRecords'
-  });
-  const markdown = moduleBody(markdownSource, {
-    exportedFunction: 'renderCanonicalMarkdown',
-    localFunction: 'renderCanonicalMarkdown'
-  });
+  const base = namespaceModule(
+    'chatgptBaseModule',
+    localizeExports(baseSource),
+    ['adaptChatGPTRecords']
+  );
+
+  const chatgptLocalized = localizeExports(removeImport(
+    chatgptSource,
+    "import { adaptChatGPTRecords as adaptBaseChatGPTRecords } from './chatgpt-base.js';"
+  ));
+  const chatgpt = namespaceModule(
+    'chatgptModule',
+    chatgptLocalized,
+    ['adaptChatGPTRecords'],
+    ['adaptBaseChatGPTRecords'],
+    ['chatgptBaseModule.adaptChatGPTRecords']
+  );
+
+  const markdown = namespaceModule(
+    'markdownModule',
+    localizeExports(markdownSource),
+    ['renderCanonicalMarkdown']
+  );
+
+  const style = namespaceModule(
+    'styleModule',
+    localizeExports(styleSource),
+    [
+      'STYLE_ROLES',
+      'configureProjectionTheme',
+      'getDefaultProjectionTheme',
+      'resetProjectionTheme',
+      'resolveProjectionTheme'
+    ]
+  );
+
+  const presentation = namespaceModule(
+    'presentationModule',
+    localizeExports(presentationSource),
+    ['PRESENTATION_SCHEMA_VERSION', 'buildCanonicalPresentation']
+  );
+
+  let htmlLocalized = htmlSource;
+  htmlLocalized = removeImport(
+    htmlLocalized,
+    "import { renderCanonicalMarkdown } from './markdown.js';"
+  );
+  htmlLocalized = removeImport(
+    htmlLocalized,
+    "import { buildCanonicalPresentation } from './presentation.js';"
+  );
+  htmlLocalized = removeImport(
+    htmlLocalized,
+    "import { resolveProjectionTheme, STYLE_ROLES } from './style.js';"
+  );
+  const html = namespaceModule(
+    'htmlModule',
+    localizeExports(htmlLocalized),
+    ['markdownToHtml', 'renderCanonicalHtml', 'renderCanonicalStylesheet'],
+    ['renderCanonicalMarkdown', 'buildCanonicalPresentation', 'resolveProjectionTheme', 'STYLE_ROLES'],
+    [
+      'markdownModule.renderCanonicalMarkdown',
+      'presentationModule.buildCanonicalPresentation',
+      'styleModule.resolveProjectionTheme',
+      'styleModule.STYLE_ROLES'
+    ]
+  );
+
+  let renderLocalized = renderSource;
+  for (const importLine of [
+    "import { adaptChatGPTRecords } from './adapters/chatgpt.js';",
+    "import { adaptClaudeRecords } from './adapters/claude.js';",
+    "import { adaptCodexRecords } from './adapters/codex.js';",
+    "import { renderCanonicalMarkdown } from './projections/markdown.js';",
+    "import { renderCanonicalHtml } from './projections/html.js';",
+    "import { buildCanonicalPresentation } from './projections/presentation.js';"
+  ]) {
+    renderLocalized = removeImport(renderLocalized, importLine);
+  }
+  const render = namespaceModule(
+    'renderModule',
+    localizeExports(renderLocalized),
+    ['RENDER_FORMATS', 'RENDER_INPUT_KINDS', 'renderConversation'],
+    [
+      'adaptChatGPTRecords',
+      'adaptClaudeRecords',
+      'adaptCodexRecords',
+      'renderCanonicalMarkdown',
+      'renderCanonicalHtml',
+      'buildCanonicalPresentation'
+    ],
+    [
+      'chatgptModule.adaptChatGPTRecords',
+      'unsupportedBrowserProvider',
+      'unsupportedBrowserProvider',
+      'markdownModule.renderCanonicalMarkdown',
+      'htmlModule.renderCanonicalHtml',
+      'presentationModule.buildCanonicalPresentation'
+    ]
+  );
 
   return `// Generated by scripts/build-browser-bundle.mjs. Do not edit directly.\n` +
-    `// Source modules:\n` +
-    `// - src/adapters/chatgpt-base.js\n` +
-    `// - src/adapters/chatgpt.js\n` +
-    `// - src/projections/markdown.js\n` +
+    `// Authoritative source modules are isolated below so helper names cannot collide.\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
     `  'use strict';\n\n` +
+    `  function unsupportedBrowserProvider() {\n` +
+    `    throw new RangeError('This browser artifact adapts ChatGPT provider records only.');\n` +
+    `  }\n\n` +
     `${base}\n\n` +
     `${chatgpt}\n\n` +
     `${markdown}\n\n` +
+    `${style}\n\n` +
+    `${presentation}\n\n` +
+    `${html}\n\n` +
+    `${render}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
-    `    adaptChatGPTRecords,\n` +
-    `    renderCanonicalMarkdown\n` +
+    `    adaptChatGPTRecords: chatgptModule.adaptChatGPTRecords,\n` +
+    `    renderCanonicalMarkdown: markdownModule.renderCanonicalMarkdown,\n` +
+    `    STYLE_ROLES: styleModule.STYLE_ROLES,\n` +
+    `    configureProjectionTheme: styleModule.configureProjectionTheme,\n` +
+    `    getDefaultProjectionTheme: styleModule.getDefaultProjectionTheme,\n` +
+    `    resetProjectionTheme: styleModule.resetProjectionTheme,\n` +
+    `    resolveProjectionTheme: styleModule.resolveProjectionTheme,\n` +
+    `    PRESENTATION_SCHEMA_VERSION: presentationModule.PRESENTATION_SCHEMA_VERSION,\n` +
+    `    buildCanonicalPresentation: presentationModule.buildCanonicalPresentation,\n` +
+    `    markdownToHtml: htmlModule.markdownToHtml,\n` +
+    `    renderCanonicalHtml: htmlModule.renderCanonicalHtml,\n` +
+    `    renderCanonicalStylesheet: htmlModule.renderCanonicalStylesheet,\n` +
+    `    RENDER_FORMATS: renderModule.RENDER_FORMATS,\n` +
+    `    RENDER_INPUT_KINDS: renderModule.RENDER_INPUT_KINDS,\n` +
+    `    renderConversation: renderModule.renderConversation\n` +
     `  });\n` +
     `})(globalThis);\n`;
 }

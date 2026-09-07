@@ -13,7 +13,6 @@ const placeholderDescriptions = [
   'structured value produced by',
   'the value produced by'
 ];
-
 for (const root of roots) {
   if (!fs.existsSync(root)) continue;
   const walk = directory => {
@@ -188,8 +187,9 @@ for (const file of files.sort()) {
   }
 }
 
-if (failures.length) {
-  console.error('Documentation contract failures:\n' + failures.join('\n'));
+const actionableFailures = failures;
+if (actionableFailures.length) {
+  console.error('Documentation contract failures:\n' + actionableFailures.join('\n'));
   process.exit(1);
 }
 console.log(`Documentation audit passed for ${functionCount} named production functions and ${variableCount} top-level variables.`);

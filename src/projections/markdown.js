@@ -1,3 +1,5 @@
+import { presentationUnitId } from './presentation.js';
+
 /**
  * Escapes text for safe insertion into generated HTML fragments.
  *
@@ -37,17 +39,23 @@ function providerLabel(provider) {
 
 
 /**
- * Renders a transcript heading with optional consumer-supplied projection metadata.
+ * Renders the optional consumer-supplied projection metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
- * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
+ * @returns {string} Consumer-specific heading metadata suffix with configured ANSI decoration applied.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
   const metadata = projection.heading_metadata ?? {};
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
+  /**
+   * Applies one optional projection colour to generated heading metadata.
+   *
+   * @param {string} text - Heading-metadata text to decorate.
+   * @param {string} colorName - Projection colour-map key used for the metadata field.
+   * @returns {string} Styled metadata text, or the original text when no colour is configured.
+   */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
     return color ? `${color}${text}${reset}` : text;
@@ -67,6 +75,13 @@ function projectedHeadingMetadataSuffix(event) {
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
+/**
+ * Renders a canonical transcript heading with optional consumer projection decoration.
+ *
+ * @param {Object<string, *>} event - Canonical event supplying projection colours and metadata.
+ * @param {string} label - Canonical Markdown heading label before consumer decoration.
+ * @returns {string} Heading text with configured colour and metadata suffix applied.
+ */
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
@@ -428,10 +443,14 @@ function details(summary, body) {
  */
 function projectedDetails(summary, body, sourceEvents, quoted = false, inlineOpening = false) {
   const events = Array.isArray(sourceEvents) ? sourceEvents : [];
+  const reasoningGroup = events.some(event => event?.kind === 'reasoning_summary');
+  const unitAttributes = reasoningGroup && events.length
+    ? ` data-ai-unit-id="${htmlEscape(presentationUnitId('reasoning_group', events))}" data-ai-boundary="atomic" data-ai-source-event-ids="${htmlEscape(events.map(event => event?.id ?? '').filter(Boolean).join(' '))}" data-ai-source-record-ids="${htmlEscape(events.map(event => event?.source_record_id ?? '').filter(Boolean).join(' '))}" data-ai-source-record-indexes="${htmlEscape(events.map(event => Number.isInteger(event?.source_index) ? event.source_index : '').filter(value => value !== '').join(' '))}"`
+    : '';
   const comments = events.map(event => projectedComment(event, quoted)).filter(Boolean);
   const first = comments.shift() ?? '';
   const summaryLine = `<summary>${summary}</summary>${first ? ` ${first.replace(/^> /, '')}` : ''}`;
-  const opening = inlineOpening ? `<details>${summaryLine}` : `<details>\n${summaryLine}`;
+  const opening = inlineOpening ? `<details${unitAttributes}>${summaryLine}` : `<details${unitAttributes}>\n${summaryLine}`;
   const extra = comments.length ? `\n${comments.join('\n')}` : '';
   return `${opening}${extra}\n\n${body}\n\n</details>`;
 }
@@ -587,7 +606,7 @@ function renderChatGPTCommentarySegment(segment, events) {
       body.push(projectedDetails(
         thoughtSummary(thoughtEvents.length),
         rendered,
-        thoughtEvents,
+        run.map(item => item.event),
         false,
         true
       ));

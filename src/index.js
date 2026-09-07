@@ -12,8 +12,25 @@ export {
 } from './projections/turn-header.js';
 
 export { renderCanonicalMarkdown } from './projections/markdown.js';
+export { projectCanonicalConversation } from './projections/structured.js';
+export {
+  markdownToHtml,
+  renderCanonicalHtml,
+  renderCanonicalStylesheet
+} from './projections/html.js';
+export {
+  PRESENTATION_SCHEMA_VERSION,
+  buildCanonicalPresentation
+} from './projections/presentation.js';
+export {
+  RENDER_FORMATS,
+  RENDER_INPUT_KINDS,
+  renderConversation
+} from './render.js';
 
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
 export { adaptClaudeRecords, adaptClaudeToolEvents } from './adapters/claude-normalized.js';
 export { adaptCodexRecords, adaptCodexToolEvents } from './adapters/codex.js';
+export { adaptInteractiveSessionRecords } from './adapters/session.js';
+export { adaptSpeechSessionRecords } from './adapters/speech-session.js';
