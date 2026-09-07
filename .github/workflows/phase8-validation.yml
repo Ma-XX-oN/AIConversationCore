@@ -1,0 +1,45 @@
+name: Phase 8 validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  phase8:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run core tests
+        run: npm test
+
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
