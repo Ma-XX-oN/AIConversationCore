@@ -3183,8 +3183,11 @@ function buildCanonicalPresentation(events) {
   return presentation;
 }
 
+import { marked } from 'marked';
+
+
 /**
- * Escapes text for safe insertion into generated HTML.
+ * Escapes text for safe insertion into generated structural HTML.
  *
  * @param {*} value - Value to escape.
  * @returns {string} HTML-escaped text.
@@ -3199,14 +3202,17 @@ function htmlEscape(value) {
 }
 
 /**
- * Returns a safe deterministic HTML rendering for Markdown leaves when a caller
- * does not supply a richer Markdown engine.
+ * Renders one canonical Markdown leaf to HTML inside Core.
  *
  * @param {string} markdown - Canonical Markdown leaf content.
- * @returns {string} Escaped leaf content preserving line breaks.
+ * @returns {string} HTML generated from the canonical Markdown content.
  */
-function defaultRenderMarkdown(markdown) {
-  return `<pre class="markdown-source">${htmlEscape(markdown)}</pre>`;
+function renderMarkdown(markdown) {
+  return String(marked.parse(String(markdown ?? ''), {
+    async: false,
+    breaks: false,
+    gfm: true
+  }));
 }
 
 /**
@@ -3269,18 +3275,17 @@ function renderSourceAnchors(node, emittedSourceIndexes) {
 }
 
 /**
- * Renders a Markdown-bearing presentation node.
+ * Renders a Markdown-bearing canonical presentation node.
  *
  * @param {Object<string, *>} node - Canonical presentation node.
- * @param {Function} renderMarkdown - Markdown-leaf renderer supplied to the HTML path.
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @param {string} className - Semantic CSS class for the content wrapper.
- * @returns {string} Canonical structural HTML for the node.
+ * @returns {string} Canonical HTML for the node.
  */
-function renderMarkdownNode(node, renderMarkdown, emittedSourceIndexes, className = 'presentation-content') {
+function renderMarkdownNode(node, emittedSourceIndexes, className = 'presentation-content') {
   const anchors = renderSourceAnchors(node, emittedSourceIndexes);
   const markdown = nodeMarkdown(node);
-  const body = markdown ? renderMarkdown(markdown, node) : '';
+  const body = markdown ? renderMarkdown(markdown) : '';
   return `<div class="${className}" data-presentation-id="${htmlEscape(node?.id ?? '')}">${anchors}${body}</div>`;
 }
 
@@ -3361,15 +3366,14 @@ function renderAttachments(node, emittedSourceIndexes) {
  * Renders semantic User context as a nested blockquote/details disclosure.
  *
  * @param {Object<string, *>} node - Canonical User-context presentation node.
- * @param {Function} renderMarkdown - Markdown-leaf renderer supplied to the HTML path.
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical User-context HTML.
  */
-function renderUserContext(node, renderMarkdown, emittedSourceIndexes) {
+function renderUserContext(node, emittedSourceIndexes) {
   const block = (node?.blocks ?? []).find(item => item?.type === 'user_context') ?? {};
   const summary = block.summary ?? '# Context from my IDE setup:';
   const anchors = renderSourceAnchors(node, emittedSourceIndexes);
-  const body = block.text ? renderMarkdown(String(block.text), node) : '';
+  const body = block.text ? renderMarkdown(String(block.text)) : '';
   return `<blockquote class="user-context"><details class="user-context-details" ` +
     `data-presentation-id="${htmlEscape(node?.id ?? '')}">` +
     `<summary>${htmlEscape(summary)}</summary>${anchors}${body}</details></blockquote>`;
@@ -3379,15 +3383,14 @@ function renderUserContext(node, renderMarkdown, emittedSourceIndexes) {
  * Renders one canonical subagent content node.
  *
  * @param {Object<string, *>} node - Canonical subagent content node.
- * @param {Function} renderMarkdown - Markdown-leaf renderer supplied to the HTML path.
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical subagent HTML.
  */
-function renderSubagentContent(node, renderMarkdown, emittedSourceIndexes) {
+function renderSubagentContent(node, emittedSourceIndexes) {
   const anchors = renderSourceAnchors(node, emittedSourceIndexes);
   const block = node?.block ?? {};
   const markdown = block.output ?? block.text ?? block.description ?? '';
-  const body = markdown ? renderMarkdown(String(markdown), node) : '';
+  const body = markdown ? renderMarkdown(String(markdown)) : '';
   return `<div class="subagent-content" data-presentation-id="${htmlEscape(node?.id ?? '')}">${anchors}${body}</div>`;
 }
 
@@ -3395,16 +3398,15 @@ function renderSubagentContent(node, renderMarkdown, emittedSourceIndexes) {
  * Renders one reasoning group and its ordered canonical children.
  *
  * @param {Object<string, *>} node - Canonical reasoning-group node.
- * @param {Function} renderMarkdown - Markdown-leaf renderer supplied to the HTML path.
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical reasoning-group HTML.
  */
-function renderReasoningGroup(node, renderMarkdown, emittedSourceIndexes) {
+function renderReasoningGroup(node, emittedSourceIndexes) {
   const children = (node?.children ?? []).map(child => {
     if (child?.kind === 'reasoning') {
-      return renderMarkdownNode(child, renderMarkdown, emittedSourceIndexes, 'thought');
+      return renderMarkdownNode(child, emittedSourceIndexes, 'thought');
     }
-    return renderNode(child, renderMarkdown, emittedSourceIndexes);
+    return renderNode(child, emittedSourceIndexes);
   }).join('');
   return `<details class="reasoning" data-presentation-id="${htmlEscape(node?.id ?? '')}">` +
     `<summary>${htmlEscape(thoughtSummary(node?.thought_count ?? 0))}</summary>` +
@@ -3415,31 +3417,30 @@ function renderReasoningGroup(node, renderMarkdown, emittedSourceIndexes) {
  * Renders one canonical presentation node according to its normalized kind.
  *
  * @param {Object<string, *>} node - Canonical presentation node.
- * @param {Function} renderMarkdown - Markdown-leaf renderer supplied to the HTML path.
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical structural HTML for the node.
  */
-function renderNode(node, renderMarkdown, emittedSourceIndexes) {
+function renderNode(node, emittedSourceIndexes) {
   switch (node?.kind) {
     case 'reasoning_group':
-      return renderReasoningGroup(node, renderMarkdown, emittedSourceIndexes);
+      return renderReasoningGroup(node, emittedSourceIndexes);
     case 'tool':
     case 'interaction':
       return renderTool(node, emittedSourceIndexes);
     case 'attachments':
       return renderAttachments(node, emittedSourceIndexes);
     case 'user_context':
-      return renderUserContext(node, renderMarkdown, emittedSourceIndexes);
+      return renderUserContext(node, emittedSourceIndexes);
     case 'reasoning':
-      return renderMarkdownNode(node, renderMarkdown, emittedSourceIndexes, 'thought');
+      return renderMarkdownNode(node, emittedSourceIndexes, 'thought');
     case 'markdown':
-      return renderMarkdownNode(node, renderMarkdown, emittedSourceIndexes, 'presentation-content');
+      return renderMarkdownNode(node, emittedSourceIndexes, 'presentation-content');
     case 'commentary':
-      return renderMarkdownNode(node, renderMarkdown, emittedSourceIndexes, 'presentation-content commentary');
+      return renderMarkdownNode(node, emittedSourceIndexes, 'presentation-content commentary');
     case 'notice':
-      return renderMarkdownNode(node, renderMarkdown, emittedSourceIndexes, 'presentation-content notice');
+      return renderMarkdownNode(node, emittedSourceIndexes, 'presentation-content notice');
     case 'subagent_content':
-      return renderSubagentContent(node, renderMarkdown, emittedSourceIndexes);
+      return renderSubagentContent(node, emittedSourceIndexes);
     default:
       throw new TypeError(`Unsupported canonical presentation node kind: ${node?.kind ?? '<missing>'}`);
   }
@@ -3449,14 +3450,13 @@ function renderNode(node, renderMarkdown, emittedSourceIndexes) {
  * Renders one canonical turn from the provider-independent presentation tree.
  *
  * @param {Object<string, *>} turn - Canonical presentation turn.
- * @param {Function} renderMarkdown - Markdown-leaf renderer supplied to the HTML path.
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical turn HTML.
  */
-function renderTurn(turn, renderMarkdown, emittedSourceIndexes) {
+function renderTurn(turn, emittedSourceIndexes) {
   const label = turn?.actor?.label || (turn?.actor?.role === 'user' ? 'User' : 'Agent');
   const children = (turn?.children ?? [])
-    .map(node => renderNode(node, renderMarkdown, emittedSourceIndexes))
+    .map(node => renderNode(node, emittedSourceIndexes))
     .join('');
   return `<section class="transcript-turn" data-presentation-id="${htmlEscape(turn?.id ?? '')}">` +
     `<h2>${htmlEscape(label)}</h2>` +
@@ -3464,27 +3464,21 @@ function renderTurn(turn, renderMarkdown, emittedSourceIndexes) {
 }
 
 /**
- * Renders canonical HTML directly from normalized canonical events.
+ * Renders complete canonical HTML directly from normalized canonical events.
  *
- * Structural semantics are owned entirely by AIConversationCore. Callers may
- * supply only the leaf Markdown-to-HTML conversion used inside already-defined
- * canonical structural nodes; they must not reinterpret presentation semantics.
+ * All semantic structure and Markdown-to-HTML conversion are owned by
+ * AIConversationCore. Downstream consumers integrate this completed HTML rather
+ * than interpreting presentation nodes or provider-specific markers.
  *
  * @param {Array<Object<string, *>>} events - Ordered normalized canonical events.
- * @param {Object<string, *>} [options] - HTML rendering options.
- * @param {Function} [options.renderMarkdown] - Markdown-leaf renderer receiving `(markdown, node)`.
- * @returns {string} Complete canonical structural HTML transcript.
+ * @returns {string} Complete canonical HTML transcript.
  */
-function renderCanonicalHtml(events, options = {}) {
+function renderCanonicalHtml(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
-  const renderMarkdown = options.renderMarkdown ?? defaultRenderMarkdown;
-  if (typeof renderMarkdown !== 'function') {
-    throw new TypeError('options.renderMarkdown must be a function when supplied.');
-  }
   const presentation = buildCanonicalPresentation(events);
   const emittedSourceIndexes = new Set();
   return (presentation.turns ?? [])
-    .map(turn => renderTurn(turn, renderMarkdown, emittedSourceIndexes))
+    .map(turn => renderTurn(turn, emittedSourceIndexes))
     .join('');
 }
 
