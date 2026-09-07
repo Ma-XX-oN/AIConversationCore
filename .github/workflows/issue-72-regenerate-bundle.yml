@@ -1,0 +1,41 @@
+name: Issue 72 regenerate browser bundle
+
+on:
+  push:
+    branches:
+      - feature/canonical-presentation-html
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: feature/canonical-presentation-html
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Regenerate browser bundle
+        run: node scripts/build-browser-bundle.mjs
+
+      - name: Commit generated bundle if changed
+        run: |
+          if git diff --quiet -- package-lock.json dist/aiconversationcore.chatgpt.browser.js; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json dist/aiconversationcore.chatgpt.browser.js
+          git commit -m "build: regenerate browser bundle for issue 72"
+          git push origin HEAD:feature/canonical-presentation-html
