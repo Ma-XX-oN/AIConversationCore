@@ -11,19 +11,35 @@ real semantic that cannot be represented by the canonical model. Equivalent
 canonical semantics use the same presentation rule for ChatGPT, Claude, Codex,
 subagents, and future providers.
 
+Once provider input has been normalized, there are exactly two canonical semantic
+rendering paths:
+
+1. canonical Markdown via `renderCanonicalMarkdown()`; and
+2. canonical HTML via `renderCanonicalHtml()`.
+
 The canonical flow is:
 
 ```text
 provider records
   -> canonical events/content
-  -> canonical presentation tree
-  -> output-specific serialization/projection
+  -> canonical presentation semantics
+  -> canonical Markdown
+  -> canonical HTML
 ```
 
-Markdown is an output format, not an interchange format between canonical
-semantics and HTML. HTML consumers must not parse a complete generated Markdown
-transcript to rediscover headings, response containers, reasoning groups, tools,
-or source-record boundaries.
+The final two arrows above are independent output paths from the same normalized
+semantics; HTML is not produced by reparsing the complete canonical Markdown
+transcript. Core owns the semantic rendering decisions for both outputs.
+
+Downstream consumers must not reinterpret provider-specific markers, duplicate
+presentation grouping rules, or implement a parallel semantic renderer. They
+integrate one of the completed canonical outputs. UI-specific styling, navigation,
+virtualization, search, speech mapping, and similar application concerns remain
+consumer responsibilities, but they must not change transcript semantics.
+
+For every Core rendering change, the same normalized fixture must be exercised
+through both canonical renderers. Both outputs must be verified before the Core
+change is considered complete.
 
 ## Source ownership and loading
 
@@ -46,9 +62,8 @@ do not duplicate its interpretation.
 Codex rollback history is hidden by default. Passing
 `options.includeRolledBackTurns = true` exposes historical revisions. Revision
 state (`original`, `superseded`, `edited`) and execution state (`aborted`) are
-independent canonical facts and are projected consistently into Markdown and the
-structured presentation tree. Recorded Codex IDE context is transcript content and
-must be preserved verbatim.
+independent canonical facts and are projected consistently into Markdown and HTML.
+Recorded Codex IDE context is transcript content and must be preserved verbatim.
 
 ## Turn structure
 
@@ -93,7 +108,7 @@ reasoning D
 visible response
 ```
 
-produces:
+produces canonical HTML equivalent to:
 
 ```html
 <h2>AgentName ...</h2>
@@ -124,21 +139,31 @@ documented presentation policy requires one.
 Paragraph boundaries inside one reasoning record remain paragraphs inside that
 one thought. They do not create additional thoughts or response containers.
 
-## Markdown content inside structural HTML
+## Markdown content inside canonical HTML
 
-User/Agent text bodies are Markdown content. HTML output converts each Markdown
-content node to an HTML fragment, but structural HTML is produced from the
-presentation tree itself.
+User/Agent text bodies may contain Markdown semantics. The canonical HTML renderer
+converts those Markdown leaves to HTML inside Core while also emitting the
+canonical structural containers.
 
 Correct:
 
 ```text
-presentation tree
-  -> emit structural <h2>/<blockquote>/<details>/tool containers directly
-  -> convert each Markdown content node to an HTML fragment
+normalized canonical events
+  -> Core presentation semantics
+  -> Core emits structural <h2>/<blockquote>/<details>/tool containers
+  -> Core converts Markdown leaves to HTML
+  -> completed canonical HTML
 ```
 
 Incorrect:
+
+```text
+normalized canonical events
+  -> downstream consumer rebuilds presentation structure
+  -> downstream consumer converts Markdown leaves with its own semantic renderer
+```
+
+Also incorrect:
 
 ```text
 canonical events
@@ -189,12 +214,12 @@ implementation differences.
 
 ## Source identity and interactive consumers
 
-Presentation nodes retain stable source identity and ordered source aliases.
-Interactive consumers use those declared identities for virtualization, search,
-speech, and highlighting. They must not relocate provenance comments through
-Markdown or infer semantic boundaries from rendered `<details>` tags.
+Canonical HTML retains stable source identity required by interactive consumers.
+Consumers may use those declared identities for virtualization, search, speech,
+highlighting, and navigation. They must not derive transcript semantics from
+provider records or recreate canonical presentation grouping.
 
-The presentation model must support at least:
+The internal presentation model supports at least:
 
 - turn identity and actor;
 - ordered content nodes;
@@ -205,13 +230,19 @@ The presentation model must support at least:
 - stable source record/block identities; and
 - declared atomic presentation boundaries.
 
+That internal representation exists so the two Core serializers share semantics;
+it is not permission for downstream consumers to implement a third semantic
+rendering path.
+
 ## Output projections
 
-HTML and Markdown are independent serializers of the same presentation tree.
-Neither serializer owns grouping semantics.
+Canonical Markdown and canonical HTML are the two Core-owned semantic serializers
+of the same normalized semantics. Neither downstream caller owns grouping or
+provider interpretation.
 
-AgentPanelSpeaker should consume the presentation tree and render structural HTML
-directly, converting only Markdown content nodes with its Markdown engine.
-DownloadConversation may continue to use canonical Markdown for archival export.
-Future browser/desktop readers should consume the same presentation structure for
-interactive HTML rather than reparsing canonical Markdown.
+`DownloadConversation` may consume canonical Markdown for archival export.
+`AgentPanelSpeaker` and browser/desktop readers should consume completed canonical
+HTML and add only application integration such as styling, DOM lifecycle,
+virtualization, navigation, search, speech, and highlighting. They must not render
+presentation-node semantics themselves or reparse canonical Markdown to recover
+those semantics.
