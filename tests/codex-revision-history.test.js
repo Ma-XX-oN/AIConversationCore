@@ -90,8 +90,8 @@ test('Codex hides rolled-back revisions by default and labels the active replace
   assert.match(markdown, /Model changed from GPT-5\.4 to GPT-5\.5/);
 });
 
-test('Codex includeRolledBackTurns exposes original, superseded and edited revisions', () => {
-  const events = adaptCodexRecords(revisionFixture(), { includeRolledBackTurns: true });
+test('Codex includeRolledBackTurns exposes original, superseded and edited revisions at projection time', () => {
+  const events = adaptCodexRecords(revisionFixture());
   const users = events.filter(event => event.role === 'user' && event.kind === 'message');
 
   assert.deepEqual(users.map(event => event.revision_status), [
@@ -107,7 +107,7 @@ test('Codex includeRolledBackTurns exposes original, superseded and edited revis
     'completed'
   ]);
 
-  const markdown = renderCanonicalMarkdown(events);
+  const markdown = renderCanonicalMarkdown(events, { includeRolledBackTurns: true });
   assert.match(markdown, /## User \(original, aborted\)[\s\S]*What is an apple/);
   assert.match(markdown, /## User \(superseded\)[\s\S]*What is an tree\?/);
   assert.match(markdown, /## User \(superseded\)[\s\S]*What is an pool\?/);
@@ -127,7 +127,7 @@ test('Codex rollback count is respected as a count rather than hard-coded to one
     turnContext('gpt-5.5'),
     user('Replacement turn', '2026-09-06T20:03:01.000Z')
   ];
-  const events = adaptCodexRecords(records, { includeRolledBackTurns: true });
+  const events = adaptCodexRecords(records);
   const users = events.filter(event => event.role === 'user' && event.kind === 'message');
 
   assert.deepEqual(users.map(event => event.revision_status), ['original', 'superseded', 'edited']);
