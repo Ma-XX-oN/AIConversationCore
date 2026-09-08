@@ -23,6 +23,9 @@ function turnRevisionProjection(turn, eventsById) {
   return {
     visible,
     revision_status: revisionEvent?.revision_status ?? null,
+    revision_depth: Number.isInteger(revisionEvent?.revision_depth)
+      ? revisionEvent.revision_depth
+      : null,
     historical: revisionEvent ? isHistoricalRevision(revisionEvent) : false
   };
 }
@@ -62,11 +65,14 @@ export function renderCanonicalHtml(events, options = {}) {
       const statusAttribute = status
         ? ` data-revision-status="${status}"`
         : '';
+      const depthAttribute = Number.isInteger(projection.revision_depth)
+        ? ` data-revision-depth="${projection.revision_depth}"`
+        : '';
       const hiddenAttribute = projection.historical && !projection.visible
         ? ' hidden'
         : '';
       return `<section class="${className}" data-presentation-id="${id}"` +
-        `${statusAttribute}${hiddenAttribute}>`;
+        `${statusAttribute}${depthAttribute}${hiddenAttribute}>`;
     }
   );
 }
