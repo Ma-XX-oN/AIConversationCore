@@ -80,7 +80,8 @@ test('loadConversationSources reads caller-supplied Codex files and owns JSONL p
     assert.equal(loaded.session_metadata.title_source, 'codex-session-index');
     assert.equal(loaded.records.length, records().length);
     assert.doesNotMatch(loaded.projection.markdown, /Original prompt/);
-    assert.match(loaded.projection.markdown, /## User \(edited\)/);
+    assert.match(loaded.projection.markdown, /## User \(edited 1\)/);
+    assert.doesNotMatch(loaded.projection.markdown, /\(edited 1\) \(edited 1\)/);
     assert.match(loaded.projection.markdown, /# Context from my IDE setup:/);
     assert.match(loaded.projection.markdown, /Edited prompt/);
   } finally {
@@ -120,11 +121,13 @@ test('loadConversationSources accepts in-memory text and exposes rolled-back his
     options: { includeRolledBackTurns: true }
   });
 
-  assert.match(loaded.projection.markdown, /## User \(original, aborted\)[\s\S]*Original prompt/);
-  assert.match(loaded.projection.markdown, /## User \(edited\)/);
+  assert.match(loaded.projection.markdown, /## User \(original 0, aborted\)[\s\S]*Original prompt/);
+  assert.match(loaded.projection.markdown, /## User \(edited 1\)/);
+  assert.doesNotMatch(loaded.projection.markdown, /\(original 0, aborted\) \(original 0, aborted\)/);
+  assert.doesNotMatch(loaded.projection.markdown, /\(edited 1\) \(edited 1\)/);
 });
 
-test('structured projection carries the same revision and aborted status as Markdown', () => {
+test('structured projection carries the same revision depth and aborted status as Markdown', () => {
   const events = adaptCodexRecords(records());
   const projection = projectCanonicalConversation(events, {
     includeRolledBackTurns: true
@@ -133,15 +136,17 @@ test('structured projection carries the same revision and aborted status as Mark
     turn?.actor?.role === 'user');
 
   assert.deepEqual(userTurns.map(turn => turn.actor.label), [
-    'User (original, aborted)',
-    'User (edited)'
+    'User (original 0, aborted)',
+    'User (edited 1)'
   ]);
   assert.equal(userTurns[0].actor.revision_status, 'original');
+  assert.equal(userTurns[0].actor.revision_depth, 0);
   assert.equal(userTurns[0].actor.execution_status, 'aborted');
   assert.equal(userTurns[1].actor.revision_status, 'edited');
+  assert.equal(userTurns[1].actor.revision_depth, 1);
   assert.equal(userTurns[1].actor.execution_status, 'completed');
-  assert.match(projection.markdown, /## User \(original, aborted\)/);
-  assert.match(projection.markdown, /## User \(edited\)/);
+  assert.match(projection.markdown, /## User \(original 0, aborted\)/);
+  assert.match(projection.markdown, /## User \(edited 1\)/);
 });
 
 test('unchanged Codex model does not emit a duplicate model-change notice', () => {
