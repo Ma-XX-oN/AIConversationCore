@@ -3,8 +3,11 @@ import test from 'node:test';
 
 import {
   adaptCodexRecords,
+  buildCanonicalPresentation,
   createCanonicalConversationSession,
-  projectCanonicalConversation
+  projectCanonicalConversation,
+  renderCanonicalHtml,
+  renderCanonicalMarkdown
 } from '../src/index.js';
 
 function revisionRecords() {
@@ -135,4 +138,58 @@ test('revision heading suffix is applied consistently to User and Assistant gene
       ' (edited 3)'
     ]
   );
+});
+
+test('canonical Markdown labels both User and Codex turns with matching revision depth', () => {
+  const events = adaptCodexRecords(revisionRecords());
+  const markdown = renderCanonicalMarkdown(events, { includeRolledBackTurns: true });
+
+  for (const expected of [
+    '## User (original 0)',
+    '## Codex (original 0)',
+    '## User (superseded 1)',
+    '## Codex (superseded 1)',
+    '## User (superseded 2)',
+    '## Codex (superseded 2)',
+    '## User (edited 3)',
+    '## Codex (edited 3)'
+  ]) {
+    assert.match(markdown, new RegExp(expected.replace(/[()]/g, '\\$&')));
+  }
+});
+
+test('canonical presentation and HTML expose matching status/depth without dropping hidden history', () => {
+  const events = adaptCodexRecords(revisionRecords());
+  const projected = projectCanonicalConversation(events);
+  const presentation = buildCanonicalPresentation(projected.events);
+  const revisionTurns = presentation.turns.filter(turn =>
+    turn?.actor?.revision_status && turn.actor.revision_status !== 'normal');
+
+  assert.deepEqual(
+    revisionTurns.map(turn => [
+      turn.actor.role,
+      turn.actor.revision_status,
+      turn.actor.revision_depth,
+      turn.actor.label
+    ]),
+    [
+      ['user', 'original', 0, 'User (original 0)'],
+      ['assistant', 'original', 0, 'Codex (original 0)'],
+      ['user', 'superseded', 1, 'User (superseded 1)'],
+      ['assistant', 'superseded', 1, 'Codex (superseded 1)'],
+      ['user', 'superseded', 2, 'User (superseded 2)'],
+      ['assistant', 'superseded', 2, 'Codex (superseded 2)'],
+      ['user', 'edited', 3, 'User (edited 3)'],
+      ['assistant', 'edited', 3, 'Codex (edited 3)']
+    ]
+  );
+
+  const html = renderCanonicalHtml(events);
+  assert.match(html, /<h2>User \(original 0\)<\/h2>/);
+  assert.match(html, /<h2>Codex \(original 0\)<\/h2>/);
+  assert.match(html, /data-revision-status="original" data-revision-depth="0" hidden/);
+  assert.match(html, /data-revision-status="superseded" data-revision-depth="1" hidden/);
+  assert.match(html, /<h2>User \(edited 3\)<\/h2>/);
+  assert.match(html, /<h2>Codex \(edited 3\)<\/h2>/);
+  assert.match(html, /data-revision-status="edited" data-revision-depth="3"/);
 });
