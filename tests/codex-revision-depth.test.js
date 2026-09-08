@@ -186,17 +186,18 @@ test('canonical presentation and HTML expose matching status/depth without dropp
   assert.deepEqual(
     revisionTurns.map(turn => [
       turn.projection?.visible,
-      turn.projection?.revision_history_controlled
+      turn.projection?.revision_history_controlled,
+      turn.projection?.historical_revision
     ]),
     [
-      [false, true],
-      [false, true],
-      [false, true],
-      [false, true],
-      [false, true],
-      [false, true],
-      [true, true],
-      [true, true]
+      [false, true, true],
+      [false, true, true],
+      [false, true, true],
+      [false, true, true],
+      [false, true, true],
+      [false, true, true],
+      [true, true, false],
+      [true, true, false]
     ]
   );
 
