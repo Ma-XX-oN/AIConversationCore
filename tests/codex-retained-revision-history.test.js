@@ -3,7 +3,8 @@ import test from 'node:test';
 
 import {
   adaptCodexRecords,
-  projectCanonicalConversation
+  projectCanonicalConversation,
+  renderCanonicalHtml
 } from '../src/index.js';
 
 function turnContext(model) {
@@ -60,6 +61,11 @@ function eventIdentity(event) {
   };
 }
 
+function userEvents(projection) {
+  return projection.events.filter(event =>
+    event.role === 'user' && event.kind === 'message');
+}
+
 test('Codex canonical normalization retains the same revision inventory regardless of visibility preference', () => {
   const records = retainedHistoryFixture();
   const defaultEvents = adaptCodexRecords(records);
@@ -78,7 +84,7 @@ test('Codex canonical normalization retains the same revision inventory regardle
     historicalPreferenceEvents.map(eventIdentity));
 });
 
-test('Codex visibility is selected at projection time from one retained canonical inventory', () => {
+test('Codex projection changes effective visibility without removing or renumbering canonical events', () => {
   const canonicalEvents = adaptCodexRecords(retainedHistoryFixture(), {
     includeRolledBackTurns: true
   });
@@ -90,17 +96,45 @@ test('Codex visibility is selected at projection time from one retained canonica
     includeRolledBackTurns: true
   });
 
-  const hiddenUsers = hiddenProjection.events.filter(event =>
-    event.role === 'user' && event.kind === 'message');
-  const historicalUsers = historicalProjection.events.filter(event =>
-    event.role === 'user' && event.kind === 'message');
+  assert.deepEqual(
+    hiddenProjection.events.map(event => event.id),
+    historicalProjection.events.map(event => event.id));
 
+  const hiddenUsers = userEvents(hiddenProjection);
+  const historicalUsers = userEvents(historicalProjection);
   assert.deepEqual(hiddenUsers.map(event => event.blocks[0]?.text), [
+    'Original question',
     'Edited question'
   ]);
   assert.deepEqual(historicalUsers.map(event => event.blocks[0]?.text), [
     'Original question',
     'Edited question'
   ]);
-  assert.equal(hiddenUsers[0].id, historicalUsers[1].id);
+  assert.deepEqual(hiddenUsers.map(event => event.projection?.visible), [false, true]);
+  assert.deepEqual(historicalUsers.map(event => event.projection?.visible), [true, true]);
+  assert.equal(hiddenUsers[0].id, historicalUsers[0].id);
+  assert.equal(hiddenUsers[1].id, historicalUsers[1].id);
+});
+
+test('canonical HTML retains historical turns with semantic revision classes and toggles only hidden state', () => {
+  const canonicalEvents = adaptCodexRecords(retainedHistoryFixture(), {
+    includeRolledBackTurns: true
+  });
+  const hiddenHtml = renderCanonicalHtml(canonicalEvents, {
+    includeRolledBackTurns: false
+  });
+  const historicalHtml = renderCanonicalHtml(canonicalEvents, {
+    includeRolledBackTurns: true
+  });
+
+  assert.match(hiddenHtml, /Original question/);
+  assert.match(hiddenHtml, /Original answer/);
+  assert.match(hiddenHtml,
+    /<section class="transcript-turn revision-original"[^>]*data-revision-status="original"[^>]*hidden[^>]*>[\s\S]*?Original question/);
+  assert.match(hiddenHtml,
+    /<section class="transcript-turn revision-edited"[^>]*data-revision-status="edited"[^>]*>[\s\S]*?Edited question/);
+
+  assert.match(historicalHtml,
+    /<section class="transcript-turn revision-original"[^>]*data-revision-status="original"(?![^>]*\bhidden\b)[^>]*>[\s\S]*?Original question/);
+  assert.match(historicalHtml, /Edited question/);
 });
