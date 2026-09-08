@@ -34,6 +34,16 @@ function interactionHeadingSuffix(interaction) {
 }
 
 /**
+ * Formats one provider model identifier for a user-visible model-change notice.
+ *
+ * @param {*} value - Provider model identifier.
+ * @returns {string} Display model label.
+ */
+function modelLabel(value) {
+  return String(value ?? '').replace(/^gpt-/i, 'GPT-');
+}
+
+/**
  * Creates the canonical model-change notice emitted when a replacement Codex
  * turn changes model relative to the rolled-back revision it replaces.
  *
@@ -44,7 +54,6 @@ function interactionHeadingSuffix(interaction) {
  * @returns {Object<string, *>} Canonical model-change notice.
  */
 function modelChangeEvent(record, sourceIndex, previousModel, currentModel) {
-  const modelLabel = value => String(value ?? '').replace(/^gpt-/i, 'GPT-');
   const source = {
     provider: 'codex',
     record_id: null,
