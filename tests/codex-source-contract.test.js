@@ -5,10 +5,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  adaptCodexRecords,
   loadConversationSources,
   projectCanonicalConversation
 } from '../src/index.js';
-import { adaptCodexRecords } from '../src/adapters/codex.js';
 
 function jsonl(records) {
   return records.map(record => JSON.stringify(record)).join('\n') + '\n';
@@ -125,8 +125,10 @@ test('loadConversationSources accepts in-memory text and exposes rolled-back his
 });
 
 test('structured projection carries the same revision and aborted status as Markdown', () => {
-  const events = adaptCodexRecords(records(), { includeRolledBackTurns: true });
-  const projection = projectCanonicalConversation(events);
+  const events = adaptCodexRecords(records());
+  const projection = projectCanonicalConversation(events, {
+    includeRolledBackTurns: true
+  });
   const userTurns = projection.presentation.tree.turns.filter(turn =>
     turn?.actor?.role === 'user');
 
@@ -149,6 +151,6 @@ test('unchanged Codex model does not emit a duplicate model-change notice', () =
     }
     return record;
   });
-  const events = adaptCodexRecords(sameModel, { includeRolledBackTurns: true });
+  const events = adaptCodexRecords(sameModel);
   assert.equal(events.filter(event => event.content_type === 'model_change').length, 0);
 });
