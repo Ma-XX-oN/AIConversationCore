@@ -1,6 +1,6 @@
 import { adaptChatGPTRecords } from '../adapters/chatgpt.js';
 import { adaptClaudeRecords } from '../adapters/claude-normalized.js';
-import { adaptCodexRecords } from '../adapters/codex-retained.js';
+import { adaptSpeechSessionRecords } from '../adapters/speech-session-normalized.js';
 import { renderCanonicalHtml } from '../projections/html-visibility.js';
 import { renderCanonicalMarkdown } from '../projections/markdown-visibility.js';
 import { projectCanonicalConversation } from '../projections/structured-visibility.js';
@@ -9,12 +9,18 @@ import { projectCanonicalConversation } from '../projections/structured-visibili
  * Adapts one complete provider record inventory exactly once for a retained
  * canonical session.
  *
+ * Codex is normalized through the established interactive speech-session seam
+ * with all User Context retained. Presentation-time options can then change
+ * speech eligibility without returning to provider records.
+ *
  * @param {string} provider - Canonical provider identifier.
  * @param {Array<Object<string, *>>} records - Ordered provider records.
  * @returns {Array<Object<string, *>>} Complete canonical event inventory.
  */
 function normalizeInitialEvents(provider, records) {
-  if (provider === 'codex') return adaptCodexRecords(records);
+  if (provider === 'codex') {
+    return adaptSpeechSessionRecords(provider, records, { includeUserContext: true });
+  }
   if (provider === 'claude') return adaptClaudeRecords(records);
   if (provider === 'chatgpt') return adaptChatGPTRecords(records);
   throw new Error(`Unsupported provider: ${provider}`);
@@ -217,14 +223,48 @@ function applyTrackedRevision(event, tracker) {
 }
 
 /**
- * Normalizes only newly appended Codex records while preserving their global
- * source indexes.
+ * Applies speech-selection options to already-normalized canonical blocks.
  *
- * A sparse array is intentional: JavaScript `forEach` skips holes, so the legacy
- * record adapter visits only the appended records while still observing their
- * stable absolute indexes. No previously seen provider record is reread.
- * Revision metadata that depends on pre-existing interaction state is reapplied
- * from the retained tracker afterward.
+ * User/IDE context remains in the canonical inventory at all times. This clone
+ * changes only projection metadata so speech consumers can toggle eligibility
+ * without provider adaptation or canonical identity changes.
+ *
+ * @param {Array<Object<string, *>>} events - Retained canonical events.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {Array<Object<string, *>>} Projection-local event clones.
+ */
+function applySpeechSelection(events, options) {
+  const includeUserContext = options?.includeUserContext === true;
+  return events.map(event => {
+    if (event?.provider !== 'codex' || event?.kind !== 'message' || event?.role !== 'user') {
+      return event;
+    }
+    let changed = false;
+    const blocks = (event.blocks ?? []).map(block => {
+      if (block?.type !== 'user_context') return block;
+      changed = true;
+      return {
+        ...block,
+        speech: {
+          ...(block?.speech ?? {}),
+          eligible: includeUserContext,
+          voice_role: 'user_context'
+        }
+      };
+    });
+    return changed ? { ...event, blocks } : event;
+  });
+}
+
+/**
+ * Normalizes only newly appended Codex records while preserving their global
+ * source indexes and interactive/speech semantics.
+ *
+ * A sparse array is intentional: JavaScript `forEach` skips holes, so the
+ * established interactive adapter visits only the appended records while still
+ * observing their stable absolute indexes. No previously seen provider record
+ * is reread. User Context is retained as eligible in canonical session state;
+ * later projections can disable it without adapting again.
  *
  * @param {number} firstSourceIndex - Absolute source index of the first new record.
  * @param {Array<Object<string, *>>} records - Newly appended Codex records.
@@ -235,7 +275,7 @@ function normalizeAppendedCodexRecords(firstSourceIndex, records) {
   records.forEach((record, offset) => {
     sparse[firstSourceIndex + offset] = record;
   });
-  return adaptCodexRecords(sparse);
+  return adaptSpeechSessionRecords('codex', sparse, { includeUserContext: true });
 }
 
 /**
@@ -292,14 +332,14 @@ class CanonicalConversationSession {
   }
 
   /**
-   * Projects the retained canonical inventory with presentation-time options.
+   * Projects the retained canonical inventory with presentation/speech options.
    *
    * @param {Object<string, *>} options - Projection options.
    * @returns {Object<string, *>} Structured canonical projection.
    */
   project(options = {}) {
     this._projectionCount += 1;
-    return projectCanonicalConversation(this._events, options);
+    return projectCanonicalConversation(applySpeechSelection(this._events, options), options);
   }
 
   /**
