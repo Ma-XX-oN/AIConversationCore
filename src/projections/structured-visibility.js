@@ -1,4 +1,3 @@
-import { renderCanonicalMarkdown } from './markdown-visibility.js';
 import { projectRevisionVisibility } from './revision-visibility.js';
 import { projectCanonicalConversation as projectBaseConversation } from './structured.js';
 
@@ -33,6 +32,9 @@ function nodeProjection(node, eventsById) {
  * @returns {Object<string, *>} Presentation wrapper with visibility metadata.
  */
 function annotatePresentation(presentation, events) {
+  if (!events.some(event => event?.projection?.visible === false)) {
+    return presentation;
+  }
   const eventsById = new Map(events.map(event => [event?.id, event]));
 
   /**
@@ -63,12 +65,29 @@ function annotatePresentation(presentation, events) {
 }
 
 /**
+ * Returns the canonical Markdown projection for the current effective
+ * visibility while preserving the base structured renderer's provenance/header
+ * enrichment.
+ *
+ * @param {Array<Object<string, *>>} projectedEvents - Full projected inventory.
+ * @param {Object<string, *>} fullResult - Base projection of the full inventory.
+ * @returns {string} Markdown for effectively visible events.
+ */
+function visibleMarkdown(projectedEvents, fullResult) {
+  const visibleEvents = projectedEvents.filter(event =>
+    event?.projection?.visible !== false);
+  if (visibleEvents.length === projectedEvents.length) return fullResult.markdown;
+  return projectBaseConversation(visibleEvents).markdown;
+}
+
+/**
  * Projects a complete canonical event inventory for interactive consumers.
  *
  * Visibility changes annotate the same canonical events and presentation nodes;
  * they never remove or renumber them.  This preserves stable speech, search,
  * highlighting, and virtualization identities while allowing downstream UI to
- * hide/show historical revisions cheaply.
+ * hide/show historical revisions cheaply. Markdown remains a serialization of
+ * the effectively visible projection and therefore omits hidden revisions.
  *
  * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
  * @param {Object<string, *>} options - Projection options.
@@ -77,6 +96,9 @@ function annotatePresentation(presentation, events) {
 export function projectCanonicalConversation(events, options = {}) {
   const projectedEvents = projectRevisionVisibility(events, options);
   const result = projectBaseConversation(projectedEvents);
+  const hasRevisionProjection = projectedEvents !== events;
+  if (!hasRevisionProjection) return result;
+
   return {
     ...result,
     events: projectedEvents,
@@ -84,6 +106,6 @@ export function projectCanonicalConversation(events, options = {}) {
     projection_options: {
       include_rolled_back_turns: options?.includeRolledBackTurns === true
     },
-    markdown: renderCanonicalMarkdown(events, options)
+    markdown: visibleMarkdown(projectedEvents, result)
   };
 }
