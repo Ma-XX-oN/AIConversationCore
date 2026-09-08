@@ -85,8 +85,8 @@ test('Codex hides rolled-back revisions by default and labels the active replace
   assert.doesNotMatch(markdown, /What is an apple/);
   assert.doesNotMatch(markdown, /What is an tree/);
   assert.doesNotMatch(markdown, /What is an pool/);
-  assert.match(markdown, /## User \(edited\)[\s\S]*What is a puck\?/);
-  assert.match(markdown, /A puck answer\./);
+  assert.match(markdown, /## User \(edited 3\)[\s\S]*What is a puck\?/);
+  assert.match(markdown, /## Codex \(edited 3\)[\s\S]*A puck answer\./);
   assert.match(markdown, /Model changed from GPT-5\.4 to GPT-5\.5/);
 });
 
@@ -100,6 +100,7 @@ test('Codex includeRolledBackTurns exposes original, superseded and edited revis
     'superseded',
     'edited'
   ]);
+  assert.deepEqual(users.map(event => event.revision_depth), [0, 1, 2, 3]);
   assert.deepEqual(users.map(event => event.execution_status), [
     'aborted',
     'completed',
@@ -108,10 +109,13 @@ test('Codex includeRolledBackTurns exposes original, superseded and edited revis
   ]);
 
   const markdown = renderCanonicalMarkdown(events, { includeRolledBackTurns: true });
-  assert.match(markdown, /## User \(original, aborted\)[\s\S]*What is an apple/);
-  assert.match(markdown, /## User \(superseded\)[\s\S]*What is an tree\?/);
-  assert.match(markdown, /## User \(superseded\)[\s\S]*What is an pool\?/);
-  assert.match(markdown, /## User \(edited\)[\s\S]*What is a puck\?/);
+  assert.match(markdown, /## User \(original 0, aborted\)[\s\S]*What is an apple/);
+  assert.match(markdown, /## User \(superseded 1\)[\s\S]*What is an tree\?/);
+  assert.match(markdown, /## Codex \(superseded 1\)[\s\S]*A tree answer\./);
+  assert.match(markdown, /## User \(superseded 2\)[\s\S]*What is an pool\?/);
+  assert.match(markdown, /## Codex \(superseded 2\)[\s\S]*A pool answer\./);
+  assert.match(markdown, /## User \(edited 3\)[\s\S]*What is a puck\?/);
+  assert.match(markdown, /## Codex \(edited 3\)[\s\S]*A puck answer\./);
 });
 
 test('Codex rollback count is respected as a count rather than hard-coded to one', () => {
@@ -131,6 +135,7 @@ test('Codex rollback count is respected as a count rather than hard-coded to one
   const users = events.filter(event => event.role === 'user' && event.kind === 'message');
 
   assert.deepEqual(users.map(event => event.revision_status), ['original', 'superseded', 'edited']);
+  assert.deepEqual(users.map(event => event.revision_depth), [0, 1, 2]);
 });
 
 test('Codex session-index metadata uses the last valid matching title', () => {
