@@ -183,6 +183,22 @@ test('canonical presentation and HTML expose matching status/depth without dropp
       ['assistant', 'edited', 3, 'Codex (edited 3)']
     ]
   );
+  assert.deepEqual(
+    revisionTurns.map(turn => [
+      turn.projection?.visible,
+      turn.projection?.revision_history_controlled
+    ]),
+    [
+      [false, true],
+      [false, true],
+      [false, true],
+      [false, true],
+      [false, true],
+      [false, true],
+      [true, true],
+      [true, true]
+    ]
+  );
 
   const html = renderCanonicalHtml(events);
   assert.match(html, /<h2>User \(original 0\)<\/h2>/);
