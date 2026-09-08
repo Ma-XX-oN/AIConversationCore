@@ -32,7 +32,13 @@ export function isEventProjectionVisible(event, options = {}) {
 }
 
 /**
- * Adds effective visibility metadata without mutating canonical events.
+ * Adds effective revision visibility metadata without mutating canonical events.
+ *
+ * Non-revision conversations preserve the exact caller event-array reference so
+ * existing structured consumers do not pay an allocation/identity cost for a
+ * Codex-only projection concern.  Once a historical revision exists, every event
+ * in that canonical inventory receives explicit effective visibility metadata so
+ * consumers can share one eligibility policy without renumbering/removing events.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical events.
  * @param {Object<string, *>} options - Projection options.
@@ -42,6 +48,8 @@ export function projectRevisionVisibility(events, options = {}) {
   if (!Array.isArray(events)) {
     throw new TypeError('projectRevisionVisibility expects an event array');
   }
+  if (!events.some(isHistoricalRevision)) return events;
+
   return events.map(event => {
     const visible = isEventProjectionVisible(event, options);
     return {
