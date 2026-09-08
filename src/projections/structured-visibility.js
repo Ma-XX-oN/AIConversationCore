@@ -2,7 +2,8 @@ import { projectRevisionVisibility } from './revision-visibility.js';
 import { projectCanonicalConversation as projectBaseConversation } from './structured.js';
 
 /**
- * Resolves the effective visibility and revision status for one presentation node.
+ * Resolves the effective visibility and revision metadata for one presentation
+ * node.
  *
  * @param {Object<string, *>} node - Canonical presentation node or turn.
  * @param {Map<string, Object<string, *>>} eventsById - Projected events by canonical ID.
@@ -14,12 +15,16 @@ function nodeProjection(node, eventsById) {
     .filter(Boolean);
   const visible = sourceEvents.length === 0 ||
     sourceEvents.some(event => event?.projection?.visible !== false);
-  const revisionStatus = sourceEvents
-    .map(event => event?.revision_status)
-    .find(value => typeof value === 'string' && value.length) ?? null;
+  const revisionEvent = sourceEvents.find(event =>
+    typeof event?.revision_status === 'string' && event.revision_status.length);
   return {
     visible,
-    ...(revisionStatus ? { revision_status: revisionStatus } : {})
+    ...(revisionEvent?.revision_status
+      ? { revision_status: revisionEvent.revision_status }
+      : {}),
+    ...(Number.isInteger(revisionEvent?.revision_depth)
+      ? { revision_depth: revisionEvent.revision_depth }
+      : {})
   };
 }
 
