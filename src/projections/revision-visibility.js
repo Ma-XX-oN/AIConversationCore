@@ -15,6 +15,23 @@ export function isHistoricalRevision(event) {
 }
 
 /**
+ * Returns whether one canonical event participates in a revision lineage whose
+ * historical visibility may be toggled at projection time.
+ *
+ * The active edited generation is controlled by the same history policy as its
+ * historical predecessors even though the active generation itself remains
+ * visible when history is hidden.  Exposing this distinction lets downstream
+ * consumers change eligibility without interpreting revision-status strings.
+ *
+ * @param {Object<string, *>} event - Canonical event.
+ * @returns {boolean} Whether revision-history visibility controls this event.
+ */
+export function isRevisionHistoryControlled(event) {
+  return typeof event?.revision_status === 'string' &&
+    event.revision_status !== 'normal';
+}
+
+/**
  * Resolves effective projection visibility for one canonical event.
  *
  * Intrinsically hidden canonical events remain hidden.  Historical revision
@@ -52,15 +69,18 @@ export function projectRevisionVisibility(events, options = {}) {
 
   return events.map(event => {
     const visible = isEventProjectionVisible(event, options);
+    const historicalRevision = isHistoricalRevision(event);
     return {
       ...event,
       projection: {
         ...(event?.projection ?? {}),
         visible,
+        revision_history_controlled: isRevisionHistoryControlled(event),
+        historical_revision: historicalRevision,
         ...(visible
           ? {}
           : {
-              hidden_reason: isHistoricalRevision(event)
+              hidden_reason: historicalRevision
                 ? 'rolled-back-revision'
                 : 'canonical-hidden'
             })
