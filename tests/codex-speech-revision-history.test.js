@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { adaptSpeechSessionRecords } from '../src/index.js';
+import {
+  adaptSpeechSessionRecords,
+  projectCanonicalConversation
+} from '../src/index.js';
 
 function records() {
   return [
@@ -44,29 +47,36 @@ function records() {
   ];
 }
 
-test('Codex speech seam hides rolled-back revisions by default without stripping IDE context', () => {
-  const events = adaptSpeechSessionRecords('codex', records());
-  const users = events.filter(event => event.role === 'user' && event.kind === 'message');
-
-  assert.equal(users.length, 1);
-  assert.equal(users[0].revision_status, 'edited');
-  assert.deepEqual(users[0].blocks.map(block => block.type), ['user_context', 'text']);
-  assert.equal(users[0].blocks[0].summary, '# Context from my IDE setup:');
-  assert.equal(users[0].blocks[0].text, '');
-  assert.equal(users[0].blocks[1].text, 'Replacement');
-});
-
-test('Codex speech seam exposes original and edited revisions only when requested', () => {
-  const events = adaptSpeechSessionRecords(
+test('Codex speech normalization retains rolled-back revisions regardless of visibility preference', () => {
+  const defaultEvents = adaptSpeechSessionRecords('codex', records());
+  const requestedEvents = adaptSpeechSessionRecords(
     'codex',
     records(),
     { includeRolledBackTurns: true }
   );
-  const users = events.filter(event => event.role === 'user' && event.kind === 'message');
+  const defaultUsers = defaultEvents.filter(event =>
+    event.role === 'user' && event.kind === 'message');
+  const requestedUsers = requestedEvents.filter(event =>
+    event.role === 'user' && event.kind === 'message');
 
-  assert.deepEqual(users.map(event => event.revision_status), ['original', 'edited']);
-  assert.deepEqual(users.map(event => event.execution_status), ['aborted', 'completed']);
-  assert.deepEqual(users[0].blocks.map(block => block.type), ['user_context', 'text']);
-  assert.equal(users[0].blocks[0].summary, '# Context from my IDE setup:');
-  assert.equal(users[0].blocks[1].text, 'Original');
+  assert.deepEqual(defaultUsers.map(event => event.id), requestedUsers.map(event => event.id));
+  assert.deepEqual(defaultUsers.map(event => event.revision_status), ['original', 'edited']);
+  assert.deepEqual(defaultUsers.map(event => event.execution_status), ['aborted', 'completed']);
+  assert.deepEqual(defaultUsers[0].blocks.map(block => block.type), ['user_context', 'text']);
+  assert.equal(defaultUsers[0].blocks[0].summary, '# Context from my IDE setup:');
+  assert.equal(defaultUsers[0].blocks[1].text, 'Original');
+});
+
+test('Codex speech projection hides historical revisions by default without deleting them', () => {
+  const events = adaptSpeechSessionRecords('codex', records());
+  const hidden = projectCanonicalConversation(events);
+  const shown = projectCanonicalConversation(events, { includeRolledBackTurns: true });
+  const hiddenUsers = hidden.events.filter(event =>
+    event.role === 'user' && event.kind === 'message');
+  const shownUsers = shown.events.filter(event =>
+    event.role === 'user' && event.kind === 'message');
+
+  assert.deepEqual(hiddenUsers.map(event => event.id), shownUsers.map(event => event.id));
+  assert.deepEqual(hiddenUsers.map(event => event.projection?.visible), [false, true]);
+  assert.deepEqual(shownUsers.map(event => event.projection?.visible), [true, true]);
 });
