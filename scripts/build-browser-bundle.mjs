@@ -130,6 +130,7 @@ export async function buildBrowserBundle() {
   });
   const revisionVisibility = multiExportModuleBody(revisionVisibilitySource, [
     'isHistoricalRevision',
+    'isRevisionHistoryControlled',
     'isEventProjectionVisible',
     'projectRevisionVisibility'
   ]);
