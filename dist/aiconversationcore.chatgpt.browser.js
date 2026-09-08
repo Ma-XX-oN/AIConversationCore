@@ -3249,7 +3249,7 @@ function isHistoricalRevision(event) {
  * @param {Object<string, *>} event - Canonical event.
  * @returns {boolean} Whether revision-history visibility controls this event.
  */
-export function isRevisionHistoryControlled(event) {
+function isRevisionHistoryControlled(event) {
   return typeof event?.revision_status === 'string' &&
     event.revision_status !== 'normal';
 }
