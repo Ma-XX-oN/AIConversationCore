@@ -34,7 +34,11 @@ function normalizeInitialEvents(provider, records) {
  */
 function interactionHeadingSuffix(interaction) {
   const statuses = [];
-  if (interaction.revision_status !== 'normal') statuses.push(interaction.revision_status);
+  if (interaction.revision_status !== 'normal') {
+    statuses.push(Number.isInteger(interaction.revision_depth)
+      ? `${interaction.revision_status} ${interaction.revision_depth}`
+      : interaction.revision_status);
+  }
   if (interaction.execution_status === 'aborted') statuses.push('aborted');
   return statuses.length ? ` (${statuses.join(', ')})` : '';
 }
@@ -163,6 +167,7 @@ class CodexRevisionTracker {
         history: this.pendingHistory,
         rolled_back: false,
         revision_status: this.pendingHistory.length ? 'edited' : 'normal',
+        revision_depth: this.pendingHistory.length ? this.pendingHistory.length : null,
         execution_status: 'completed'
       };
       this.finalizePendingHistory();
@@ -184,13 +189,15 @@ class CodexRevisionTracker {
   }
 
   /**
-   * Assigns stable original/superseded labels to the current pending history.
+   * Assigns stable original/superseded status and zero-based depth to pending
+   * revision history.
    *
    * @returns {void}
    */
   finalizePendingHistory() {
     this.pendingHistory.forEach((historical, index) => {
       historical.revision_status = index === 0 ? 'original' : 'superseded';
+      historical.revision_depth = index;
     });
   }
 }
@@ -206,9 +213,10 @@ class CodexRevisionTracker {
 function applyTrackedRevision(event, tracker) {
   const interaction = tracker.interactionBySource.get(event?.source_index);
   if (!interaction) return event;
-  const headingSuffix = event.role === 'user' && event.kind === 'message'
-    ? interactionHeadingSuffix(interaction)
-    : '';
+  const headingSuffix = event.kind === 'message' &&
+    (event.role === 'user' || event.role === 'assistant')
+      ? interactionHeadingSuffix(interaction)
+      : '';
   const projection = { ...(event?.projection ?? {}) };
   if (headingSuffix) projection.heading_suffix = headingSuffix;
   else delete projection.heading_suffix;
@@ -216,6 +224,7 @@ function applyTrackedRevision(event, tracker) {
   return {
     ...event,
     revision_status: interaction.revision_status,
+    revision_depth: interaction.revision_depth,
     execution_status: interaction.execution_status,
     model: interaction.model,
     ...(Object.keys(projection).length ? { projection } : {})
