@@ -54,6 +54,28 @@ function moduleBody(text, {
 }
 
 /**
+ * Converts an ESM helper module with multiple named function exports into a
+ * classic-script local-function body without copying the helper semantics into
+ * the bundle generator itself.
+ *
+ * @param {string} text - Complete UTF-8 ESM module source.
+ * @param {Array<string>} exportedFunctions - Named function exports to localize.
+ * @returns {string} Rewritten local-function module body.
+ */
+function multiExportModuleBody(text, exportedFunctions) {
+  let result = text;
+  for (const functionName of exportedFunctions) {
+    result = replaceOnce(
+      result,
+      `export function ${functionName}`,
+      `function ${functionName}`,
+      `${functionName} export`
+    );
+  }
+  return result.trim();
+}
+
+/**
  * Builds the deterministic classic-script ChatGPT browser bundle from the canonical ESM sources.
  *
  * @returns {Promise<string>} A promise resolving to the complete generated browser-bundle source text.
@@ -66,6 +88,7 @@ export async function buildBrowserBundle() {
     turnsSource,
     markdownSource,
     presentationSource,
+    revisionVisibilitySource,
     presentationRevisionsSource,
     htmlSource,
     structuredSource
@@ -76,6 +99,7 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/derive/turns.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/presentation.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/revision-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/presentation-revisions.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/html.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8')
@@ -104,9 +128,15 @@ export async function buildBrowserBundle() {
     exportedFunction: 'buildCanonicalPresentation',
     localFunction: 'buildBasePresentation'
   });
+  const revisionVisibility = multiExportModuleBody(revisionVisibilitySource, [
+    'isHistoricalRevision',
+    'isEventProjectionVisible',
+    'projectRevisionVisibility'
+  ]);
   const presentationRevisions = moduleBody(presentationRevisionsSource, {
     importLines: [
-      "import { buildCanonicalPresentation as buildBasePresentation } from './presentation.js';"
+      "import { buildCanonicalPresentation as buildBasePresentation } from './presentation.js';",
+      "import { isHistoricalRevision } from './revision-visibility.js';"
     ],
     exportedFunction: 'buildCanonicalPresentation',
     localFunction: 'buildCanonicalPresentation'
@@ -138,6 +168,7 @@ export async function buildBrowserBundle() {
     `// - src/derive/turns.js\n` +
     `// - src/projections/markdown.js\n` +
     `// - src/projections/presentation.js\n` +
+    `// - src/projections/revision-visibility.js\n` +
     `// - src/projections/presentation-revisions.js\n` +
     `// - src/projections/html.js\n` +
     `// - src/projections/structured.js\n` +
@@ -148,6 +179,7 @@ export async function buildBrowserBundle() {
     `${turns}\n\n` +
     `${markdown}\n\n` +
     `${presentation}\n\n` +
+    `${revisionVisibility}\n\n` +
     `${presentationRevisions}\n\n` +
     `${html}\n\n` +
     `${structured}\n\n` +
