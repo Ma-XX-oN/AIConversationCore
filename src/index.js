@@ -15,6 +15,7 @@ export { renderCanonicalMarkdown } from './projections/markdown-visibility.js';
 export { renderCanonicalHtml } from './projections/html-visibility.js';
 export { buildCanonicalPresentation } from './projections/presentation-revisions.js';
 export { projectCanonicalConversation } from './projections/structured-visibility.js';
+export { createCanonicalConversationSession } from './session/canonical-session.js';
 export { loadConversationSources } from './sources/conversation.js';
 
 export { deriveTurns } from './derive/turns.js';
