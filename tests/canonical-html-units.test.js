@@ -196,7 +196,7 @@ test('revision visibility is preserved identically in complete and unit HTML', (
   assert.match(units[0].html, /class="transcript-turn revision-original"/);
   assert.match(units[0].html, /data-revision-status="original"/);
   assert.match(units[0].html, /data-revision-depth="0"/);
-  assert.match(units[0].html, / hidden>/);
+  assert.match(units[0].html, /\shidden(?:\s|>)/);
 });
 
 test('equivalent provider turns use the same complete-unit boundary policy', () => {
