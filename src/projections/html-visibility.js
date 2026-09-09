@@ -58,11 +58,14 @@ function applyTurnRevisionAttributes(html, turnsById) {
       const depthAttribute = Number.isInteger(projection.revision_depth)
         ? ` data-revision-depth="${projection.revision_depth}"`
         : '';
+      const historicalAttribute = projection.historical
+        ? ' data-revision-historical="true"'
+        : '';
       const hiddenAttribute = projection.historical && !projection.visible
         ? ' hidden'
         : '';
       return `<section class="${className}" data-presentation-id="${id}"` +
-        `${statusAttribute}${depthAttribute}${hiddenAttribute}>`;
+        `${statusAttribute}${depthAttribute}${historicalAttribute}${hiddenAttribute}>`;
     }
   );
 }
