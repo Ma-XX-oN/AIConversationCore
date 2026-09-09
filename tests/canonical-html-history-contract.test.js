@@ -29,6 +29,6 @@ test('historical turn HTML declares historical state for interactive consumers',
   assert.ok(unit, 'Expected one retained historical HTML unit.');
   assert.match(unit.html, /data-revision-historical="true"/,
     'Core HTML must identify historical turns so a UI can toggle visibility without adding semantic markup itself.');
-  assert.match(unit.html, / hidden>/,
+  assert.match(unit.html, /\shidden(?:\s|>)/,
     'Historical turn should start hidden when history is excluded from the active projection.');
 });
