@@ -1,0 +1,48 @@
+name: Issue 79 canonical HTML units RED
+
+on:
+  push:
+    branches:
+      - issue-79-canonical-html-units
+    paths:
+      - '.github/workflows/issue-79-red.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Require issue 79 regressions to reproduce
+        shell: bash
+        run: |
+          set +e
+          output="$(node --test tests/canonical-html-units.test.js 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected #79 regressions to be RED before the production fix.' >&2
+            exit 1
+          fi
+          grep -Fq 'User Context must declare its atomicity in Core' <<<"$output" || {
+            echo 'The single-anchor User Context atomic-boundary regression did not reproduce.' >&2
+            exit 1
+          }
+          grep -Fq 'Core must expose a rendered-unit API instead of requiring consumers to split completed HTML.' <<<"$output" || {
+            echo 'The missing rendered-unit API regression did not reproduce.' >&2
+            exit 1
+          }
+          echo 'RED-PROVEN issue-79 user-context-atomicity rendered-unit-api'
