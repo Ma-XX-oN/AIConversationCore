@@ -1,0 +1,177 @@
+name: Issue 79 implement canonical HTML units v3
+
+on:
+  push:
+    branches:
+      - issue-79-canonical-html-units
+    paths:
+      - '.github/workflows/issue-79-implementation-v3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: issue-79-canonical-html-units
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Apply v2 patch and correct source indentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          workflow = Path('.github/workflows/issue-79-implementation-v2.yml')
+          lines = workflow.read_text(encoding='utf-8').splitlines()
+          start = lines.index("          python - <<'PY'") + 1
+          end = lines.index('          PY', start)
+          script = dedent('\n'.join(lines[start:end])) + '\n'
+          Path('/tmp/issue79-apply.py').write_text(script, encoding='utf-8')
+          PY
+          python /tmp/issue79-apply.py
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path_name, old, new):
+            path = Path(path_name)
+            text = path.read_text(encoding='utf-8')
+            count = text.count(old)
+            if count != 1:
+              raise SystemExit(
+                f'{path_name}: indentation-fix anchor count={count}: {old!r}')
+            path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+            'src/projections/presentation.js',
+            "\nchildren.push({\n  ...contentNode(event, 'user_context', contexts),\n  atomic: true\n});\n",
+            "\n    children.push({\n      ...contentNode(event, 'user_context', contexts),\n      atomic: true\n    });\n")
+
+          replace_once(
+            'scripts/build-browser-bundle.mjs',
+            """function multiExportModuleBody(text, exportedFunctions, importLines = []) {
+          let result = text;
+          for (const importLine of importLines) {
+            result = replaceOnce(result, `${importLine}\\n`, '', `module import ${importLine}`);
+          }
+          for (const functionName of exportedFunctions) {
+          """,
+            """function multiExportModuleBody(text, exportedFunctions, importLines = []) {
+            let result = text;
+            for (const importLine of importLines) {
+              result = replaceOnce(result, `${importLine}\\n`, '', `module import ${importLine}`);
+            }
+            for (const functionName of exportedFunctions) {
+          """)
+
+          replace_once(
+            'scripts/build-browser-bundle.mjs',
+            """\nconst html = multiExportModuleBody(
+            htmlSource,
+            ['renderCanonicalHtmlUnits', 'renderCanonicalHtml'],
+            [
+              \"import { marked } from 'marked';\",
+              \"import { buildCanonicalPresentation } from './presentation-revisions.js';\"
+            ]
+          );
+            const structured = moduleBody(structuredSource, {
+          """,
+            """\n  const html = multiExportModuleBody(
+              htmlSource,
+              ['renderCanonicalHtmlUnits', 'renderCanonicalHtml'],
+              [
+                \"import { marked } from 'marked';\",
+                \"import { buildCanonicalPresentation } from './presentation-revisions.js';\"
+              ]
+            );
+            const structured = moduleBody(structuredSource, {
+          """)
+
+          replace_once(
+            'tests/browser-bundle.test.js',
+            """\nconst actual = context.AIConversationCore.renderCanonicalHtml(plain(events));
+          const units = context.AIConversationCore.renderCanonicalHtmlUnits(plain(events));
+          assert.equal(actual, expected);
+          assert.equal(units.map(unit => unit.html).join(''), expected);
+          assert.equal(units.length, 1);
+          assert.equal(units[0].atomic, true);
+          assert.equal(units[0].source[0].record_id, 'record:user-context:browser');
+          """,
+            """\n  const actual = context.AIConversationCore.renderCanonicalHtml(plain(events));
+            const units = context.AIConversationCore.renderCanonicalHtmlUnits(plain(events));
+            assert.equal(actual, expected);
+            assert.equal(units.map(unit => unit.html).join(''), expected);
+            assert.equal(units.length, 1);
+            assert.equal(units[0].atomic, true);
+            assert.equal(units[0].source[0].record_id, 'record:user-context:browser');
+          """)
+          PY
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check production JSDoc coverage
+        run: node scripts/check-jsdoc.mjs
+
+      - name: Rebuild browser bundle
+        run: node scripts/build-browser-bundle.mjs
+
+      - name: Run issue 79 regression directly
+        run: node --test tests/canonical-html-units.test.js
+
+      - name: Run full Core tests
+        run: npm test
+
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
+
+      - name: Validate browser bundle is deterministic
+        shell: bash
+        run: |
+          cp dist/aiconversationcore.chatgpt.browser.js "$RUNNER_TEMP/bundle.js"
+          node scripts/build-browser-bundle.mjs
+          cmp "$RUNNER_TEMP/bundle.js" dist/aiconversationcore.chatgpt.browser.js
+
+      - name: Validate whitespace and patch integrity
+        run: git diff --check
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          git config user.name 'Ma-XX-oN'
+          git config user.email 'Ma-XX-oN@users.noreply.github.com'
+          git add src/projections/presentation.js src/projections/html.js \
+            src/projections/html-visibility.js src/index.js \
+            scripts/build-browser-bundle.mjs dist/aiconversationcore.chatgpt.browser.js \
+            tests/canonical-html-units.test.js tests/browser-bundle.test.js \
+            DECISIONS.md DESIGN.md RENDERING.md ROADMAP.md
+          git diff --cached --check
+          git commit -m 'feat: expose canonical HTML virtualization units (#79)'
+          git push origin HEAD:issue-79-canonical-html-units
