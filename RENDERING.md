@@ -234,6 +234,24 @@ That internal representation exists so the two Core serializers share semantics;
 it is not permission for downstream consumers to implement a third semantic
 rendering path.
 
+## Canonical HTML virtualization units
+
+`renderCanonicalHtmlUnits()` exposes ordered, already-rendered canonical HTML
+units for interactive consumers. The current legal boundary is one complete
+presentation turn per unit. Unit metadata carries stable presentation/source
+identity and declares the returned unit atomic for virtualization.
+
+Consumers may choose which complete units to materialize, concatenate adjacent
+units, and apply UI-specific virtualization/layout. They must not split a unit
+or infer a finer semantic boundary from HTML tags, CSS classes, source-anchor
+counts, or provider-native markers. Nested User Context, reasoning, tool, and
+interaction containers therefore remain Core-owned DOM subtrees.
+
+`renderCanonicalHtml()` is the concatenation of those same units in canonical
+order. Unit rendering is not a third semantic rendering path; it is an
+interactive projection of the canonical HTML serializer. Any future finer legal
+cut must be explicitly defined by Core rather than discovered by a caller.
+
 ## Output projections
 
 Canonical Markdown and canonical HTML are the two Core-owned semantic serializers

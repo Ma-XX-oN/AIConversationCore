@@ -238,6 +238,20 @@ Showing timestamps, record numbers, and canonical `turn_id` values are independe
 projection options; enabling ANSI/HTML styling changes their presentation, not
 whether those fields exist.
 
+## Canonical HTML units for interactive virtualization
+
+Canonical HTML has an interactive unit projection in addition to the complete
+string form. Core renders both through the same HTML serializer. The initial
+unit policy returns complete presentation turns with stable source identity and
+an indivisible virtualization contract. This gives browser/WebView consumers a
+safe materialization boundary without exposing provider semantics or requiring
+them to parse canonical HTML to reconstruct grouping.
+
+A consumer owns viewport selection, spacers, measurement, scrolling, and DOM
+lifecycle. Core owns which rendered semantic subtree may be separated from
+another. Finer-grained cuts are an explicit future Core API/schema change, not a
+consumer heuristic.
+
 ## Consumer boundaries
 
 ### DownloadConversation

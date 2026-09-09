@@ -60,10 +60,14 @@ function moduleBody(text, {
  *
  * @param {string} text - Complete UTF-8 ESM module source.
  * @param {Array<string>} exportedFunctions - Named function exports to localize.
+ * @param {Array<string>} importLines - Exact ESM import lines to remove.
  * @returns {string} Rewritten local-function module body.
  */
-function multiExportModuleBody(text, exportedFunctions) {
+function multiExportModuleBody(text, exportedFunctions, importLines = []) {
   let result = text;
+  for (const importLine of importLines) {
+    result = replaceOnce(result, `${importLine}\n`, '', `module import ${importLine}`);
+  }
   for (const functionName of exportedFunctions) {
     result = replaceOnce(
       result,
@@ -142,14 +146,14 @@ export async function buildBrowserBundle() {
     exportedFunction: 'buildCanonicalPresentation',
     localFunction: 'buildCanonicalPresentation'
   });
-  const html = moduleBody(htmlSource, {
-    importLines: [
+  const html = multiExportModuleBody(
+    htmlSource,
+    ['renderCanonicalHtmlUnits', 'renderCanonicalHtml'],
+    [
       "import { marked } from 'marked';",
       "import { buildCanonicalPresentation } from './presentation-revisions.js';"
-    ],
-    exportedFunction: 'renderCanonicalHtml',
-    localFunction: 'renderCanonicalHtml'
-  });
+    ]
+  );
   const structured = moduleBody(structuredSource, {
     importLines: [
       "import { deriveTurns } from '../derive/turns.js';",
@@ -188,6 +192,7 @@ export async function buildBrowserBundle() {
     `    adaptChatGPTRecords,\n` +
     `    renderCanonicalMarkdown,\n` +
     `    renderCanonicalHtml,\n` +
+    `    renderCanonicalHtmlUnits,\n` +
     `    buildCanonicalPresentation,\n` +
     `    projectCanonicalConversation\n` +
     `  });\n` +

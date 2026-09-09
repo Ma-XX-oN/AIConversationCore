@@ -1,4 +1,6 @@
-import { renderCanonicalHtml as renderBaseHtml } from './html.js';
+import {
+  renderCanonicalHtmlUnits as renderBaseHtmlUnits
+} from './html.js';
 import { buildCanonicalPresentation } from './presentation-revisions.js';
 import {
   isHistoricalRevision,
@@ -31,30 +33,18 @@ function turnRevisionProjection(turn, eventsById) {
 }
 
 /**
- * Renders canonical HTML while retaining historical revision turns in the DOM.
+ * Applies canonical revision/visibility attributes to one already-rendered turn.
  *
- * Historical turns always remain serialized with stable presentation IDs and
- * semantic revision attributes.  The selected projection controls only their
- * `hidden` state, allowing an interactive consumer to show/hide the already
- * materialized DOM without reparsing provider records or changing identities.
+ * This remains a Core serializer operation. Interactive consumers receive the
+ * completed unit and never need to interpret revision status or rewrite HTML.
  *
- * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
- * @param {Object<string, *>} options - Projection options.
- * @returns {string} Canonical structural HTML containing all revision turns.
+ * @param {string} html - Base canonical HTML for one complete turn.
+ * @param {Map<string, Object<string, *>>} turnsById - Turn projection metadata.
+ * @returns {string} Canonical turn HTML with revision visibility attributes.
  */
-export function renderCanonicalHtml(events, options = {}) {
-  if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
-  const projectedEvents = projectRevisionVisibility(events, options);
-  const presentation = buildCanonicalPresentation(projectedEvents);
-  const eventsById = new Map(projectedEvents.map(event => [event?.id, event]));
-  const turnsById = new Map((presentation.turns ?? []).map(turn => [
-    String(turn?.id ?? ''),
-    turnRevisionProjection(turn, eventsById)
-  ]));
-  const html = renderBaseHtml(projectedEvents);
-
+function applyTurnRevisionAttributes(html, turnsById) {
   return html.replace(
-    /<section class="transcript-turn" data-presentation-id="([^"]*)">/g,
+    /<section class="transcript-turn" data-presentation-id="([^"]*)">/,
     (match, id) => {
       const projection = turnsById.get(id);
       if (!projection) return match;
@@ -75,4 +65,46 @@ export function renderCanonicalHtml(events, options = {}) {
         `${statusAttribute}${depthAttribute}${hiddenAttribute}>`;
     }
   );
+}
+
+/**
+ * Renders canonical HTML as ordered complete-turn units while retaining
+ * historical revision turns and their stable identities.
+ *
+ * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {Array<Object<string, *>>} Ordered canonical HTML units.
+ */
+export function renderCanonicalHtmlUnits(events, options = {}) {
+  if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
+  const projectedEvents = projectRevisionVisibility(events, options);
+  const presentation = buildCanonicalPresentation(projectedEvents);
+  const eventsById = new Map(projectedEvents.map(event => [event?.id, event]));
+  const turnsById = new Map((presentation.turns ?? []).map(turn => [
+    String(turn?.id ?? ''),
+    turnRevisionProjection(turn, eventsById)
+  ]));
+
+  return renderBaseHtmlUnits(projectedEvents).map(unit => ({
+    ...unit,
+    html: applyTurnRevisionAttributes(unit.html, turnsById)
+  }));
+}
+
+/**
+ * Renders canonical HTML while retaining historical revision turns in the DOM.
+ *
+ * Historical turns always remain serialized with stable presentation IDs and
+ * semantic revision attributes. The selected projection controls only their
+ * `hidden` state, allowing an interactive consumer to show/hide the already
+ * materialized DOM without reparsing provider records or changing identities.
+ *
+ * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {string} Canonical structural HTML containing all revision turns.
+ */
+export function renderCanonicalHtml(events, options = {}) {
+  return renderCanonicalHtmlUnits(events, options)
+    .map(unit => unit.html)
+    .join('');
 }

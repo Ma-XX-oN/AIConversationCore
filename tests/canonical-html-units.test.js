@@ -173,3 +173,70 @@ test('reasoning and tool disclosures cannot be split by legal rendered-unit boun
     'A one-turn fixture must render identically through the unit and complete APIs.'
   );
 });
+
+
+test('revision visibility is preserved identically in complete and unit HTML', () => {
+  const historical = {
+    ...USER_CONTEXT_EVENT,
+    id: 'event:user-context:historical',
+    source_record_id: 'record:user-context:historical',
+    revision_status: 'original',
+    revision_depth: 0,
+    rolled_back: true
+  };
+  const units = core.renderCanonicalHtmlUnits([historical], {
+    includeRolledBackTurns: false
+  });
+  const html = core.renderCanonicalHtml([historical], {
+    includeRolledBackTurns: false
+  });
+
+  assert.equal(units.length, 1);
+  assert.equal(units[0].html, html);
+  assert.match(units[0].html, /class="transcript-turn revision-original"/);
+  assert.match(units[0].html, /data-revision-status="original"/);
+  assert.match(units[0].html, /data-revision-depth="0"/);
+  assert.match(units[0].html, / hidden>/);
+});
+
+test('equivalent provider turns use the same complete-unit boundary policy', () => {
+  for (const provider of ['chatgpt', 'claude', 'codex']) {
+    const event = {
+      ...USER_CONTEXT_EVENT,
+      id: `event:user-context:${provider}`,
+      provider,
+      source_record_id: `record:user-context:${provider}`
+    };
+    const units = core.renderCanonicalHtmlUnits([event]);
+    assert.equal(units.length, 1, provider);
+    assert.equal(units[0].kind, 'turn', provider);
+    assert.equal(units[0].atomic, true, provider);
+    assert.equal(units[0].source[0].provider, provider);
+    assert.match(units[0].html, /<details class="user-context-details"/);
+  }
+});
+
+test('subagent presentation is returned as one complete Core unit', () => {
+  const event = {
+    id: 'event:subagent:1',
+    provider: 'claude',
+    kind: 'subagent',
+    role: 'assistant',
+    channel: 'final',
+    content_type: 'subagent',
+    visibility: 'visible',
+    source_record_id: 'record:subagent:1',
+    source_index: 0,
+    blocks: [{
+      type: 'subagent',
+      agent_id: 'worker-1',
+      output: 'Subagent result.'
+    }]
+  };
+  const units = core.renderCanonicalHtmlUnits([event]);
+  assert.equal(units.length, 1);
+  assert.equal(units[0].atomic, true);
+  assert.equal(units[0].source[0].record_id, 'record:subagent:1');
+  assert.match(units[0].html, /<h2>Claude Sub-agent worker-1<\/h2>/);
+  assert.match(units[0].html, /Subagent result\./);
+});

@@ -366,3 +366,34 @@ synthetic separators, invalid disclosure boundaries, and consumer-side
 reparsing/repair. A shared presentation tree makes the semantic grouping
 authoritative once and allows HTML, Markdown, speech, and other projections to
 serialize the same structure without rediscovering it.
+
+
+## D018 — Canonical HTML exposes Core-owned complete virtualization units
+
+**Status:** Accepted
+
+**Decision:** Interactive consumers that virtualize canonical HTML use
+Core-rendered complete HTML units. The initial legal cut is one complete
+presentation turn per unit. Each unit carries its stable presentation ID,
+source-record identities, an explicit atomic contract, and already-rendered
+canonical HTML.
+
+`renderCanonicalHtmlUnits()` and `renderCanonicalHtml()` use the same Core HTML
+serializer. Concatenating unit HTML in canonical order must reproduce the
+complete canonical HTML exactly. User Context, reasoning groups, tools, and
+other nested semantic containers remain entirely inside a returned unit; a
+consumer must not split a unit or infer a finer boundary from `<details>`, CSS
+classes, record-anchor counts, or provider markers.
+
+The presentation tree continues to expose nested atomic semantics. The
+complete-turn unit boundary is deliberately conservative and does not claim
+that turns are inherently indivisible at every future projection level. A
+future finer-grained virtualization API must be defined and rendered by Core
+with an explicit versioned contract before consumers may cut more finely.
+
+**Reason:** AgentPanelSpeaker demonstrated that slicing completed HTML around
+source anchors can bisect a semantically atomic disclosure even when all source
+identities are retained. Moving `<details>` inference into the consumer would
+recreate Core presentation semantics downstream and violate D017. Core-owned
+rendered units preserve one HTML renderer while giving interactive consumers a
+safe virtualization boundary.
