@@ -1,0 +1,64 @@
+name: Issue 79 audit diagnostic
+
+on:
+  push:
+    branches:
+      - issue-79-canonical-html-units
+    paths:
+      - '.github/workflows/issue-79-audit-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: issue-79-canonical-html-units
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract and apply the v2 implementation patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          workflow = Path('.github/workflows/issue-79-implementation-v2.yml')
+          lines = workflow.read_text(encoding='utf-8').splitlines()
+          start = lines.index("          python - <<'PY'") + 1
+          end = lines.index('          PY', start)
+          script = dedent('\n'.join(lines[start:end])) + '\n'
+          Path('/tmp/issue79-apply.py').write_text(script, encoding='utf-8')
+          PY
+          python /tmp/issue79-apply.py
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Capture documentation audit and patch
+        shell: bash
+        run: |
+          set +e
+          node scripts/check-jsdoc.mjs > audit.txt 2>&1
+          status=$?
+          set -e
+          printf 'exit=%s\n' "$status" > audit-status.txt
+          cat audit.txt
+          git diff -- src scripts > issue79.patch
+
+      - name: Upload diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-79-audit-diagnostic
+          path: |
+            audit.txt
+            audit-status.txt
+            issue79.patch
