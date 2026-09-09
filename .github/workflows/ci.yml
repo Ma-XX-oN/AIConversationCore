@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/canonical-presentation-html
+      - issue-79-canonical-html-units
   pull_request:
     branches:
       - main
