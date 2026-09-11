@@ -80,6 +80,18 @@ function multiExportModuleBody(text, exportedFunctions, importLines = []) {
 }
 
 /**
+ * Removes one exact multiline ESM import from a module before classic bundling.
+ *
+ * @param {string} text - Complete module source.
+ * @param {string} importBlock - Exact import declaration without trailing newline.
+ * @param {string} label - Human-readable imported module name.
+ * @returns {string} Module source without the specified import.
+ */
+function removeImportBlock(text, importBlock, label) {
+  return replaceOnce(text, `${importBlock}\n`, '', `module import ${label}`);
+}
+
+/**
  * Builds the deterministic classic-script ChatGPT browser bundle from the canonical ESM sources.
  *
  * @returns {Promise<string>} A promise resolving to the complete generated browser-bundle source text.
@@ -95,6 +107,8 @@ export async function buildBrowserBundle() {
     revisionVisibilitySource,
     presentationRevisionsSource,
     htmlSource,
+    wordIdentitySource,
+    htmlVisibilitySource,
     structuredSource
   ] = await Promise.all([
     readFile(resolve(ROOT, 'node_modules/marked/lib/marked.umd.js'), 'utf8'),
@@ -106,6 +120,8 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/projections/revision-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/presentation-revisions.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/html.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/word-identity.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/html-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8')
   ]);
 
@@ -146,7 +162,8 @@ export async function buildBrowserBundle() {
     exportedFunction: 'buildCanonicalPresentation',
     localFunction: 'buildCanonicalPresentation'
   });
-  const html = multiExportModuleBody(
+
+  let htmlBase = multiExportModuleBody(
     htmlSource,
     ['renderCanonicalHtmlUnits', 'renderCanonicalHtml'],
     [
@@ -154,6 +171,57 @@ export async function buildBrowserBundle() {
       "import { buildCanonicalPresentation } from './presentation-revisions.js';"
     ]
   );
+  htmlBase = replaceOnce(
+    htmlBase,
+    'function renderCanonicalHtmlUnits(events)',
+    'function renderBaseHtmlUnits(events)',
+    'base HTML unit function name'
+  );
+  htmlBase = replaceOnce(
+    htmlBase,
+    'function renderCanonicalHtml(events)',
+    'function renderBaseHtml(events)',
+    'base HTML function name'
+  );
+  htmlBase = replaceOnce(
+    htmlBase,
+    'return renderCanonicalHtmlUnits(events)',
+    'return renderBaseHtmlUnits(events)',
+    'base HTML unit call'
+  );
+
+  const wordIdentity = multiExportModuleBody(wordIdentitySource, [
+    'createCanonicalWordState',
+    'annotateCanonicalHtmlWords'
+  ]);
+
+  let htmlVisibilityPrepared = htmlVisibilitySource;
+  htmlVisibilityPrepared = removeImportBlock(
+    htmlVisibilityPrepared,
+    "import {\n  renderCanonicalHtmlUnits as renderBaseHtmlUnits\n} from './html.js';",
+    './html.js'
+  );
+  htmlVisibilityPrepared = removeImportBlock(
+    htmlVisibilityPrepared,
+    "import { buildCanonicalPresentation } from './presentation-revisions.js';",
+    './presentation-revisions.js'
+  );
+  htmlVisibilityPrepared = removeImportBlock(
+    htmlVisibilityPrepared,
+    "import {\n  isHistoricalRevision,\n  projectRevisionVisibility\n} from './revision-visibility.js';",
+    './revision-visibility.js'
+  );
+  htmlVisibilityPrepared = removeImportBlock(
+    htmlVisibilityPrepared,
+    "import {\n  annotateCanonicalHtmlWords,\n  createCanonicalWordState\n} from './word-identity.js';",
+    './word-identity.js'
+  );
+  const htmlVisibility = multiExportModuleBody(htmlVisibilityPrepared, [
+    'renderCanonicalHtmlUnits',
+    'projectCanonicalWords',
+    'renderCanonicalHtml'
+  ]);
+
   const structured = moduleBody(structuredSource, {
     importLines: [
       "import { deriveTurns } from '../derive/turns.js';",
@@ -176,6 +244,8 @@ export async function buildBrowserBundle() {
     `// - src/projections/revision-visibility.js\n` +
     `// - src/projections/presentation-revisions.js\n` +
     `// - src/projections/html.js\n` +
+    `// - src/projections/word-identity.js\n` +
+    `// - src/projections/html-visibility.js\n` +
     `// - src/projections/structured.js\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
     `  'use strict';\n\n` +
@@ -186,13 +256,16 @@ export async function buildBrowserBundle() {
     `${presentation}\n\n` +
     `${revisionVisibility}\n\n` +
     `${presentationRevisions}\n\n` +
-    `${html}\n\n` +
+    `${htmlBase}\n\n` +
+    `${wordIdentity}\n\n` +
+    `${htmlVisibility}\n\n` +
     `${structured}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
     `    adaptChatGPTRecords,\n` +
     `    renderCanonicalMarkdown,\n` +
     `    renderCanonicalHtml,\n` +
     `    renderCanonicalHtmlUnits,\n` +
+    `    projectCanonicalWords,\n` +
     `    buildCanonicalPresentation,\n` +
     `    projectCanonicalConversation\n` +
     `  });\n` +
