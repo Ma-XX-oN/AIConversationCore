@@ -63,18 +63,18 @@ I'm doing some testing. What time is it in Paris?`);
   assert.match(html, /<h2>User<\/h2>/);
   assert.match(html, /<blockquote class="transcript-turn-body">/);
   assert.match(html, /<blockquote class="user-context">\s*<details class="user-context-details"[^>]*>\s*<summary># Context from my IDE setup:<\/summary>/);
-  assert.match(html, /<h2>Active file: sessions\/example\.jsonl<\/h2>/);
-  assert.match(html, /<h2>Active selection of the file:<\/h2>/);
-  assert.match(html, /<h2>Open tabs:<\/h2>/);
-  assert.match(html, /<ul>\s*<li>example\.jsonl: sessions\/example\.jsonl<\/li>\s*<\/ul>/);
+  assert.match(html, /<h2><span id="word-\d+">Active<\/span> <span id="word-\d+">file<\/span><span id="word-\d+">:<\/span> <span id="word-\d+">sessions<\/span><span id="word-\d+">\/<\/span><span id="word-\d+">example<\/span><span id="word-\d+">\.<\/span><span id="word-\d+">jsonl<\/span><\/h2>/);
+  assert.match(html, /<h2><span id="word-\d+">Active<\/span> <span id="word-\d+">selection<\/span> <span id="word-\d+">of<\/span> <span id="word-\d+">the<\/span> <span id="word-\d+">file<\/span><span id="word-\d+">:<\/span><\/h2>/);
+  assert.match(html, /<h2><span id="word-\d+">Open<\/span> <span id="word-\d+">tabs<\/span><span id="word-\d+">:<\/span><\/h2>/);
+  assert.match(html, /<ul>\s*<li><span id="word-\d+">example<\/span><span id="word-\d+">\.<\/span><span id="word-\d+">jsonl<\/span><span id="word-\d+">:<\/span> <span id="word-\d+">sessions<\/span><span id="word-\d+">\/<\/span><span id="word-\d+">example<\/span><span id="word-\d+">\.<\/span><span id="word-\d+">jsonl<\/span><\/li>\s*<\/ul>/);
   assert.equal(html.includes('## Active file:'), false);
   assert.equal(html.includes('## My request for Codex:'), false);
 
   const detailsEnd = html.indexOf('</details>');
-  const promptStart = html.indexOf('<p>I&#39;m doing some testing. What time is it in Paris?</p>');
+  const prompt = html.match(/<p><span id="word-\d+">I&#39;m<\/span> <span id="word-\d+">doing<\/span> <span id="word-\d+">some<\/span> <span id="word-\d+">testing<\/span><span id="word-\d+">\.<\/span> <span id="word-\d+">What<\/span> <span id="word-\d+">time<\/span> <span id="word-\d+">is<\/span> <span id="word-\d+">it<\/span> <span id="word-\d+">in<\/span> <span id="word-\d+">Paris<\/span><span id="word-\d+">\?<\/span><\/p>/);
   assert.notEqual(detailsEnd, -1);
-  assert.notEqual(promptStart, -1);
-  assert.ok(promptStart > detailsEnd, 'The actual User prompt must remain outside the context disclosure.');
+  assert.ok(prompt, 'Expected the actual User prompt with canonical word identities.');
+  assert.ok(prompt.index > detailsEnd, 'The actual User prompt must remain outside the context disclosure.');
 });
 
 test('the same normalized no-context fixture emits no empty HTML disclosure', () => {
@@ -89,5 +89,8 @@ test('the same normalized no-context fixture emits no empty HTML disclosure', ()
   assert.equal(renderCanonicalMarkdown(events).trimEnd(), '## User\n\n> Plain user prompt.');
   const html = renderCanonicalHtml(events);
   assert.equal(html.includes('user-context-details'), false);
-  assert.match(html, /<p>Plain user prompt\.<\/p>/);
+  assert.match(
+    html,
+    /<p><span id="word-1">Plain<\/span> <span id="word-2">user<\/span> <span id="word-3">prompt<\/span><span id="word-4">\.<\/span><\/p>/
+  );
 });
