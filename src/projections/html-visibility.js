@@ -6,6 +6,10 @@ import {
   isHistoricalRevision,
   projectRevisionVisibility
 } from './revision-visibility.js';
+import {
+  annotateCanonicalHtmlWords,
+  createCanonicalWordState
+} from './word-identity.js';
 
 /**
  * Resolves canonical revision metadata for one presentation turn.
@@ -72,14 +76,20 @@ function applyTurnRevisionAttributes(html, turnsById) {
 
 /**
  * Renders canonical HTML as ordered complete-turn units while retaining
- * historical revision turns and their stable identities.
+ * historical revision turns and assigning one transcript-global word identity.
+ *
+ * Word IDs are allocated once across the complete ordered unit sequence. The
+ * returned `speech_words` are the same identities embedded in each unit's HTML;
+ * consumers never have to retokenize or align rendered text independently.
  *
  * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
  * @param {Object<string, *>} options - Projection options.
  * @returns {Array<Object<string, *>>} Ordered canonical HTML units.
  */
 export function renderCanonicalHtmlUnits(events, options = {}) {
-  if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
+  if (!Array.isArray(events)) {
+    throw new TypeError('Canonical events must be an array.');
+  }
   const projectedEvents = projectRevisionVisibility(events, options);
   const presentation = buildCanonicalPresentation(projectedEvents);
   const eventsById = new Map(projectedEvents.map(event => [event?.id, event]));
@@ -87,11 +97,36 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
     String(turn?.id ?? ''),
     turnRevisionProjection(turn, eventsById)
   ]));
+  const wordState = createCanonicalWordState();
 
-  return renderBaseHtmlUnits(projectedEvents).map(unit => ({
-    ...unit,
-    html: applyTurnRevisionAttributes(unit.html, turnsById)
-  }));
+  return renderBaseHtmlUnits(projectedEvents).map(unit => {
+    const revisionHtml = applyTurnRevisionAttributes(unit.html, turnsById);
+    const annotated = annotateCanonicalHtmlWords(revisionHtml, wordState);
+    return {
+      ...unit,
+      html: annotated.html,
+      speech_words: annotated.words
+    };
+  });
+}
+
+/**
+ * Projects the authoritative global word handles used by HTML and speech/UI.
+ *
+ * This projection is derived from the same annotated unit render returned by
+ * `renderCanonicalHtmlUnits`, so there is no second tokenization/alignment path.
+ * Internal word-to-turn/unit lookup remains Core-owned and is exposed through a
+ * separate high-level lookup API rather than copied into each word record.
+ *
+ * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {{words:Array<Object<string, *>>}} Ordered canonical word projection.
+ */
+export function projectCanonicalWords(events, options = {}) {
+  const units = renderCanonicalHtmlUnits(events, options);
+  return {
+    words: units.flatMap(unit => unit.speech_words)
+  };
 }
 
 /**
