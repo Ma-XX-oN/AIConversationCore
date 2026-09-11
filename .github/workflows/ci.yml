@@ -6,6 +6,7 @@ on:
       - main
       - feature/canonical-presentation-html
       - issue-79-canonical-html-units
+      - issue-80-canonical-word-ids
   pull_request:
     branches:
       - main
