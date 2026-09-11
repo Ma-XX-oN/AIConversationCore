@@ -252,6 +252,52 @@ lifecycle. Core owns which rendered semantic subtree may be separated from
 another. Finer-grained cuts are an explicit future Core API/schema change, not a
 consumer heuristic.
 
+## Canonical interactive word identity
+
+Core owns one global interactive-word coordinate space for each canonical
+transcript projection. Word IDs are numeric, begin at 1, and increase monotonically
+and contiguously in canonical transcript order across all rendered turns/HTML
+units. They do not restart at turn, block, or virtualization boundaries.
+
+One Core word is one canonical interactive/spoken unit. The token grammar is part
+of the shared projection contract rather than a consumer implementation detail.
+For example, decimal/fractional values such as `13.234` and `35.4401545` are one
+word each. Inline presentation markup must not create competing identities for one
+word: if a single canonical word is rendered across multiple inline HTML text
+pieces, those pieces still share one numeric word ID.
+
+Canonical HTML serializes the numeric handle as a DOM identifier on the first
+rendered piece:
+
+```html
+<span id="word-127">13.234</span>
+```
+
+When inline markup splits one word across multiple rendered pieces, the unique
+DOM `id` appears only on the first piece and later pieces carry
+`data-word-id="127"`. This preserves valid unique HTML IDs while retaining one
+Core identity.
+
+`renderCanonicalHtmlUnits()` exposes the same ordered word records in each unit's
+`speech_words`; `projectCanonicalWords()` exposes the same identities as one
+transcript-wide list. These are two views of the same Core annotation pass, not
+independent tokenizers. The browser bundle must provide the same result as the ESM
+API.
+
+Semantic group membership is structural and Core-owned. Existing presentation
+containers such as User Context, reasoning, code/fence content, and future semantic
+groups retain their stable container classes/structure; consumers must not infer
+those semantics from visible text or copy current policy onto every word. Group
+names attached to projected word records are descriptive metadata derived from
+those Core-owned ancestors, not a replacement for the structural HTML.
+
+Consumers may use a numeric word ID as a handle and ask Core higher-level lookup
+questions. Core retains the internal relationship from a word to its canonical
+turn/unit/block/provenance. Consumers must not rebuild a second word identity or
+word-to-unit map by tokenizing rendered HTML, searching duplicate text, or
+inventing fallback matching. Platform-specific playback, viewport policy, CSS,
+and interaction remain consumer-owned.
+
 ## Consumer boundaries
 
 ### DownloadConversation
@@ -358,6 +404,10 @@ them separate.
 12. **Projection styling is semantic before it is format-specific.** Shared style
     roles belong to the projection/API layer; ANSI colours, CSS classes, and host
     theme choices are mappings of those roles rather than provider/canonical data.
+13. **One canonical word identity.** Interactive/spoken word IDs are global,
+    numeric, monotonically increasing, and shared by HTML, speech/highlight, and
+    navigation consumers. Downstream consumers must not create parallel
+    tokenization, text-alignment, or fallback identity paths.
 
 ## Migration principle
 
