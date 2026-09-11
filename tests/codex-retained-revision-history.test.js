@@ -66,6 +66,11 @@ function userEvents(projection) {
     event.role === 'user' && event.kind === 'message');
 }
 
+function wrappedPair(first, second) {
+  return `<span id="word-\\d+">${first}<\\/span> ` +
+    `<span id="word-\\d+">${second}<\\/span>`;
+}
+
 test('Codex canonical normalization retains the same revision inventory regardless of visibility preference', () => {
   const records = retainedHistoryFixture();
   const defaultEvents = adaptCodexRecords(records);
@@ -127,14 +132,27 @@ test('canonical HTML retains historical turns with semantic revision classes and
     includeRolledBackTurns: true
   });
 
-  assert.match(hiddenHtml, /Original question/);
-  assert.match(hiddenHtml, /Original answer/);
-  assert.match(hiddenHtml,
-    /<section class="transcript-turn revision-original"[^>]*data-revision-status="original"[^>]*hidden[^>]*>[\s\S]*?Original question/);
-  assert.match(hiddenHtml,
-    /<section class="transcript-turn revision-edited"[^>]*data-revision-status="edited"[^>]*>[\s\S]*?Edited question/);
+  const originalQuestion = wrappedPair('Original', 'question');
+  const originalAnswer = wrappedPair('Original', 'answer');
+  const editedQuestion = wrappedPair('Edited', 'question');
 
-  assert.match(historicalHtml,
-    /<section class="transcript-turn revision-original"[^>]*data-revision-status="original"(?![^>]*\bhidden\b)[^>]*>[\s\S]*?Original question/);
-  assert.match(historicalHtml, /Edited question/);
+  assert.match(hiddenHtml, new RegExp(originalQuestion));
+  assert.match(hiddenHtml, new RegExp(originalAnswer));
+  assert.match(hiddenHtml, new RegExp(
+    '<section class="transcript-turn revision-original"' +
+    '[^>]*data-revision-status="original"[^>]*hidden[^>]*>' +
+    `[\\s\\S]*?${originalQuestion}`
+  ));
+  assert.match(hiddenHtml, new RegExp(
+    '<section class="transcript-turn revision-edited"' +
+    '[^>]*data-revision-status="edited"[^>]*>' +
+    `[\\s\\S]*?${editedQuestion}`
+  ));
+
+  assert.match(historicalHtml, new RegExp(
+    '<section class="transcript-turn revision-original"' +
+    '[^>]*data-revision-status="original"(?![^>]*\\bhidden\\b)[^>]*>' +
+    `[\\s\\S]*?${originalQuestion}`
+  ));
+  assert.match(historicalHtml, new RegExp(editedQuestion));
 });
