@@ -130,7 +130,10 @@ test('Core exposes complete rendered HTML units with stable source identity', ()
   assert.equal(unit.source[0].record_index, 0);
   assert.match(unit.html, /<blockquote class="user-context">/);
   assert.match(unit.html, /<details class="user-context-details"/);
-  assert.match(unit.html, /Actual user prompt\./);
+  assert.match(
+    unit.html,
+    /<span id="word-\d+">Actual<\/span> <span id="word-\d+">user<\/span> <span id="word-\d+">prompt<\/span><span id="word-\d+">\.<\/span>/
+  );
   assert.equal(
     units.map(item => item.html).join(''),
     core.renderCanonicalHtml(events),
@@ -238,5 +241,8 @@ test('subagent presentation is returned as one complete Core unit', () => {
   assert.equal(units[0].atomic, true);
   assert.equal(units[0].source[0].record_id, 'record:subagent:1');
   assert.match(units[0].html, /<h2>Claude Sub-agent worker-1<\/h2>/);
-  assert.match(units[0].html, /Subagent result\./);
+  assert.match(
+    units[0].html,
+    /<span id="word-1">Subagent<\/span> <span id="word-2">result<\/span><span id="word-3">\.<\/span>/
+  );
 });
