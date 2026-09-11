@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 import {
   adaptChatGPTRecords,
+  projectCanonicalWords,
   renderCanonicalHtml,
   renderCanonicalHtmlUnits,
   renderCanonicalMarkdown
@@ -63,6 +64,7 @@ test('generated classic browser bundle exposes the required DownloadConversation
   assert.equal(typeof context.AIConversationCore.renderCanonicalMarkdown, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalHtml, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalHtmlUnits, 'function');
+  assert.equal(typeof context.AIConversationCore.projectCanonicalWords, 'function');
 });
 
 test('generated browser bundle matches ESM ChatGPT normalization and Markdown rendering', async () => {
@@ -80,7 +82,7 @@ test('generated browser bundle matches ESM ChatGPT normalization and Markdown re
   );
 });
 
-test('generated browser bundle matches ESM canonical HTML for the same normalized User-context fixture', async () => {
+test('generated browser bundle matches ESM canonical HTML and word identity for the same normalized User-context fixture', async () => {
   const bundle = await buildBrowserBundle();
   const context = vm.createContext({ URL });
   vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
@@ -89,8 +91,10 @@ test('generated browser bundle matches ESM canonical HTML for the same normalize
   const expected = renderCanonicalHtml(events);
   const actual = context.AIConversationCore.renderCanonicalHtml(plain(events));
   const units = context.AIConversationCore.renderCanonicalHtmlUnits(plain(events));
+  const words = context.AIConversationCore.projectCanonicalWords(plain(events));
   assert.equal(actual, expected);
   assert.equal(units.map(unit => unit.html).join(''), expected);
+  assert.deepEqual(plain(words), plain(projectCanonicalWords(events)));
   assert.equal(units.length, 1);
   assert.equal(units[0].atomic, true);
   assert.equal(units[0].source[0].record_id, 'record:user-context:browser');
