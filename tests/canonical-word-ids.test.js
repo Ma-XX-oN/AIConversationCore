@@ -105,6 +105,16 @@ test('Core-owned semantic containers remain the grouping authority around canoni
   assert.ok(contextWord && promptWord);
   assert.match(
     unit.html,
+    /<summary># Context from my IDE setup:<\/summary>/,
+    'Generated disclosure summaries are display structure, not canonical words.'
+  );
+  assert.equal(
+    unit.html.includes('<summary><span'),
+    false,
+    'Generated disclosure summaries must not acquire word identities.'
+  );
+  assert.match(
+    unit.html,
     new RegExp(
       `<blockquote class="user-context"><details class="user-context-details"[^>]*>[\\s\\S]*` +
       `<span id="word-${contextWord.id}">Active<\\/span>[\\s\\S]*<\\/details><\\/blockquote>`
