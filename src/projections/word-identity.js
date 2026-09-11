@@ -45,7 +45,7 @@ const BASIC_HTML_ENTITIES = Object.freeze({
 /**
  * Creates one global word-enumeration state for a complete transcript render.
  *
- * @returns {{nextWordId:number}} Mutable render-local enumeration state.
+ * @returns {Object<string, number>} Mutable render-local enumeration state.
  */
 export function createCanonicalWordState() {
   return { nextWordId: 1 };
@@ -153,7 +153,7 @@ function decodeHtmlEntity(entity) {
  * @param {string} raw - Raw HTML text-node serialization.
  * @param {number} absoluteStart - Raw offset of the segment in the HTML fragment.
  * @param {Array<string>} groups - Semantic ancestor groups for the text segment.
- * @returns {{text:string, map:Array<Object<string, *>>}} Visible text and map.
+ * @returns {Object<string, *>} Visible text and exact raw-offset map.
  */
 function decodeTextSegment(raw, absoluteStart, groups) {
   let text = '';
@@ -332,7 +332,7 @@ function addInsertion(insertions, offset, value) {
  *
  * @param {string} html - Complete canonical unit HTML.
  * @param {Array<Object<string, *>>} segments - Parsed HTML segments.
- * @returns {{text:string, map:Array<Object<string, *>|null>}} Visible stream/map.
+ * @returns {Object<string, *>} Visible stream and exact raw-offset map.
  */
 function visibleWordStream(html, segments) {
   let text = '';
@@ -412,8 +412,8 @@ function applyInsertions(html, insertions) {
  * without emitting duplicate HTML IDs.
  *
  * @param {string} html - Core-rendered HTML for one complete canonical unit.
- * @param {{nextWordId:number}} state - Transcript-wide word enumeration state.
- * @returns {{html:string, words:Array<Object<string, *>>}} Annotated HTML/words.
+ * @param {Object<string, number>} state - Transcript-wide word enumeration state.
+ * @returns {Object<string, *>} Annotated HTML and canonical word records.
  */
 export function annotateCanonicalHtmlWords(html, state) {
   if (!state || !Number.isSafeInteger(state.nextWordId) || state.nextWordId < 1) {
