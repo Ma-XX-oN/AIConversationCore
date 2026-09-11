@@ -120,7 +120,7 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
  *
  * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
  * @param {Object<string, *>} options - Projection options.
- * @returns {{words:Array<Object<string, *>>}} Ordered canonical word projection.
+ * @returns {Object<string, Array<Object<string, *>>>} Ordered canonical words.
  */
 export function projectCanonicalWords(events, options = {}) {
   const units = renderCanonicalHtmlUnits(events, options);
