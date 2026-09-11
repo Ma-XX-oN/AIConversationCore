@@ -239,6 +239,7 @@ function semanticGroups(stack) {
  * @returns {boolean} Whether descendant text participates in word identity.
  */
 function isWordContent(stack) {
+  if (stack.some(element => element.name === 'summary')) return false;
   return stack.some(element =>
     (element.classes ?? []).some(className => WORD_CONTENT_CLASSES.has(className))
   );
