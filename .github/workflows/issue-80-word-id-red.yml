@@ -1,0 +1,39 @@
+name: Issue 80 canonical word identity RED
+
+on:
+  push:
+    branches:
+      - issue-80-canonical-word-ids
+    paths:
+      - '.github/workflows/issue-80-word-id-red.yml'
+      - 'tests/canonical-word-identity.test.js'
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Confirm exact RED
+        shell: bash
+        run: |
+          set +e
+          output=$(node --test tests/canonical-word-identity.test.js 2>&1)
+          code=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$code" -eq 0 ]; then
+            echo 'Canonical word-ID regression unexpectedly passed before implementation.' >&2
+            exit 1
+          fi
+          if ! grep -Eq "does not provide an export named 'projectCanonicalWords'|projectCanonicalWords" <<<"$output"; then
+            echo 'Expected canonical word-ID RED was not observed.' >&2
+            exit 1
+          fi
+          echo 'CONFIRMED RED: Core has no authoritative projectCanonicalWords contract yet.'
