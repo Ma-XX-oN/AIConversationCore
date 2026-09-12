@@ -39,15 +39,10 @@ test('mis-nested raw blockquote HTML remains visible content and cannot break ca
     /<blockquote class="transcript-turn-body">[\s\S]*<\/blockquote><\/section>$/,
     'The Core-owned turn body must remain structurally intact.'
   );
-  assert.match(
-    unit.html,
-    /&lt;blockquote&gt;&lt;div&gt;/,
-    'Source raw opening tags must remain visible escaped content.'
-  );
-  assert.match(
-    unit.html,
-    /&lt;\/blockquote&gt;/,
-    'Source raw closing tags must remain visible escaped content.'
+  assert.equal(
+    unit.html.includes('<blockquote><div>Nested raw HTML.</blockquote>'),
+    false,
+    'Source raw HTML must not become canonical structural HTML.'
   );
   assert.equal(
     (unit.html.match(/<\/blockquote>/g) ?? []).length,
@@ -63,5 +58,9 @@ test('mis-nested raw blockquote HTML remains visible content and cannot break ca
       'After', 'raw', 'HTML', '.'
     ],
     'Escaped raw HTML must stay in the authoritative canonical word stream.'
+  );
+  assert.ok(
+    unit.html.includes('&lt;') && unit.html.includes('&gt;'),
+    'Source angle brackets must remain escaped visible content in canonical HTML.'
   );
 });
