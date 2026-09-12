@@ -5,6 +5,7 @@ on:
     branches:
       - issue-84-unmatched-raw-blockquote-regression
     paths:
+      - 'tests/canonical-raw-html-structure-regression.test.js'
       - 'scripts/issue84-apply-fix.mjs'
       - '.github/workflows/issue-84-green.yml'
 
