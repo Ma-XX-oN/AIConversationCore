@@ -557,3 +557,26 @@ both invariants.
 There is no separate prefix-token identity, null-handle structural token, hidden ordinal mapping element, or consumer-side structural-highlight association. `speech_words`, `projectCanonicalWords()`, and `locateCanonicalWord()` expose the same ordinal identity as the HTML.
 
 **Reason:** AgentPanelSpeaker's established interaction contract highlights the entire list item while its number is spoken, then returns to ordinary word highlighting for the body. Putting the canonical ordinal ID directly on the `<li>` expresses that behaviour with the existing one-ID/one-DOM-element model and eliminates the synthetic ordinal mapping and the incorrect no-ID prefix design.
+
+## D025 — Raw Markdown HTML is content, not Core structure
+
+**Status:** Accepted
+
+**Decision:** Raw HTML syntax that originates inside a canonical textual Markdown
+leaf is transcript content. The canonical HTML renderer escapes Marked raw-HTML
+tokens before inserting the rendered leaf into Core-owned presentation containers.
+Only structural HTML emitted by Core itself may participate in the canonical DOM.
+The escaped source characters remain visible content and retain ordinary canonical
+word identity. Fenced code continues to use the existing code-block escaping rule.
+
+Core's structural parsers remain strict. They must not recover from mis-nested or
+unbalanced HTML by silently popping ancestors, and consumers must not add fallback
+repair paths for malformed canonical HTML.
+
+**Reason:** Real-machine AgentPanelSpeaker testing exposed a Codex transcript that
+made raw Markdown HTML survive Marked and reach Core's word-element restructuring
+pass, where it failed with `Canonical HTML closes unexpected <blockquote>.` Raw
+transcript text must never be able to close or reparent Core's own turn, reasoning,
+tool, or other semantic containers. Escaping at the Markdown-leaf boundary keeps
+source text visible while preserving D017's rule that Core alone owns presentation
+structure and D019's one canonical word-identity path.
