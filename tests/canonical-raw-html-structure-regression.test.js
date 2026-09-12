@@ -24,9 +24,13 @@ function messageEvent(text) {
   };
 }
 
-test('raw unmatched blockquote HTML remains visible content and cannot break canonical structure', () => {
+test('mis-nested raw blockquote HTML remains visible content and cannot break canonical structure', () => {
   const [unit] = renderCanonicalHtmlUnits([
-    messageEvent('Before raw HTML.\n\n</blockquote>\n\nAfter raw HTML.')
+    messageEvent(
+      'Before raw HTML.\n\n' +
+      '<blockquote><div>Nested raw HTML.</blockquote>\n\n' +
+      'After raw HTML.'
+    )
   ]);
 
   assert.ok(unit, 'Expected one canonical HTML unit.');
@@ -37,17 +41,27 @@ test('raw unmatched blockquote HTML remains visible content and cannot break can
   );
   assert.match(
     unit.html,
+    /&lt;blockquote&gt;&lt;div&gt;/,
+    'Source raw opening tags must remain visible escaped content.'
+  );
+  assert.match(
+    unit.html,
     /&lt;\/blockquote&gt;/,
-    'The source closing tag must remain visible escaped content.'
+    'Source raw closing tags must remain visible escaped content.'
   );
   assert.equal(
     (unit.html.match(/<\/blockquote>/g) ?? []).length,
     1,
-    'Source Markdown must not inject a second structural blockquote close.'
+    'Source Markdown must not inject a structural blockquote close.'
   );
   assert.deepEqual(
     unit.speech_words.map(word => word.text),
-    ['Before', 'raw', 'HTML', '.', '<', '/', 'blockquote', '>', 'After', 'raw', 'HTML', '.'],
+    [
+      'Before', 'raw', 'HTML', '.',
+      '<', 'blockquote', '>', '<', 'div', '>',
+      'Nested', 'raw', 'HTML', '.', '<', '/', 'blockquote', '>',
+      'After', 'raw', 'HTML', '.'
+    ],
     'Escaped raw HTML must stay in the authoritative canonical word stream.'
   );
 });
