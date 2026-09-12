@@ -3500,10 +3500,13 @@ function annotateOrderedListOrdinals(html) {
  * @returns {string} HTML generated from the canonical Markdown content.
  */
 function renderMarkdown(markdown) {
+  const renderer = new marked.Renderer();
+  renderer.html = ({ text }) => htmlEscape(text);
   const html = String(marked.parse(String(markdown ?? ''), {
     async: false,
     breaks: false,
-    gfm: true
+    gfm: true,
+    renderer
   }));
   return annotateOrderedListOrdinals(html);
 }
