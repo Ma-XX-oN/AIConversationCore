@@ -73,11 +73,33 @@ test('canonical HTML and speech words share one global monotonically increasing 
   );
   assert.match(
     html,
-    new RegExp(`<span id="word-${splitMarkup.id}">turn_id<\\/span>`)
+    new RegExp(
+      `<span id="word-${splitMarkup.id}">turn_id<strong>s<\\/strong><\\/span>`
+    ),
+    'Inline Markdown must render one canonical DOM word element.'
   );
+  assert.equal(
+    html.includes(`data-word-id="${splitMarkup.id}"`),
+    false,
+    'One canonical word must not require secondary DOM identity fragments.'
+  );
+});
+
+test('canonical word element owns formatting that begins before the word continues outside it', () => {
+  const [unit] = core.renderCanonicalHtmlUnits([
+    messageEvent('event:user:format-boundary', 0, 'user', '**prefix turn_**id')
+  ]);
+  const word = unit.speech_words.find(item => item.text === 'turn_id');
+  assert.ok(word, 'Concrete inline-Markdown boundary case must remain one canonical word.');
   assert.match(
-    html,
-    new RegExp(`<span data-word-id="${splitMarkup.id}">s<\\/span>`)
+    unit.html,
+    new RegExp(`<span id="word-${word.id}"><strong>turn_<\\/strong>id<\\/span>`),
+    'Core must restructure inline markup around one canonical DOM word element.'
+  );
+  assert.equal(
+    unit.html.includes(`data-word-id="${word.id}"`),
+    false,
+    'Restructuring must not introduce secondary DOM word fragments.'
   );
 });
 
