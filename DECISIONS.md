@@ -516,3 +516,33 @@ consumer reconstructed them from rendered/source text, it would recreate the
 alignment machinery D019–D021 were intended to remove.  Core already has the exact
 visible stream at word-allocation time, so retaining its separators keeps one
 identity path and makes the transformation lossless without a fallback.
+
+## D023 — Structural speech prefixes are Core-owned but are not word identities
+
+**Status:** Accepted
+
+**Decision:** Canonical words may carry `speech_prefix_before`, a Core-owned
+structural string that a speech consumer emits immediately before that word.  The
+initial use is the resolved marker of an ordered-list item, such as `3. ` before
+the first canonical word in that item.  Words without such structure carry an
+empty prefix.
+
+A structural prefix is not a canonical transcript word.  Its characters do not
+receive numeric `word_id` values and do not create additional `word-N` DOM
+elements.  Consumers may tokenize the prefix for their platform speech engine,
+but those structural speech tokens have no word handle.  Consumers must not
+fabricate IDs for them, borrow an adjacent word ID, or parse source Markdown to
+reconstruct list ordinals.
+
+`renderCanonicalHtmlUnits()`, `projectCanonicalWords()`, and
+`locateCanonicalWord()` expose the same prefix-enriched canonical word records.
+The prefix is derived from Core-owned rendered structure, including
+`data-list-ordinal`, in the same projection pass that allocates word IDs.
+
+**Reason:** Issue #72 established that ordered-list ordinals are Core semantics and
+must be available to speech consumers, while issue #75 exposed that the previous
+HTML-only ordinal metadata was insufficient to carry word identity through a real
+speech pipeline.  Treating an implicit list marker as a fake word would violate
+D019's one-word/one-DOM-element contract; parsing the list again in a consumer
+would duplicate Core semantics.  An explicit structural speech prefix preserves
+both invariants.
