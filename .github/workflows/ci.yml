@@ -8,6 +8,7 @@ on:
       - issue-79-canonical-html-units
       - issue-80-canonical-word-ids
       - issue-81-word-handle-lookup
+      - issue-82-word-provenance
   pull_request:
     branches:
       - main
