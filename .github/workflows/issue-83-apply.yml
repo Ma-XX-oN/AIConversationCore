@@ -32,7 +32,7 @@ jobs:
       - name: Regenerate deterministic browser bundle
         run: node scripts/build-browser-bundle.mjs
 
-      - name: Verify focused word identity regressions
+      - name: Verify focused word identity regressions after cleanup
         run: |
           node --test \
             tests/canonical-word-separators.test.js \
