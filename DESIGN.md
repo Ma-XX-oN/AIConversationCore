@@ -222,7 +222,7 @@ turn ID       -> turn-id
 
 Output-specific mappings then apply those roles:
 
-- ANSI: User yellow, Assistant/provider green, timestamp cyan, record number dim,
+- ANSI: User yellow, Assistant/provider heading green, timestamp cyan, record number dim,
   and turn ID magenta/purple by default;
 - HTML: stable semantic CSS classes or equivalent structured style metadata;
 - plain text: no visual style while preserving component ordering/content;
@@ -292,6 +292,20 @@ must never repair inline markup or reconstruct one word from multiple DOM elemen
 transcript-wide list. These are two views of the same Core annotation pass, not
 independent tokenizers. The browser bundle must provide the same result as the ESM
 API.
+
+`locateCanonicalWord(events, wordId, options)` is the high-level lookup operation
+for consumers that hold a canonical numeric word handle but do not currently have
+its HTML materialized. It returns the authoritative canonical word record together
+with the complete Core-rendered unit containing that word. A valid positive word ID
+that is absent from the selected projection returns `null`. Invalid handles are
+rejected. Lookup is by numeric canonical identity only; visible text is never a
+lookup key or fallback.
+
+The lookup API intentionally does not expose a word-to-unit mapping table. Core may
+change its internal lookup implementation without changing consumer behaviour.
+Viewport selection, materialization-window size, scrolling, and neighbouring-unit
+policy remain consumer concerns; consumers ask Core for the semantic object they
+need rather than copying Core bookkeeping.
 
 Semantic group membership is structural and Core-owned. Existing presentation
 containers such as User Context, reasoning, code/fence content, and future semantic
@@ -418,6 +432,10 @@ them separate.
     navigation consumers. Each canonical word is one DOM word element in canonical
     HTML; downstream consumers must not create parallel tokenization,
     text-alignment, fragment-reassembly, or fallback identity paths.
+14. **Word-handle lookup remains a Core operation.** A consumer may hold a numeric
+    canonical word ID and request its authoritative word plus containing canonical
+    rendered unit. Consumers must not maintain a duplicate word-to-unit map or use
+    visible text as a lookup fallback.
 
 ## Migration principle
 
