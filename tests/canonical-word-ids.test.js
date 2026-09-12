@@ -85,15 +85,15 @@ test('canonical HTML and speech words share one global monotonically increasing 
   );
 });
 
-test('canonical word element owns formatting that begins before the word continues outside it', () => {
+test('canonical word element owns inline code that ends before the word ends', () => {
   const [unit] = core.renderCanonicalHtmlUnits([
-    messageEvent('event:user:format-boundary', 0, 'user', '**prefix turn_**id')
+    messageEvent('event:user:inline-code-boundary', 0, 'user', '`turn_`id')
   ]);
   const word = unit.speech_words.find(item => item.text === 'turn_id');
-  assert.ok(word, 'Concrete inline-Markdown boundary case must remain one canonical word.');
+  assert.ok(word, 'Concrete inline-code boundary must remain one canonical word.');
   assert.match(
     unit.html,
-    new RegExp(`<span id="word-${word.id}"><strong>turn_<\\/strong>id<\\/span>`),
+    new RegExp(`<span id="word-${word.id}"><code>turn_<\\/code>id<\\/span>`),
     'Core must restructure inline markup around one canonical DOM word element.'
   );
   assert.equal(
