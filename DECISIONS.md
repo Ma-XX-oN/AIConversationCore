@@ -267,7 +267,7 @@ conversation semantics.
 
 `AgentPanelSpeaker` must therefore be able either to consume core-generated HTML
 with stable semantic classes or to consume structured header components/style
-roles and map them into WebView2/CSS itself.  Provider adapters must never know
+roles and map the roles into WebView2/CSS itself.  Provider adapters must never know
 about these colours or CSS classes.
 
 **Reason:** ANSI is only one presentation target.  The same semantic header data
@@ -431,3 +431,30 @@ exact divergence the shared core exists to prevent. The corrected #80 regression
 cover both `turn_id**s**`, where formatting begins inside the word, and `` `turn_`id
 ``, where inline code ends before the word ends. Both must leave Core as one word
 element without consumer-side reconstruction.
+
+## D020 — Word-handle lookup is a high-level Core operation
+
+**Status:** Accepted
+
+**Decision:** A consumer that holds a canonical numeric word ID asks
+AIConversationCore to locate that word rather than maintaining a parallel
+word-to-unit index. The public lookup operation returns the authoritative canonical
+word record together with the complete Core-rendered unit containing it. A valid
+word ID that is absent from the selected projection returns `null`; invalid handles
+are rejected.
+
+Lookup uses canonical numeric identity only. Visible text, duplicate text, DOM
+search, consumer tokenization, and fallback alignment are not valid lookup paths.
+Core retains freedom to change its internal lookup strategy without exposing its
+bookkeeping as a public mapping table.
+
+The consumer continues to own viewport selection, window size, scrolling, and when
+to materialize the returned unit. Core owns the semantic question of which
+canonical unit contains a canonical word. The ESM and browser-bundle APIs expose
+the same operation.
+
+**Reason:** Virtualized consumers such as AgentPanelSpeaker can hold a valid word
+identity whose containing HTML unit is not currently materialized. Requiring the
+consumer to reconstruct a word-to-unit map would duplicate Core semantics and make
+identical visible text ambiguous. A high-level Core lookup preserves one identity
+model while keeping UI/window policy outside Core.
