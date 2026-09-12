@@ -458,3 +458,30 @@ identity whose containing HTML unit is not currently materialized. Requiring the
 consumer to reconstruct a word-to-unit map would duplicate Core semantics and make
 identical visible text ambiguous. A high-level Core lookup preserves one identity
 model while keeping UI/window policy outside Core.
+
+## D021 — Canonical words carry Core-owned source provenance
+
+**Status:** Accepted
+
+**Decision:** Every canonical interactive word exposed by Core carries the stable
+canonical provenance needed to associate that word with its presentation node,
+event, content block, block-relative word position, and source metadata.  The
+word's global numeric `id` remains its authoritative cross-boundary identity.
+
+`renderCanonicalHtmlUnits()` exposes this provenance on each `speech_words`
+record.  `locateCanonicalWord()` returns the same word record, including the same
+provenance.  Consumers must not reconstruct this relationship by matching visible
+text, counting independently tokenized words, correlating DOM fragments, or
+maintaining a second word-to-content identity model.
+
+Core verifies provenance against the same canonical word grammar and rendered
+content used to allocate word IDs.  If block-level provenance cannot be reconciled
+exactly with the rendered canonical word sequence, Core treats that as an invariant
+failure rather than selecting a best-effort or fallback association.
+
+**Reason:** A complete rendered turn can contain multiple canonical events and
+blocks, including reasoning, commentary, final response text, User Context, and
+ordinary User content.  A unit-level lookup alone cannot tell a speech/display
+consumer which event/block owns a word when several sources share one turn or even
+identical visible text.  Keeping that relationship in Core prevents the same
+consumer-side alignment machinery that D019 and D020 were introduced to remove.

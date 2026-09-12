@@ -321,6 +321,28 @@ word-to-unit map by tokenizing rendered HTML, searching duplicate text, or
 inventing fallback matching. Platform-specific playback, viewport policy, CSS,
 and interaction remain consumer-owned.
 
+## Canonical word provenance
+
+Canonical word identity includes Core-owned provenance in addition to the global
+numeric word handle.  Each `speech_words` record carries a `provenance` object with
+the owning presentation node, canonical event, canonical content block,
+block-relative canonical word index, and retained block source metadata.  The
+canonical `word_id` remains the identity used for seeking, highlighting,
+virtualization, and other cross-boundary operations; provenance describes what
+that word belongs to rather than creating another identity.
+
+Core derives this metadata from the same canonical presentation/block structures
+used by its renderer.  For leaves containing multiple blocks, Core builds the
+ordered per-block word provenance with the canonical word grammar and verifies it
+exactly against the words produced by the complete rendered unit before returning
+the projection.  A count or text mismatch is an invariant failure.  There is no
+fuzzy alignment, rendered-text search, or fallback association.
+
+`renderCanonicalHtmlUnits()` and `locateCanonicalWord()` expose the same
+provenance-bearing word record.  This lets consumers associate a word with their
+speech/display structures using canonical event/block identity without duplicating
+Core tokenization or maintaining a word-to-event/block map inferred from text.
+
 ## Consumer boundaries
 
 ### DownloadConversation
