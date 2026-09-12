@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 import {
   adaptChatGPTRecords,
+  locateCanonicalWord,
   projectCanonicalWords,
   renderCanonicalHtml,
   renderCanonicalHtmlUnits,
@@ -64,6 +65,7 @@ test('generated classic browser bundle exposes the required DownloadConversation
   assert.equal(typeof context.AIConversationCore.renderCanonicalMarkdown, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalHtml, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalHtmlUnits, 'function');
+  assert.equal(typeof context.AIConversationCore.locateCanonicalWord, 'function');
   assert.equal(typeof context.AIConversationCore.projectCanonicalWords, 'function');
 });
 
@@ -101,4 +103,22 @@ test('generated browser bundle matches ESM canonical HTML and word identity for 
   assert.match(actual, /<blockquote class="user-context">/);
   assert.match(actual, /<summary># Context from my IDE setup:<\/summary>/);
   assert.equal(actual.includes('## My request for Codex:'), false);
+});
+
+test('generated browser bundle matches ESM canonical word-handle lookup', async () => {
+  const bundle = await buildBrowserBundle();
+  const context = vm.createContext({ URL });
+  vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
+
+  const events = [NORMALIZED_USER_CONTEXT_EVENT];
+  const units = renderCanonicalHtmlUnits(events);
+  const target = units[0].speech_words.at(-1);
+  assert.ok(target);
+
+  const expected = locateCanonicalWord(events, target.id);
+  const actual = context.AIConversationCore.locateCanonicalWord(
+    plain(events),
+    target.id
+  );
+  assert.deepEqual(plain(actual), plain(expected));
 });
