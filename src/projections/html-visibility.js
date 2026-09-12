@@ -1,4 +1,5 @@
 import {
+  renderCanonicalBlockHtml,
   renderCanonicalHtmlUnits as renderBaseHtmlUnits
 } from './html.js';
 import { buildCanonicalPresentation } from './presentation-revisions.js';
@@ -9,6 +10,7 @@ import {
 import { collapseCanonicalWordFragments } from './word-element.js';
 import {
   annotateCanonicalHtmlWords,
+  canonicalWordTextsFromHtml,
   createCanonicalWordState
 } from './word-identity.js';
 
@@ -76,6 +78,117 @@ function applyTurnRevisionAttributes(html, turnsById) {
 }
 
 /**
+ * Returns the canonical blocks that contribute interactive words for one
+ * presentation leaf.
+ *
+ * @param {Object<string, *>} node - Canonical presentation node.
+ * @returns {Array<Object<string, *>>} Ordered word-bearing blocks.
+ */
+function wordBlocksForPresentationNode(node) {
+  if (node?.kind === 'subagent_content') {
+    return node?.block ? [node.block] : [];
+  }
+  if ([
+    'user_context',
+    'reasoning',
+    'markdown',
+    'commentary',
+    'notice'
+  ].includes(node?.kind)) {
+    return Array.isArray(node?.blocks) ? node.blocks : [];
+  }
+  return [];
+}
+
+/**
+ * Appends authoritative word provenance for one presentation subtree.
+ *
+ * Block word texts are rendered and tokenized by the same Core helpers as
+ * the complete projection.  The complete-unit render later verifies this
+ * sequence exactly before provenance is attached, so this path can never
+ * silently align by text or ordinal when the renderings disagree.
+ *
+ * @param {Object<string, *>} node - Canonical presentation subtree.
+ * @param {Array<Object<string, *>>} output - Ordered provenance descriptors.
+ * @returns {void} Descriptors are appended in canonical render order.
+ */
+function appendWordProvenance(node, output) {
+  if (node?.kind === 'reasoning_group') {
+    for (const child of node?.children ?? []) {
+      appendWordProvenance(child, output);
+    }
+    return;
+  }
+  if (node?.kind === 'tool' || node?.kind === 'interaction' ||
+      node?.kind === 'attachments') return;
+
+  for (const block of wordBlocksForPresentationNode(node)) {
+    const html = '<div class="presentation-content">' +
+      renderCanonicalBlockHtml(block) + '</div>';
+    const texts = canonicalWordTextsFromHtml(html);
+    texts.forEach((text, blockWordIndex) => {
+      output.push({
+        text,
+        provenance: {
+presentation_id: node?.id ?? null,
+event_id: node?.event_id ?? null,
+block_id: block?.id ?? null,
+block_word_index: blockWordIndex,
+source: block?.source && typeof block.source === 'object'
+  ? { ...block.source }
+  : null
+        }
+      });
+    });
+  }
+}
+
+/**
+ * Builds the authoritative ordered word provenance sequence for one turn.
+ *
+ * @param {Object<string, *>} turn - Canonical presentation turn.
+ * @returns {Array<Object<string, *>>} Ordered provenance descriptors.
+ */
+function turnWordProvenance(turn) {
+  const output = [];
+  for (const child of turn?.children ?? []) {
+    appendWordProvenance(child, output);
+  }
+  return output;
+}
+
+/**
+ * Attaches verified canonical provenance to annotated word records.
+ *
+ * @param {Array<Object<string, *>>} words - Annotated unit word records.
+ * @param {Array<Object<string, *>>} expected - Core provenance descriptors.
+ * @param {string} unitId - Canonical unit identity for invariant errors.
+ * @returns {Array<Object<string, *>>} Word records carrying provenance.
+ */
+function wordsWithVerifiedProvenance(words, expected, unitId) {
+  if (words.length !== expected.length) {
+    throw new TypeError(
+      `Canonical word provenance count mismatch in unit ${unitId}: ` +
+      `${words.length} rendered words versus ${expected.length} block words.`
+    );
+  }
+  return words.map((word, index) => {
+    const descriptor = expected[index];
+    if (word?.text !== descriptor?.text) {
+      throw new TypeError(
+        `Canonical word provenance mismatch in unit ${unitId} at word ` +
+        `${index}: rendered ${JSON.stringify(word?.text)} versus block ` +
+        `${JSON.stringify(descriptor?.text)}.`
+      );
+    }
+    return {
+      ...word,
+      provenance: descriptor.provenance
+    };
+  });
+}
+
+/**
  * Renders canonical HTML as ordered complete-turn units while retaining
  * historical revision turns and assigning one transcript-global word identity.
  *
@@ -101,14 +214,24 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
     turnRevisionProjection(turn, eventsById)
   ]));
   const wordState = createCanonicalWordState();
+  const provenanceByTurnId = new Map((presentation.turns ?? []).map(turn => [
+    String(turn?.id ?? ''),
+    turnWordProvenance(turn)
+  ]));
 
   return renderBaseHtmlUnits(projectedEvents).map(unit => {
     const revisionHtml = applyTurnRevisionAttributes(unit.html, turnsById);
     const annotated = annotateCanonicalHtmlWords(revisionHtml, wordState);
+    const provenance = provenanceByTurnId.get(String(unit?.id ?? '')) ?? [];
+    const words = wordsWithVerifiedProvenance(
+      annotated.words,
+      provenance,
+      String(unit?.id ?? '')
+    );
     return {
       ...unit,
       html: collapseCanonicalWordFragments(annotated.html),
-      speech_words: annotated.words
+      speech_words: words
     };
   });
 }

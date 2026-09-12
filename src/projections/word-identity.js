@@ -366,6 +366,33 @@ function visibleWordStream(html, segments) {
  * @param {number} end - Exclusive visible end offset.
  * @returns {Array<Object<string, number>>} Contiguous raw text pieces.
  */
+/**
+ * Returns the canonical visible word texts in one Core HTML fragment.
+ *
+ * This is the same tokenizer used by canonical word-ID annotation.  It
+ * exists so other Core projection stages can verify provenance without
+ * copying the token grammar or assigning a second identity.
+ *
+ * @param {string} html - Core-rendered canonical content HTML.
+ * @returns {Array<string>} Canonical visible word texts in render order.
+ */
+export function canonicalWordTextsFromHtml(html) {
+  const value = String(html ?? '');
+  const segments = htmlSegments(value);
+  const visible = visibleWordStream(value, segments);
+  CANONICAL_WORD_PATTERN.lastIndex = 0;
+  return [...visible.text.matchAll(CANONICAL_WORD_PATTERN)]
+    .map(match => match[0]);
+}
+
+/**
+ * Returns exact raw HTML pieces covered by one canonical visible token.
+ *
+ * @param {Array<Object<string, *>|null>} map - Visible-to-raw offset map.
+ * @param {number} start - Inclusive visible start offset.
+ * @param {number} end - Exclusive visible end offset.
+ * @returns {Array<Object<string, number>>} Contiguous raw text pieces.
+ */
 function rawTokenPieces(map, start, end) {
   const pieces = [];
   let current = null;
