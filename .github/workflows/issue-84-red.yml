@@ -1,0 +1,37 @@
+name: Issue 84 raw HTML RED
+
+on:
+  push:
+    branches:
+      - issue-84-unmatched-raw-blockquote-regression
+    paths:
+      - 'tests/canonical-raw-html-structure-regression.test.js'
+      - '.github/workflows/issue-84-red.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify permanent regression is RED for the real failure class
+        shell: bash
+        run: |
+          set +e
+          node --test tests/canonical-raw-html-structure-regression.test.js > issue84-red.log 2>&1
+          status=$?
+          set -e
+          cat issue84-red.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected the issue #84 regression to fail before the production fix.' >&2
+            exit 1
+          fi
+          grep -F 'Canonical HTML closes unexpected <blockquote>.' issue84-red.log
+          echo 'ISSUE84_RED_CONFIRMED'
