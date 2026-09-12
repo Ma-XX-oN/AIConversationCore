@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/issue-72-ordinal-word-implementation.yml'
       - 'scripts/issue-72-ordinal-word-implementation.mjs'
+      - 'tests/ordered-list-ordinals.test.js'
 
 permissions:
   contents: write
