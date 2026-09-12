@@ -262,21 +262,30 @@ units. They do not restart at turn, block, or virtualization boundaries.
 One Core word is one canonical interactive/spoken unit. The token grammar is part
 of the shared projection contract rather than a consumer implementation detail.
 For example, decimal/fractional values such as `13.234` and `35.4401545` are one
-word each. Inline presentation markup must not create competing identities for one
-word: if a single canonical word is rendered across multiple inline HTML text
-pieces, those pieces still share one numeric word ID.
+word each. Inline presentation markup must not split one canonical word into
+multiple DOM identity elements. Core restructures its generated HTML as necessary
+so each canonical word is represented by exactly one word element, with any inline
+formatting that applies to part of that word nested inside that element.
 
-Canonical HTML serializes the numeric handle as a DOM identifier on the first
-rendered piece:
+Canonical HTML serializes the numeric handle as the DOM identifier of that single
+word element:
 
 ```html
 <span id="word-127">13.234</span>
 ```
 
-When inline markup splits one word across multiple rendered pieces, the unique
-DOM `id` appears only on the first piece and later pieces carry
-`data-word-id="127"`. This preserves valid unique HTML IDs while retaining one
-Core identity.
+For a word whose visible text crosses an inline formatting boundary, the formatting
+remains inside the one canonical word element. For example, a visible `turn_ids`
+formed by Markdown `turn_id**s**` is represented equivalently to:
+
+```html
+<span id="word-127">turn_id<strong>s</strong></span>
+```
+
+Public canonical HTML does not expose secondary `data-word-id` fragments for one
+word. Any temporary piece-level annotation used internally by Core is an
+implementation detail that must be collapsed before HTML leaves Core. Consumers
+must never repair inline markup or reconstruct one word from multiple DOM elements.
 
 `renderCanonicalHtmlUnits()` exposes the same ordered word records in each unit's
 `speech_words`; `projectCanonicalWords()` exposes the same identities as one
@@ -406,8 +415,9 @@ them separate.
     theme choices are mappings of those roles rather than provider/canonical data.
 13. **One canonical word identity.** Interactive/spoken word IDs are global,
     numeric, monotonically increasing, and shared by HTML, speech/highlight, and
-    navigation consumers. Downstream consumers must not create parallel
-    tokenization, text-alignment, or fallback identity paths.
+    navigation consumers. Each canonical word is one DOM word element in canonical
+    HTML; downstream consumers must not create parallel tokenization,
+    text-alignment, fragment-reassembly, or fallback identity paths.
 
 ## Migration principle
 
