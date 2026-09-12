@@ -108,6 +108,7 @@ export async function buildBrowserBundle() {
     presentationRevisionsSource,
     htmlSource,
     wordIdentitySource,
+    wordElementSource,
     htmlVisibilitySource,
     structuredSource
   ] = await Promise.all([
@@ -121,6 +122,7 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/projections/presentation-revisions.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/html.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/word-identity.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/word-element.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/html-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8')
   ]);
@@ -194,6 +196,9 @@ export async function buildBrowserBundle() {
     'createCanonicalWordState',
     'annotateCanonicalHtmlWords'
   ]);
+  const wordElement = multiExportModuleBody(wordElementSource, [
+    'collapseCanonicalWordFragments'
+  ]);
 
   let htmlVisibilityPrepared = htmlVisibilitySource;
   htmlVisibilityPrepared = removeImportBlock(
@@ -210,6 +215,11 @@ export async function buildBrowserBundle() {
     htmlVisibilityPrepared,
     "import {\n  isHistoricalRevision,\n  projectRevisionVisibility\n} from './revision-visibility.js';",
     './revision-visibility.js'
+  );
+  htmlVisibilityPrepared = removeImportBlock(
+    htmlVisibilityPrepared,
+    "import { collapseCanonicalWordFragments } from './word-element.js';",
+    './word-element.js'
   );
   htmlVisibilityPrepared = removeImportBlock(
     htmlVisibilityPrepared,
@@ -245,6 +255,7 @@ export async function buildBrowserBundle() {
     `// - src/projections/presentation-revisions.js\n` +
     `// - src/projections/html.js\n` +
     `// - src/projections/word-identity.js\n` +
+    `// - src/projections/word-element.js\n` +
     `// - src/projections/html-visibility.js\n` +
     `// - src/projections/structured.js\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
@@ -258,6 +269,7 @@ export async function buildBrowserBundle() {
     `${presentationRevisions}\n\n` +
     `${htmlBase}\n\n` +
     `${wordIdentity}\n\n` +
+    `${wordElement}\n\n` +
     `${htmlVisibility}\n\n` +
     `${structured}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
