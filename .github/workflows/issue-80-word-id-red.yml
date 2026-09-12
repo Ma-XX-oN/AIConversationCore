@@ -6,7 +6,7 @@ on:
       - issue-80-canonical-word-ids
     paths:
       - '.github/workflows/issue-80-word-id-red.yml'
-      - 'tests/canonical-word-identity.test.js'
+      - 'tests/canonical-word-ids.test.js'
 
 permissions:
   contents: read
@@ -24,16 +24,16 @@ jobs:
         shell: bash
         run: |
           set +e
-          output=$(node --test tests/canonical-word-identity.test.js 2>&1)
+          output=$(node --test tests/canonical-word-ids.test.js 2>&1)
           code=$?
           set -e
           printf '%s\n' "$output"
           if [ "$code" -eq 0 ]; then
-            echo 'Canonical word-ID regression unexpectedly passed before implementation.' >&2
+            echo 'Canonical single-word-element regression unexpectedly passed before implementation.' >&2
             exit 1
           fi
-          if ! grep -Eq "does not provide an export named 'projectCanonicalWords'|projectCanonicalWords" <<<"$output"; then
-            echo 'Expected canonical word-ID RED was not observed.' >&2
+          if ! grep -Eq 'Inline Markdown must render one canonical DOM word element|Core must restructure inline markup around one canonical DOM word element' <<<"$output"; then
+            echo 'Expected canonical single-word-element RED was not observed.' >&2
             exit 1
           fi
-          echo 'CONFIRMED RED: Core has no authoritative projectCanonicalWords contract yet.'
+          echo 'CONFIRMED RED: Core still fragments one canonical word across multiple DOM elements.'
