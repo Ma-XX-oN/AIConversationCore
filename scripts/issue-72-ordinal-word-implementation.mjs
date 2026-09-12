@@ -472,12 +472,12 @@ fs.appendFileSync(
 
 replaceOnce(
   'src/projections/word-element.js',
-` * public HTML contract: every canonical word leaves Core as exactly one
+` * the public HTML contract: every canonical word leaves Core as exactly one
  * \`<span id="word-N">...</span>\`, with any applicable inline formatting nested
  * inside that span. Consumers never repair or reconstruct word identity.
 `,
-` * public HTML contract: every canonical word leaves Core as exactly one DOM word
- * element. Ordinary textual words use \`<span id="word-N">...</span>\`; an
+` * the public HTML contract: every canonical word leaves Core as exactly one DOM
+ * word element. Ordinary textual words use \`<span id="word-N">...</span>\`; an
  * ordered-list ordinal uses its canonical \`<li id="word-N">\` because that
  * structural element is the visible/highlightable word object. Applicable inline
  * formatting remains nested inside ordinary word spans. Consumers never repair or
