@@ -94,3 +94,6 @@ test('word lookup preserves the structural speech prefix on the exact canonical 
   assert.ok(located);
   assert.deepEqual(located.word, exact);
 });
+
+// Structural speech prefixes are Core semantics but are deliberately not
+// transcript word identities; consumers may not manufacture word IDs for them.
