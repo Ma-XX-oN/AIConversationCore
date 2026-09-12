@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/canonical-presentation-html
+      - issue-72-speech-prefix-word-identity
       - issue-79-canonical-html-units
       - issue-80-canonical-word-ids
       - issue-81-word-handle-lookup
