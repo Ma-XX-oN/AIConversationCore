@@ -368,13 +368,44 @@ function visibleWordStream(html, segments) {
  * @param {string} html - Core-rendered canonical content HTML.
  * @returns {Array<string>} Canonical visible word texts in render order.
  */
-export function canonicalWordTextsFromHtml(html) {
+/**
+ * Returns canonical visible words plus their exact preceding separators.
+ *
+ * The canonical grammar consumes every visible non-whitespace symbol, so
+ * text between consecutive matches is necessarily whitespace.  Exposing it
+ * from this same Core stream lets consumers preserve spaces/newlines while
+ * carrying word IDs without reparsing or aligning text.
+ *
+ * @param {string} html - Core-rendered canonical content HTML.
+ * @returns {Array<Object<string, string>>} Ordered words and separators.
+ */
+export function canonicalWordDescriptorsFromHtml(html) {
   const value = String(html ?? '');
   const segments = htmlSegments(value);
   const visible = visibleWordStream(value, segments);
+  const descriptors = [];
+  let previousEnd = 0;
   CANONICAL_WORD_PATTERN.lastIndex = 0;
-  return [...visible.text.matchAll(CANONICAL_WORD_PATTERN)]
-    .map(match => match[0]);
+  for (const match of visible.text.matchAll(CANONICAL_WORD_PATTERN)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    descriptors.push({
+      text: match[0],
+      separator_before: visible.text.slice(previousEnd, start)
+    });
+    previousEnd = end;
+  }
+  return descriptors;
+}
+
+/**
+ * Returns the canonical visible word texts in one Core HTML fragment.
+ *
+ * @param {string} html - Core-rendered canonical content HTML.
+ * @returns {Array<string>} Canonical visible word texts in render order.
+ */
+export function canonicalWordTextsFromHtml(html) {
+  return canonicalWordDescriptorsFromHtml(html).map(word => word.text);
 }
 
 /**

@@ -4184,13 +4184,44 @@ function visibleWordStream(html, segments) {
  * @param {string} html - Core-rendered canonical content HTML.
  * @returns {Array<string>} Canonical visible word texts in render order.
  */
-function canonicalWordTextsFromHtml(html) {
+/**
+ * Returns canonical visible words plus their exact preceding separators.
+ *
+ * The canonical grammar consumes every visible non-whitespace symbol, so
+ * text between consecutive matches is necessarily whitespace.  Exposing it
+ * from this same Core stream lets consumers preserve spaces/newlines while
+ * carrying word IDs without reparsing or aligning text.
+ *
+ * @param {string} html - Core-rendered canonical content HTML.
+ * @returns {Array<Object<string, string>>} Ordered words and separators.
+ */
+function canonicalWordDescriptorsFromHtml(html) {
   const value = String(html ?? '');
   const segments = htmlSegments(value);
   const visible = visibleWordStream(value, segments);
+  const descriptors = [];
+  let previousEnd = 0;
   CANONICAL_WORD_PATTERN.lastIndex = 0;
-  return [...visible.text.matchAll(CANONICAL_WORD_PATTERN)]
-    .map(match => match[0]);
+  for (const match of visible.text.matchAll(CANONICAL_WORD_PATTERN)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    descriptors.push({
+      text: match[0],
+      separator_before: visible.text.slice(previousEnd, start)
+    });
+    previousEnd = end;
+  }
+  return descriptors;
+}
+
+/**
+ * Returns the canonical visible word texts in one Core HTML fragment.
+ *
+ * @param {string} html - Core-rendered canonical content HTML.
+ * @returns {Array<string>} Canonical visible word texts in render order.
+ */
+function canonicalWordTextsFromHtml(html) {
+  return canonicalWordDescriptorsFromHtml(html).map(word => word.text);
 }
 
 /**
@@ -4780,10 +4811,11 @@ function appendWordProvenance(node, output) {
   for (const block of wordBlocksForPresentationNode(node)) {
     const html = '<div class="presentation-content">' +
       renderCanonicalBlockHtml(block) + '</div>';
-    const texts = canonicalWordTextsFromHtml(html);
-    texts.forEach((text, blockWordIndex) => {
+    const descriptors = canonicalWordDescriptorsFromHtml(html);
+    descriptors.forEach((descriptor, blockWordIndex) => {
       output.push({
-        text,
+        text: descriptor.text,
+        separator_before: descriptor.separator_before,
         provenance: {
           presentation_id: node?.id ?? null,
           event_id: node?.event_id ?? null,
@@ -4838,6 +4870,7 @@ function wordsWithVerifiedProvenance(words, expected, unitId) {
     }
     return {
       ...word,
+      separator_before: descriptor.separator_before,
       provenance: descriptor.provenance
     };
   });

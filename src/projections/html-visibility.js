@@ -10,7 +10,7 @@ import {
 import { collapseCanonicalWordFragments } from './word-element.js';
 import {
   annotateCanonicalHtmlWords,
-  canonicalWordTextsFromHtml,
+  canonicalWordDescriptorsFromHtml,
   createCanonicalWordState
 } from './word-identity.js';
 
@@ -125,10 +125,11 @@ function appendWordProvenance(node, output) {
   for (const block of wordBlocksForPresentationNode(node)) {
     const html = '<div class="presentation-content">' +
       renderCanonicalBlockHtml(block) + '</div>';
-    const texts = canonicalWordTextsFromHtml(html);
-    texts.forEach((text, blockWordIndex) => {
+    const descriptors = canonicalWordDescriptorsFromHtml(html);
+    descriptors.forEach((descriptor, blockWordIndex) => {
       output.push({
-        text,
+        text: descriptor.text,
+        separator_before: descriptor.separator_before,
         provenance: {
           presentation_id: node?.id ?? null,
           event_id: node?.event_id ?? null,
@@ -183,6 +184,7 @@ function wordsWithVerifiedProvenance(words, expected, unitId) {
     }
     return {
       ...word,
+      separator_before: descriptor.separator_before,
       provenance: descriptor.provenance
     };
   });

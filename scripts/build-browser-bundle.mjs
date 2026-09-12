@@ -198,6 +198,7 @@ export async function buildBrowserBundle() {
 
   const wordIdentity = multiExportModuleBody(wordIdentitySource, [
     'createCanonicalWordState',
+    'canonicalWordDescriptorsFromHtml',
     'canonicalWordTextsFromHtml',
     'annotateCanonicalHtmlWords'
   ]);
@@ -228,7 +229,7 @@ export async function buildBrowserBundle() {
   );
   htmlVisibilityPrepared = removeImportBlock(
     htmlVisibilityPrepared,
-    "import {\n  annotateCanonicalHtmlWords,\n  canonicalWordTextsFromHtml,\n  createCanonicalWordState\n} from './word-identity.js';",
+    "import {\n  annotateCanonicalHtmlWords,\n  canonicalWordDescriptorsFromHtml,\n  createCanonicalWordState\n} from './word-identity.js';",
     './word-identity.js'
   );
   const htmlVisibility = multiExportModuleBody(htmlVisibilityPrepared, [
