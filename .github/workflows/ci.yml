@@ -14,7 +14,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   regression:
@@ -65,29 +65,3 @@ jobs:
 
       - name: Validate whitespace and patch integrity
         run: git diff --check
-
-  apply-issue-82:
-    if: github.ref == 'refs/heads/issue-82-word-provenance'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Apply #82 design documentation
-        run: python scripts/apply-issue-82.py
-
-      - name: Validate documentation patch
-        run: git diff --check
-
-      - name: Commit #82 design documentation
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add DESIGN.md DECISIONS.md
-          git commit -m 'docs: define canonical word provenance contract (#82)'
-          git push origin HEAD:issue-82-word-provenance
