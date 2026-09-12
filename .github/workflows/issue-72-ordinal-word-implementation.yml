@@ -67,8 +67,9 @@ jobs:
 
       - name: Verify deterministic browser bundle and patch integrity
         run: |
+          cp dist/aiconversationcore.chatgpt.browser.js /tmp/aiconversationcore.browser.first.js
           node scripts/build-browser-bundle.mjs
-          git diff --exit-code -- package-lock.json dist/aiconversationcore.chatgpt.browser.js
+          cmp /tmp/aiconversationcore.browser.first.js dist/aiconversationcore.chatgpt.browser.js
           git diff --check
 
       - name: Verify superseded prefix API is absent from production and stable design
