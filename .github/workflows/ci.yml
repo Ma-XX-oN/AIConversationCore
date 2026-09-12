@@ -14,7 +14,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   regression:
@@ -65,3 +65,51 @@ jobs:
 
       - name: Validate whitespace and patch integrity
         run: git diff --check
+
+  apply-issue-82:
+    if: github.ref == 'refs/heads/issue-82-word-provenance'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply deterministic provenance patch
+        run: python scripts/apply-issue-82.py
+
+      - name: Regenerate deterministic browser bundle
+        run: node scripts/build-browser-bundle.mjs
+
+      - name: Run focused provenance and identity regressions
+        run: |
+          node --test \
+            tests/canonical-word-provenance.test.js \
+            tests/canonical-word-ids.test.js \
+            tests/canonical-word-lookup.test.js \
+            tests/browser-bundle.test.js
+          git diff --check
+
+      - name: Commit verified implementation
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/projections/html.js \
+            src/projections/word-identity.js \
+            src/projections/html-visibility.js \
+            scripts/build-browser-bundle.mjs \
+            dist/aiconversationcore.chatgpt.browser.js
+          git commit -m 'feat: add canonical word provenance (#82)'
+          git push origin HEAD:issue-82-word-provenance
