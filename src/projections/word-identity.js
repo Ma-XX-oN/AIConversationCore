@@ -99,7 +99,8 @@ function parseHtmlTag(raw) {
       name: '',
       closing: false,
       selfClosing: true,
-      classes: []
+      classes: [],
+      listOrdinal: null
     };
   }
 
@@ -115,11 +116,18 @@ function parseHtmlTag(raw) {
   const classes = (classMatch?.[1] ?? classMatch?.[2] ?? classMatch?.[3] ?? '')
     .split(/\s+/u)
     .filter(Boolean);
+  const ordinalMatch = attributes.match(
+    /\bdata-list-ordinal\s*=\s*(?:"(-?\d+)"|'(-?\d+)'|(-?\d+))/i
+  );
+  const listOrdinal = ordinalMatch
+    ? (ordinalMatch[1] ?? ordinalMatch[2] ?? ordinalMatch[3])
+    : null;
   return {
     name,
     closing: match[1] === '/',
     selfClosing: VOID_TAGS.has(name) || /\/\s*$/.test(attributes),
-    classes
+    classes,
+    listOrdinal
   };
 }
 
@@ -255,17 +263,29 @@ function htmlSegments(html) {
   const segments = [];
   const stack = [];
   let cursor = 0;
+  let nextListItemId = 1;
 
   while (cursor < html.length) {
     if (html[cursor] !== '<') {
       const end = html.indexOf('<', cursor);
       const rawEnd = end < 0 ? html.length : end;
+      let listItem = null;
+      for (let index = stack.length - 1; index >= 0; --index) {
+        if (stack[index].name === 'li') {
+          listItem = stack[index];
+          break;
+        }
+      }
       segments.push({
         kind: 'text',
         rawStart: cursor,
         rawEnd,
         groups: semanticGroups(stack),
-        wordContent: isWordContent(stack)
+        wordContent: isWordContent(stack),
+        listItemId: listItem?.listItemId ?? null,
+        speechPrefixBefore: listItem?.listOrdinal == null
+          ? ''
+          : `${listItem.listOrdinal}. `
       });
       cursor = rawEnd;
       continue;
@@ -296,7 +316,10 @@ function htmlSegments(html) {
           throw new TypeError(`Canonical HTML closes unopened <${tag.name}>.`);
         }
       } else if (!tag.selfClosing) {
-        stack.push(tag);
+        stack.push({
+          ...tag,
+          listItemId: tag.name === 'li' ? nextListItemId++ : null
+        });
       }
     }
     cursor = end;
@@ -353,7 +376,11 @@ function visibleWordStream(html, segments) {
       segment.groups
     );
     text += decoded.text;
-    map.push(...decoded.map);
+    map.push(...decoded.map.map(entry => ({
+      ...entry,
+      listItemId: segment.listItemId,
+      speechPrefixBefore: segment.speechPrefixBefore
+    })));
   }
   return { text, map };
 }
@@ -465,6 +492,7 @@ export function annotateCanonicalHtmlWords(html, state) {
   const visible = visibleWordStream(String(html ?? ''), segments);
   const insertions = new Map();
   const words = [];
+  const prefixedListItems = new Set();
   CANONICAL_WORD_PATTERN.lastIndex = 0;
   for (const match of visible.text.matchAll(CANONICAL_WORD_PATTERN)) {
     const id = state.nextWordId++;
@@ -488,7 +516,20 @@ export function annotateCanonicalHtmlWords(html, state) {
         }
       }
     }
-    words.push({ id, text: match[0], groups });
+    const firstMapped = visible.map.slice(start, end).find(Boolean);
+    let speechPrefixBefore = '';
+    if (firstMapped?.listItemId != null &&
+        firstMapped.speechPrefixBefore &&
+        !prefixedListItems.has(firstMapped.listItemId)) {
+      prefixedListItems.add(firstMapped.listItemId);
+      speechPrefixBefore = firstMapped.speechPrefixBefore;
+    }
+    words.push({
+      id,
+      text: match[0],
+      groups,
+      speech_prefix_before: speechPrefixBefore
+    });
 
     pieces.forEach((piece, pieceIndex) => {
       const attribute = pieceIndex === 0
