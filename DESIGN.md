@@ -343,6 +343,30 @@ provenance-bearing word record.  This lets consumers associate a word with their
 speech/display structures using canonical event/block identity without duplicating
 Core tokenization or maintaining a word-to-event/block map inferred from text.
 
+## Canonical word separators
+
+Canonical `speech_words` retain the exact visible whitespace immediately before
+each word in `separator_before`.  Core derives that separator from the same
+rendered visible stream and canonical token grammar that allocate the word ID;
+it is not reconstructed from source Markdown or inferred by a consumer.
+
+The first word of each canonical content block has an empty separator.  Subsequent
+separators preserve spaces and newlines inside that block exactly.  Because the
+canonical word grammar consumes every visible non-whitespace symbol, this retained
+separator is the complete inter-word information needed to reconstruct a block's
+visible word stream without introducing another tokenizer or text-alignment path.
+
+`separator_before` is transport metadata on the authoritative word record.  It
+does not create another identity, alter the one-element `word-N` DOM contract, or
+permit consumers to use text as an identity fallback.  `renderCanonicalHtmlUnits()`,
+`projectCanonicalWords()`, and `locateCanonicalWord()` expose the same enriched
+word records, and the browser bundle must remain equivalent to the ESM projection.
+
+A speech/display consumer may use the separator stream to segment canonical words
+into platform-specific utterances while carrying the existing numeric word IDs
+through that transformation.  It must not retokenize rendered HTML, search for a
+matching subsequence, or reconstruct block-relative ordinals to recover identity.
+
 ## Consumer boundaries
 
 ### DownloadConversation

@@ -359,16 +359,6 @@ function visibleWordStream(html, segments) {
 }
 
 /**
- * Returns the canonical visible word texts in one Core HTML fragment.
- *
- * This is the same tokenizer used by canonical word-ID annotation.  It
- * exists so other Core projection stages can verify provenance without
- * copying the token grammar or assigning a second identity.
- *
- * @param {string} html - Core-rendered canonical content HTML.
- * @returns {Array<string>} Canonical visible word texts in render order.
- */
-/**
  * Returns canonical visible words plus their exact preceding separators.
  *
  * The canonical grammar consumes every visible non-whitespace symbol, so

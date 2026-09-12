@@ -485,3 +485,34 @@ ordinary User content.  A unit-level lookup alone cannot tell a speech/display
 consumer which event/block owns a word when several sources share one turn or even
 identical visible text.  Keeping that relationship in Core prevents the same
 consumer-side alignment machinery that D019 and D020 were introduced to remove.
+
+
+## D022 — Canonical word streams retain Core-owned separators
+
+**Status:** Accepted
+
+**Decision:** Every canonical interactive word record retains the exact visible
+whitespace that precedes that word inside its owning canonical content block as
+`separator_before`.  Core derives this value from the same rendered visible stream
+and token grammar that allocate the global numeric word ID.  The first word in each
+block starts with an empty separator; spaces and newlines between later words are
+preserved exactly.
+
+The separator is part of the canonical word projection, not a second identity or a
+consumer hint to re-tokenize text.  `renderCanonicalHtmlUnits()`,
+`projectCanonicalWords()`, and `locateCanonicalWord()` return the same enriched word
+record, and the browser bundle remains equivalent to the ESM API.  The public HTML
+contract remains one `<span id="word-N">...</span>` per canonical word.
+
+Consumers may use these separators to divide the canonical word stream into
+platform-specific speech/display segments while carrying the existing word IDs
+through the transformation.  They must not recover identity by text search,
+subsequence matching, independent tokenization, or reconstructed ordinals.
+
+**Reason:** AgentPanelSpeaker needs to preserve Core word IDs while its speech layer
+applies sentence, fence-line, and other platform-specific segmentation.  Word text
+and provenance alone omit the spaces/newlines that define those boundaries.  If the
+consumer reconstructed them from rendered/source text, it would recreate the
+alignment machinery D019–D021 were intended to remove.  Core already has the exact
+visible stream at word-allocation time, so retaining its separators keeps one
+identity path and makes the transformation lossless without a fallback.
