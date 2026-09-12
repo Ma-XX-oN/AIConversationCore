@@ -13,6 +13,7 @@ export {
 
 export { renderCanonicalMarkdown } from './projections/markdown-visibility.js';
 export {
+  locateCanonicalWord,
   projectCanonicalWords,
   renderCanonicalHtml,
   renderCanonicalHtmlUnits
