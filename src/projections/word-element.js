@@ -348,9 +348,12 @@ function collapseWord(root, wordId) {
  * `annotateCanonicalHtmlWords()` identifies canonical token text exactly once and
  * may temporarily mark multiple raw text pieces when inline Markdown separates
  * them. This Core-owned restructuring step removes that serialization detail from
- * the public HTML contract: every canonical word leaves Core as exactly one
- * `<span id="word-N">...</span>`, with any applicable inline formatting nested
- * inside that span. Consumers never repair or reconstruct word identity.
+ * the public HTML contract: every canonical word leaves Core as exactly one DOM
+ * word element. Ordinary textual words use `<span id="word-N">...</span>`; an
+ * ordered-list ordinal uses its canonical `<li id="word-N">` because that
+ * structural element is the visible/highlightable word object. Applicable inline
+ * formatting remains nested inside ordinary word spans. Consumers never repair or
+ * reconstruct word identity.
  *
  * @param {string} html - Core-annotated canonical HTML.
  * @returns {string} Canonical HTML with one DOM element per canonical word.

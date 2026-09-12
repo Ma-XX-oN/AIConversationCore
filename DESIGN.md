@@ -367,25 +367,31 @@ into platform-specific utterances while carrying the existing numeric word IDs
 through that transformation.  It must not retokenize rendered HTML, search for a
 matching subsequence, or reconstruct block-relative ordinals to recover identity.
 
-## Canonical structural speech prefixes
+## Canonical ordered-list ordinal identity
 
-Canonical `speech_words` may include `speech_prefix_before`.  The value is empty
-for ordinary words.  When Core-owned structure has spoken content that is not
-itself a transcript word, the first canonical word following that structure
-carries the exact prefix to speak.  Ordered-list items currently use this to carry
-the resolved marker, for example `3. ` before the first word of item 3.
+An ordered-list ordinal is a canonical interactive/spoken word.  It participates in
+the same transcript-global numeric `word_id` sequence as ordinary textual words;
+there is no separate prefix-token or structural-highlight identity space.
 
-The prefix is derived from the same canonical HTML structure that already exposes
-ordered-list `data-list-ordinal`; consumers do not parse Markdown or infer list
-numbers.  Prefix characters are structural speech tokens rather than canonical
-interactive words.  They therefore have no numeric word ID and no `word-N` DOM
-element.  A speech engine may tokenize the prefix for playback, but must represent
-those tokens as having no word handle rather than inventing or borrowing identity.
+The browser renders an ordered-list marker structurally, so the canonical DOM word
+element for the ordinal is the corresponding `<li>` itself.  For example:
 
-This preserves the distinction between semantic structure and word identity while
-allowing a consumer to build its exact spoken stream from Core output.  Exact word
-lookup returns the same prefix-enriched word record, so off-window materialization
-and speech preparation observe one contract.
+```html
+<li id="word-41" data-list-ordinal="3">
+  <span id="word-42">Third</span>
+  <span id="word-43">item</span>
+</li>
+```
+
+While word 41 is spoken, a consumer highlights `#word-41`, which naturally
+highlights the entire list item including its descendants.  When playback advances
+to word 42, ordinary word highlighting resumes.  Nested ordered-list ordinals put
+their own IDs on their own nested `<li>` elements, never on an ancestor.
+
+Core resolves the ordinal from ordered-list structure and exposes it through the
+same `speech_words`, `projectCanonicalWords()`, and `locateCanonicalWord()`
+contracts as every other canonical word.  Consumers do not parse Markdown, create
+hidden ordinal mapping elements, or invent a second association channel.
 
 ## Consumer boundaries
 

@@ -546,3 +546,14 @@ speech pipeline.  Treating an implicit list marker as a fake word would violate
 D019's one-word/one-DOM-element contract; parsing the list again in a consumer
 would duplicate Core semantics.  An explicit structural speech prefix preserves
 both invariants.
+
+
+## D024 — Ordered-list ordinals are canonical word identities
+
+**Status:** Accepted; supersedes D023 for ordered-list ordinals and narrows the span-only wording of D019.
+
+**Decision:** An ordered-list ordinal is a canonical interactive/spoken word with its own transcript-global numeric `word_id`. Because the browser renders the list marker structurally, the corresponding `<li>` is the one canonical DOM word element for that ordinal and carries `id="word-N"`. The item body receives subsequent canonical word IDs normally. Nested ordinals identify their own nested list items.
+
+There is no separate prefix-token identity, null-handle structural token, hidden ordinal mapping element, or consumer-side structural-highlight association. `speech_words`, `projectCanonicalWords()`, and `locateCanonicalWord()` expose the same ordinal identity as the HTML.
+
+**Reason:** AgentPanelSpeaker's established interaction contract highlights the entire list item while its number is spoken, then returns to ordinary word highlighting for the body. Putting the canonical ordinal ID directly on the `<li>` expresses that behaviour with the existing one-ID/one-DOM-element model and eliminates the synthetic ordinal mapping and the incorrect no-ID prefix design.

@@ -4098,10 +4098,7 @@ function htmlSegments(html) {
         rawEnd,
         groups: semanticGroups(stack),
         wordContent: isWordContent(stack),
-        listItemId: listItem?.listItemId ?? null,
-        speechPrefixBefore: listItem?.listOrdinal == null
-          ? ''
-          : `${listItem.listOrdinal}. `
+        listItemId: listItem?.listItemId ?? null
       });
       cursor = rawEnd;
       continue;
@@ -4111,11 +4108,24 @@ function htmlSegments(html) {
     const raw = html.slice(cursor, end);
     const tag = parseHtmlTag(raw);
     const boundary = Boolean(tag.name && BLOCK_TAGS.has(tag.name));
+    const listItemId = !tag.closing && !tag.selfClosing && tag.name === 'li'
+      ? nextListItemId++
+      : null;
+    const structuralStack = listItemId == null
+      ? stack
+      : [...stack, { ...tag, listItemId }];
     segments.push({
       kind: 'tag',
       rawStart: cursor,
       rawEnd: end,
-      boundary
+      boundary,
+      name: tag.name,
+      closing: tag.closing,
+      selfClosing: tag.selfClosing,
+      listItemId,
+      listOrdinal: tag.listOrdinal,
+      groups: semanticGroups(structuralStack),
+      wordContent: isWordContent(structuralStack)
     });
 
     if (tag.name) {
@@ -4134,7 +4144,7 @@ function htmlSegments(html) {
       } else if (!tag.selfClosing) {
         stack.push({
           ...tag,
-          listItemId: tag.name === 'li' ? nextListItemId++ : null
+          listItemId
         });
       }
     }
@@ -4177,11 +4187,27 @@ function addInsertion(insertions, offset, value) {
 function visibleWordStream(html, segments) {
   let text = '';
   const map = [];
+  const structuralWords = [];
   for (const segment of segments) {
     if (segment.kind === 'tag') {
       if (segment.boundary && text && !/\s$/u.test(text)) {
         text += '\n';
         map.push(null);
+      }
+      if (segment.name === 'li' &&
+          !segment.closing &&
+          segment.wordContent &&
+          segment.listOrdinal != null) {
+        structuralWords.push({
+          kind: 'list_ordinal',
+          text: `${segment.listOrdinal}.`,
+          start: text.length,
+          end: text.length,
+          groups: segment.groups,
+          listItemId: segment.listItemId,
+          rawStart: segment.rawStart,
+          rawEnd: segment.rawEnd
+        });
       }
       continue;
     }
@@ -4194,41 +4220,97 @@ function visibleWordStream(html, segments) {
     text += decoded.text;
     map.push(...decoded.map.map(entry => ({
       ...entry,
-      listItemId: segment.listItemId,
-      speechPrefixBefore: segment.speechPrefixBefore
+      listItemId: segment.listItemId
     })));
   }
-  return { text, map };
+  return { text, map, structuralWords };
+}
+
+/**
+ * Returns the complete canonical interactive-word occurrences in HTML order.
+ *
+ * Ordered-list ordinals are canonical spoken words even though the browser
+ * renders their marker structurally rather than as a text node.  They therefore
+ * enter the same global word stream here, before the item's textual body.  The
+ * ordinal's DOM identity is carried by its <li>; ordinary words retain exact raw
+ * text pieces for span annotation.
+ *
+ * @param {string} html - Core-rendered canonical content HTML.
+ * @returns {Object<string, *>} Visible stream plus ordered word occurrences.
+ */
+function canonicalWordOccurrences(html) {
+  const value = String(html ?? '');
+  const segments = htmlSegments(value);
+  const visible = visibleWordStream(value, segments);
+  const occurrences = [...visible.structuralWords];
+
+  CANONICAL_WORD_PATTERN.lastIndex = 0;
+  for (const match of visible.text.matchAll(CANONICAL_WORD_PATTERN)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    const groups = [];
+    const seenGroups = new Set();
+    for (let index = start; index < end; ++index) {
+      for (const group of visible.map[index]?.groups ?? []) {
+        if (!seenGroups.has(group)) {
+          seenGroups.add(group);
+          groups.push(group);
+        }
+      }
+    }
+    const firstMapped = visible.map.slice(start, end).find(Boolean);
+    occurrences.push({
+      kind: 'text',
+      text: match[0],
+      start,
+      end,
+      groups,
+      listItemId: firstMapped?.listItemId ?? null,
+      pieces: rawTokenPieces(visible.map, start, end)
+    });
+  }
+
+  occurrences.sort((left, right) => {
+    if (left.start !== right.start) return left.start - right.start;
+    if (left.kind === right.kind) return 0;
+    return left.kind === 'list_ordinal' ? -1 : 1;
+  });
+
+  const awaitingBody = new Set();
+  let previousEnd = 0;
+  for (const occurrence of occurrences) {
+    let separator = visible.text.slice(previousEnd, occurrence.start);
+    if (occurrence.kind === 'list_ordinal') {
+      awaitingBody.add(occurrence.listItemId);
+      previousEnd = occurrence.start;
+    } else {
+      if (occurrence.listItemId != null && awaitingBody.has(occurrence.listItemId)) {
+        awaitingBody.delete(occurrence.listItemId);
+        if (separator === '') separator = ' ';
+      }
+      previousEnd = occurrence.end;
+    }
+    occurrence.separator_before = separator;
+  }
+
+  return { value, occurrences };
 }
 
 /**
  * Returns canonical visible words plus their exact preceding separators.
  *
- * The canonical grammar consumes every visible non-whitespace symbol, so
- * text between consecutive matches is necessarily whitespace.  Exposing it
- * from this same Core stream lets consumers preserve spaces/newlines while
- * carrying word IDs without reparsing or aligning text.
+ * The same sequence contains both text-node words and Core-owned structural words
+ * such as ordered-list ordinals.  Consumers therefore receive one lossless spoken
+ * word stream without parsing Markdown or inventing a second identity space.
  *
  * @param {string} html - Core-rendered canonical content HTML.
  * @returns {Array<Object<string, string>>} Ordered words and separators.
  */
 function canonicalWordDescriptorsFromHtml(html) {
-  const value = String(html ?? '');
-  const segments = htmlSegments(value);
-  const visible = visibleWordStream(value, segments);
-  const descriptors = [];
-  let previousEnd = 0;
-  CANONICAL_WORD_PATTERN.lastIndex = 0;
-  for (const match of visible.text.matchAll(CANONICAL_WORD_PATTERN)) {
-    const start = match.index;
-    const end = start + match[0].length;
-    descriptors.push({
-      text: match[0],
-      separator_before: visible.text.slice(previousEnd, start)
-    });
-    previousEnd = end;
-  }
-  return descriptors;
+  return canonicalWordOccurrences(html).occurrences.map(occurrence => ({
+    text: occurrence.text,
+    separator_before: occurrence.separator_before
+  }));
 }
 
 /**
@@ -4304,50 +4386,39 @@ function annotateCanonicalHtmlWords(html, state) {
     throw new TypeError('Canonical word state requires a positive safe nextWordId.');
   }
 
-  const segments = htmlSegments(String(html ?? ''));
-  const visible = visibleWordStream(String(html ?? ''), segments);
+  const canonical = canonicalWordOccurrences(String(html ?? ''));
   const insertions = new Map();
   const words = [];
-  const prefixedListItems = new Set();
-  CANONICAL_WORD_PATTERN.lastIndex = 0;
-  for (const match of visible.text.matchAll(CANONICAL_WORD_PATTERN)) {
+  for (const occurrence of canonical.occurrences) {
     const id = state.nextWordId++;
     if (!Number.isSafeInteger(id)) {
       throw new RangeError('Canonical word ID exceeded JavaScript safe integer range.');
     }
-    const start = match.index;
-    const end = start + match[0].length;
-    const pieces = rawTokenPieces(visible.map, start, end);
-    if (!pieces.length) {
-      throw new TypeError(`Canonical word ${id} has no rendered text piece.`);
-    }
 
-    const groups = [];
-    const seenGroups = new Set();
-    for (let index = start; index < end; ++index) {
-      for (const group of visible.map[index]?.groups ?? []) {
-        if (!seenGroups.has(group)) {
-          seenGroups.add(group);
-          groups.push(group);
-        }
-      }
-    }
-    const firstMapped = visible.map.slice(start, end).find(Boolean);
-    let speechPrefixBefore = '';
-    if (firstMapped?.listItemId != null &&
-        firstMapped.speechPrefixBefore &&
-        !prefixedListItems.has(firstMapped.listItemId)) {
-      prefixedListItems.add(firstMapped.listItemId);
-      speechPrefixBefore = firstMapped.speechPrefixBefore;
-    }
     words.push({
       id,
-      text: match[0],
-      groups,
-      speech_prefix_before: speechPrefixBefore
+      text: occurrence.text,
+      groups: occurrence.groups
     });
 
-    pieces.forEach((piece, pieceIndex) => {
+    if (occurrence.kind === 'list_ordinal') {
+      const rawTag = canonical.value.slice(occurrence.rawStart, occurrence.rawEnd);
+      if (/\bid\s*=/iu.test(rawTag)) {
+        throw new TypeError(
+          `Canonical ordered-list item already has an id before word ${id}.`);
+      }
+      addInsertion(
+        insertions,
+        occurrence.rawEnd - 1,
+        ` id="word-${id}"`
+      );
+      continue;
+    }
+
+    if (!occurrence.pieces.length) {
+      throw new TypeError(`Canonical word ${id} has no rendered text piece.`);
+    }
+    occurrence.pieces.forEach((piece, pieceIndex) => {
       const attribute = pieceIndex === 0
         ? `id="word-${id}"`
         : `data-word-id="${id}"`;
@@ -4357,7 +4428,7 @@ function annotateCanonicalHtmlWords(html, state) {
   }
 
   return {
-    html: applyInsertions(String(html ?? ''), insertions),
+    html: applyInsertions(canonical.value, insertions),
     words
   };
 }
@@ -4712,9 +4783,12 @@ function collapseWord(root, wordId) {
  * `annotateCanonicalHtmlWords()` identifies canonical token text exactly once and
  * may temporarily mark multiple raw text pieces when inline Markdown separates
  * them. This Core-owned restructuring step removes that serialization detail from
- * the public HTML contract: every canonical word leaves Core as exactly one
- * `<span id="word-N">...</span>`, with any applicable inline formatting nested
- * inside that span. Consumers never repair or reconstruct word identity.
+ * the public HTML contract: every canonical word leaves Core as exactly one DOM
+ * word element. Ordinary textual words use `<span id="word-N">...</span>`; an
+ * ordered-list ordinal uses its canonical `<li id="word-N">` because that
+ * structural element is the visible/highlightable word object. Applicable inline
+ * formatting remains nested inside ordinary word spans. Consumers never repair or
+ * reconstruct word identity.
  *
  * @param {string} html - Core-annotated canonical HTML.
  * @returns {string} Canonical HTML with one DOM element per canonical word.
