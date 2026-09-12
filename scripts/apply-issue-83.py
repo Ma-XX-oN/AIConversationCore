@@ -90,5 +90,5 @@ consumer reconstructed them from rendered/source text, it would recreate the
 alignment machinery D019–D021 were intended to remove.  Core already has the exact
 visible stream at word-allocation time, so retaining its separators keeps one
 identity path and makes the transformation lossless without a fallback.
-""" + '\n'
+"""
 path.write_text(text, encoding='utf-8')
