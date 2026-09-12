@@ -6,6 +6,7 @@ on:
       - issue-80-canonical-word-ids
     paths:
       - '.github/workflows/issue-80-browser-bundle-update.yml'
+      - 'scripts/build-browser-bundle.mjs'
       - 'src/projections/html-visibility.js'
       - 'src/projections/word-element.js'
       - 'src/projections/word-identity.js'
