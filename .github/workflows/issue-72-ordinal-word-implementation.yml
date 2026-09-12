@@ -48,6 +48,9 @@ jobs:
             tests/canonical-word-separators.test.js \
             tests/ordered-list-ordinals.test.js
 
+      - name: Remove temporary implementation script from production audit workspace
+        run: rm scripts/issue-72-ordinal-word-implementation.mjs
+
       - name: Verify production JSDoc coverage
         run: node scripts/check-jsdoc.mjs
 
