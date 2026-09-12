@@ -28,7 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: Apply issue 84 fix
-        run: node scripts/issue84-apply-fix.mjs
+        run: |
+          node scripts/issue84-apply-fix.mjs
+          rm scripts/issue84-apply-fix.mjs
       - name: GREEN exact permanent regression
         run: node --test tests/canonical-raw-html-structure-regression.test.js
       - name: Check production JSDoc
