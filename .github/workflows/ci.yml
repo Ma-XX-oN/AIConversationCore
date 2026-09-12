@@ -9,6 +9,7 @@ on:
       - issue-80-canonical-word-ids
       - issue-81-word-handle-lookup
       - issue-82-word-provenance
+      - issue-83-word-separators
   pull_request:
     branches:
       - main
