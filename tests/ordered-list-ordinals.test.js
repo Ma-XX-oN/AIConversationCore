@@ -49,12 +49,12 @@ test('the same normalized ordered-list fixture preserves ordinals in Markdown an
 
   const html = renderCanonicalHtml(events);
   assert.match(html, /<ol start="3">/);
-  assert.match(html, /<li data-list-ordinal="3">\s*<span id="word-\d+">First<\/span>/);
-  assert.match(html, /<li data-list-ordinal="4">\s*<span id="word-\d+">Second<\/span>/);
+  assert.match(html, /<li data-list-ordinal="3" id="word-\d+">\s*<span id="word-\d+">First<\/span>/);
+  assert.match(html, /<li data-list-ordinal="4" id="word-\d+">\s*<span id="word-\d+">Second<\/span>/);
   assert.match(html, /<ol start="7">/);
-  assert.match(html, /<li data-list-ordinal="7">\s*<span id="word-\d+">Nested<\/span> <span id="word-\d+">seven<\/span>/);
-  assert.match(html, /<li data-list-ordinal="8">\s*<span id="word-\d+">Nested<\/span> <span id="word-\d+">eight<\/span>/);
-  assert.match(html, /<li data-list-ordinal="5">\s*<span id="word-\d+">Third<\/span>/);
+  assert.match(html, /<li data-list-ordinal="7" id="word-\d+">\s*<span id="word-\d+">Nested<\/span> <span id="word-\d+">seven<\/span>/);
+  assert.match(html, /<li data-list-ordinal="8" id="word-\d+">\s*<span id="word-\d+">Nested<\/span> <span id="word-\d+">eight<\/span>/);
+  assert.match(html, /<li data-list-ordinal="5" id="word-\d+">\s*<span id="word-\d+">Third<\/span>/);
   assert.equal((html.match(/data-list-ordinal=/g) ?? []).length, 5);
   assert.match(html, /<ul>\s*<li><span id="word-\d+">Bullet<\/span> <span id="word-\d+">one<\/span>/);
   assert.match(html, /<li><span id="word-\d+">Bullet<\/span> <span id="word-\d+">two<\/span><\/li>/);
@@ -74,7 +74,7 @@ test('a normalized single-item ordered list exposes ordinal 1 without affecting 
   assert.ok(markdown.includes('- Bullet'));
 
   const html = renderCanonicalHtml(events);
-  assert.match(html, /<ol>\s*<li data-list-ordinal="1">\s*<span id="word-1">Item<\/span>/);
+  assert.match(html, /<ol>\s*<li data-list-ordinal="1" id="word-1">\s*<span id="word-2">Item<\/span>/);
   assert.equal((html.match(/data-list-ordinal=/g) ?? []).length, 1);
-  assert.match(html, /<ul>\s*<li><span id="word-2">Bullet<\/span><\/li>/);
+  assert.match(html, /<ul>\s*<li><span id="word-3">Bullet<\/span><\/li>/);
 });
