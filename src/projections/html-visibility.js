@@ -6,6 +6,7 @@ import {
   isHistoricalRevision,
   projectRevisionVisibility
 } from './revision-visibility.js';
+import { collapseCanonicalWordFragments } from './word-element.js';
 import {
   annotateCanonicalHtmlWords,
   createCanonicalWordState
@@ -81,6 +82,8 @@ function applyTurnRevisionAttributes(html, turnsById) {
  * Word IDs are allocated once across the complete ordered unit sequence. The
  * returned `speech_words` are the same identities embedded in each unit's HTML;
  * consumers never have to retokenize or align rendered text independently.
+ * Each canonical word leaves Core as one DOM element, with inline Markdown
+ * formatting restructured inside that element when necessary.
  *
  * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
  * @param {Object<string, *>} options - Projection options.
@@ -104,7 +107,7 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
     const annotated = annotateCanonicalHtmlWords(revisionHtml, wordState);
     return {
       ...unit,
-      html: annotated.html,
+      html: collapseCanonicalWordFragments(annotated.html),
       speech_words: annotated.words
     };
   });
