@@ -35,6 +35,7 @@ jobs:
           set -e
           printf '%s\n' "$output"
           test "$status" -ne 0
-          grep -F "speech_prefix_before" <<<"$output"
-          grep -F "tests 4" <<<"$output"
-          grep -F "fail 4" <<<"$output"
+          grep -F "undefined !== '3. '" <<<"$output"
+          grep -F "undefined !== ''" <<<"$output"
+          grep -F "# tests 4" <<<"$output"
+          grep -F "# fail 4" <<<"$output"
