@@ -397,3 +397,37 @@ identities are retained. Moving `<details>` inference into the consumer would
 recreate Core presentation semantics downstream and violate D017. Core-owned
 rendered units preserve one HTML renderer while giving interactive consumers a
 safe virtualization boundary.
+
+## D019 — Canonical word identity is one Core-owned DOM element
+
+**Status:** Accepted
+
+**Decision:** AIConversationCore owns canonical interactive-word tokenization and
+the HTML restructuring required to serialize that identity. Each canonical word
+has one global numeric word ID and exactly one canonical DOM word element,
+serialized as `<span id="word-N">...</span>`. If Markdown or another inline
+presentation construct divides the visible characters of one word across nested
+HTML elements, Core restructures its own generated HTML so the relevant formatting
+is nested inside that one word element.
+
+Core may use piece-level markers internally while producing the final projection,
+but those markers are not part of the public HTML contract and must be collapsed
+before HTML leaves Core. Public canonical HTML does not expose secondary
+`data-word-id` fragments for one word.
+
+Consumers must not retokenize canonical HTML, repair Markdown boundaries, reassemble
+word fragments, search duplicate text to rediscover identity, or introduce a
+fallback word-identity path. The ESM and browser-bundle projections must implement
+the same Core-owned result.
+
+This decision supersedes the piece-fragment serialization wording originally added
+to `DESIGN.md` during issue #80. It does not change the global numeric word-ID
+coordinate space or the requirement that HTML and speech/highlight projections use
+the same authoritative IDs.
+
+**Reason:** One canonical word is one interactive object. Exposing one logical word
+as several DOM objects pushes Core semantics into every consumer and creates the
+exact divergence the shared core exists to prevent. The corrected #80 regressions
+cover both `turn_id**s**`, where formatting begins inside the word, and `` `turn_`id
+``, where inline code ends before the word ends. Both must leave Core as one word
+element without consumer-side reconstruction.
