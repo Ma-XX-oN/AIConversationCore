@@ -359,14 +359,6 @@ function visibleWordStream(html, segments) {
 }
 
 /**
- * Returns exact raw HTML pieces covered by one canonical visible token.
- *
- * @param {Array<Object<string, *>|null>} map - Visible-to-raw offset map.
- * @param {number} start - Inclusive visible start offset.
- * @param {number} end - Exclusive visible end offset.
- * @returns {Array<Object<string, number>>} Contiguous raw text pieces.
- */
-/**
  * Returns the canonical visible word texts in one Core HTML fragment.
  *
  * This is the same tokenizer used by canonical word-ID annotation.  It

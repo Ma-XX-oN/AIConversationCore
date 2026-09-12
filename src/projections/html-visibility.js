@@ -130,13 +130,13 @@ function appendWordProvenance(node, output) {
       output.push({
         text,
         provenance: {
-presentation_id: node?.id ?? null,
-event_id: node?.event_id ?? null,
-block_id: block?.id ?? null,
-block_word_index: blockWordIndex,
-source: block?.source && typeof block.source === 'object'
-  ? { ...block.source }
-  : null
+          presentation_id: node?.id ?? null,
+          event_id: node?.event_id ?? null,
+          block_id: block?.id ?? null,
+          block_word_index: blockWordIndex,
+          source: block?.source && typeof block.source === 'object'
+            ? { ...block.source }
+            : null
         }
       });
     });

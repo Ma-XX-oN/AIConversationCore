@@ -4175,14 +4175,6 @@ function visibleWordStream(html, segments) {
 }
 
 /**
- * Returns exact raw HTML pieces covered by one canonical visible token.
- *
- * @param {Array<Object<string, *>|null>} map - Visible-to-raw offset map.
- * @param {number} start - Inclusive visible start offset.
- * @param {number} end - Exclusive visible end offset.
- * @returns {Array<Object<string, number>>} Contiguous raw text pieces.
- */
-/**
  * Returns the canonical visible word texts in one Core HTML fragment.
  *
  * This is the same tokenizer used by canonical word-ID annotation.  It
@@ -4793,13 +4785,13 @@ function appendWordProvenance(node, output) {
       output.push({
         text,
         provenance: {
-presentation_id: node?.id ?? null,
-event_id: node?.event_id ?? null,
-block_id: block?.id ?? null,
-block_word_index: blockWordIndex,
-source: block?.source && typeof block.source === 'object'
-  ? { ...block.source }
-  : null
+          presentation_id: node?.id ?? null,
+          event_id: node?.event_id ?? null,
+          block_id: block?.id ?? null,
+          block_word_index: blockWordIndex,
+          source: block?.source && typeof block.source === 'object'
+            ? { ...block.source }
+            : null
         }
       });
     });
