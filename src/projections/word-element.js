@@ -1,5 +1,5 @@
 /** HTML elements that never contain a matching closing tag. */
-const VOID_TAGS = new Set([
+const WORD_ELEMENT_VOID_TAGS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta',
   'param', 'source', 'track', 'wbr'
 ]);
@@ -51,7 +51,7 @@ function parseTag(raw) {
   return {
     name,
     closing: match[1] === '/',
-    selfClosing: VOID_TAGS.has(name) || /\/\s*$/.test(attributes)
+    selfClosing: WORD_ELEMENT_VOID_TAGS.has(name) || /\/\s*$/.test(attributes)
   };
 }
 
