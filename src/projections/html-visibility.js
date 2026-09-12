@@ -114,6 +114,32 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
 }
 
 /**
+ * Locates one authoritative canonical word and its containing rendered unit.
+ *
+ * The numeric word ID is the only lookup key. Core renders the same canonical
+ * unit/word projection used by HTML and speech, then resolves the exact identity
+ * from that projection. Visible text is never searched or used as a fallback, so
+ * duplicate text in another unit cannot impersonate the requested handle.
+ *
+ * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+ * @param {number} wordId - Positive safe canonical global word ID.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {Object<string, *>|null} Canonical word plus containing rendered unit, or null when the ID is absent.
+ */
+export function locateCanonicalWord(events, wordId, options = {}) {
+  if (!Number.isSafeInteger(wordId) || wordId < 1) {
+    throw new TypeError('Canonical word ID must be a positive safe integer.');
+  }
+
+  const units = renderCanonicalHtmlUnits(events, options);
+  for (const unit of units) {
+    const word = (unit.speech_words ?? []).find(item => item?.id === wordId);
+    if (word) return { word, unit };
+  }
+  return null;
+}
+
+/**
  * Projects the authoritative global word handles used by HTML and speech/UI.
  *
  * This projection is derived from the same annotated unit render returned by
