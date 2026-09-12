@@ -228,6 +228,7 @@ export async function buildBrowserBundle() {
   );
   const htmlVisibility = multiExportModuleBody(htmlVisibilityPrepared, [
     'renderCanonicalHtmlUnits',
+    'locateCanonicalWord',
     'projectCanonicalWords',
     'renderCanonicalHtml'
   ]);
@@ -277,6 +278,7 @@ export async function buildBrowserBundle() {
     `    renderCanonicalMarkdown,\n` +
     `    renderCanonicalHtml,\n` +
     `    renderCanonicalHtmlUnits,\n` +
+    `    locateCanonicalWord,\n` +
     `    projectCanonicalWords,\n` +
     `    buildCanonicalPresentation,\n` +
     `    projectCanonicalConversation\n` +
