@@ -362,6 +362,22 @@ permit consumers to use text as an identity fallback.  `renderCanonicalHtmlUnits
 `projectCanonicalWords()`, and `locateCanonicalWord()` expose the same enriched
 word records, and the browser bundle must remain equivalent to the ESM projection.
 
+## Canonical speech-navigation boundaries
+
+Canonical `speech_words` expose `navigation_boundary_before` on the first word of
+each structural speech-navigation unit.  The boundary is derived from the same
+Core-owned rendered structure used for canonical HTML and word identity.  Paragraphs,
+headings, list items, block quotes, preformatted blocks, and table rows therefore
+retain explicit navigation starts without requiring a consumer to parse HTML or
+infer structure from whitespace.
+
+A soft source newline inside one paragraph is not a structural navigation boundary,
+even though its exact newline remains available through `separator_before`.  The
+boundary flag is descriptive transport metadata on the existing numeric word
+identity; it neither allocates another identity nor changes the DOM word contract.
+Interactive consumers may use it to split platform-specific speech/navigation
+fragments while carrying the original canonical word IDs through unchanged.
+
 A speech/display consumer may use the separator stream to segment canonical words
 into platform-specific utterances while carrying the existing numeric word IDs
 through that transformation.  It must not retokenize rendered HTML, search for a
