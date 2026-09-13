@@ -18,6 +18,11 @@ const BLOCK_TAGS = new Set([
   'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'ul'
 ]);
 
+/** HTML elements whose opening begins one canonical speech-navigation unit. */
+const NAVIGATION_TAGS = new Set([
+  'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'p', 'pre', 'tr'
+]);
+
 /** HTML elements that never contain a matching closing tag. */
 const VOID_TAGS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta',
@@ -372,11 +377,15 @@ function visibleWordStream(html, segments) {
   let text = '';
   const map = [];
   const structuralWords = [];
+  const navigationStarts = new Set();
   for (const segment of segments) {
     if (segment.kind === 'tag') {
       if (segment.boundary && text && !/\s$/u.test(text)) {
         text += '\n';
         map.push(null);
+      }
+      if (!segment.closing && NAVIGATION_TAGS.has(segment.name)) {
+        navigationStarts.add(text.length);
       }
       if (segment.name === 'li' &&
           !segment.closing &&
@@ -407,7 +416,7 @@ function visibleWordStream(html, segments) {
       listItemId: segment.listItemId
     })));
   }
-  return { text, map, structuralWords };
+  return { text, map, structuralWords, navigationStarts };
 }
 
 /**
@@ -461,8 +470,19 @@ function canonicalWordOccurrences(html) {
   });
 
   const awaitingBody = new Set();
+  const navigationStarts = [...visible.navigationStarts].sort((left, right) =>
+    left - right);
+  let navigationStartIndex = 0;
   let previousEnd = 0;
   for (const occurrence of occurrences) {
+    let navigationBoundaryBefore = false;
+    while (navigationStartIndex < navigationStarts.length &&
+           navigationStarts[navigationStartIndex] <= occurrence.start) {
+      if (navigationStarts[navigationStartIndex] >= previousEnd) {
+        navigationBoundaryBefore = true;
+      }
+      ++navigationStartIndex;
+    }
     let separator = visible.text.slice(previousEnd, occurrence.start);
     if (occurrence.kind === 'list_ordinal') {
       awaitingBody.add(occurrence.listItemId);
@@ -475,6 +495,7 @@ function canonicalWordOccurrences(html) {
       previousEnd = occurrence.end;
     }
     occurrence.separator_before = separator;
+    occurrence.navigation_boundary_before = navigationBoundaryBefore;
   }
 
   return { value, occurrences };
@@ -582,7 +603,9 @@ export function annotateCanonicalHtmlWords(html, state) {
     words.push({
       id,
       text: occurrence.text,
-      groups: occurrence.groups
+      groups: occurrence.groups,
+      navigation_boundary_before:
+        occurrence.navigation_boundary_before === true
     });
 
     if (occurrence.kind === 'list_ordinal') {
