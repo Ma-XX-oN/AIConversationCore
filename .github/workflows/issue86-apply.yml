@@ -1,0 +1,32 @@
+name: Apply issue 86 Core-owned heading metadata
+
+on:
+  push:
+    branches:
+      - issue-86-response-heading-metadata
+    paths:
+      - 'scripts/issue86-apply.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply implementation patch
+        run: python scripts/issue86-apply.py
+      - name: Rebuild browser bundle
+        run: node scripts/build-browser-bundle.mjs
+      - name: Commit implementation and remove apply scaffolding
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/issue86-apply.yml scripts/issue86-apply.py
+          git add src/adapters/chatgpt-base.js src/adapters/claude.js src/adapters/codex.js src/projections/markdown.js src/projections/html.js dist/aiconversationcore.chatgpt.browser.js
+          git diff --check
+          git commit -m 'projection: make heading semantics Core-owned (#86)'
+          git push
