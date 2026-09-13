@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/issue86-apply.py'
       - 'scripts/issue86-bundle-apply.py'
+      - 'scripts/issue86-green-fixes.py'
       - '.github/workflows/issue86-apply.yml'
 
 permissions:
@@ -56,6 +57,7 @@ jobs:
         run: |
           python scripts/issue86-apply.py
           python scripts/issue86-bundle-apply.py
+          python scripts/issue86-green-fixes.py
       - name: Rebuild browser bundle
         run: npm run build:browser
       - name: Run full Core tests before commit
@@ -64,8 +66,8 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm .github/workflows/issue86-apply.yml scripts/issue86-apply.py scripts/issue86-bundle-apply.py
-          git add src/adapters/chatgpt-base.js src/adapters/claude.js src/adapters/codex.js src/projections/markdown.js src/projections/html.js scripts/build-browser-bundle.mjs dist/aiconversationcore.chatgpt.browser.js
+          git rm .github/workflows/issue86-apply.yml scripts/issue86-apply.py scripts/issue86-bundle-apply.py scripts/issue86-green-fixes.py
+          git add src/adapters/chatgpt-base.js src/adapters/claude.js src/adapters/codex.js src/projections/heading-metadata.js src/projections/markdown.js src/projections/html.js scripts/build-browser-bundle.mjs dist/aiconversationcore.chatgpt.browser.js tests/browser-bundle.test.js tests/heading-metadata-projection.test.js tests/phase6-rendering-contract.test.js tests/phase6-subagent-provenance.test.js DECISIONS.md RENDERING.md
           git diff --check
           git commit -m 'projection: make heading semantics Core-owned (#86)'
           git push
