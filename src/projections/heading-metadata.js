@@ -225,7 +225,7 @@ export function headingMetadataComponents(metadata = {}) {
     components.push({
       type: 'turn-id',
       styleRole: STYLE_ROLES.TURN_ID,
-      text: `turn_id=${metadata.turn_id}`
+      text: String(metadata.turn_id)
     });
   }
   return components;

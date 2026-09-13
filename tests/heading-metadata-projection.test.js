@@ -42,7 +42,7 @@ test('Core-derived heading metadata composes timestamp, record number, and sourc
         timeZone: 'UTC'
       }
     }),
-    /^## User \[2026-08-31 15:00:00\]: 2: turn_id=chatgpt-message-id$/m
+    /^## User \[2026-08-31 15:00:00\]: 2: chatgpt-message-id$/m
   );
 });
 
@@ -80,7 +80,7 @@ test('caller semantic heading metadata cannot override Core source provenance', 
   });
   assert.match(
     markdown,
-    /^## User 2: turn_id=source-turn-id <!-- record_id=activity-record-id record_index=1 -->$/m
+    /^## User 2: source-turn-id <!-- record_id=activity-record-id record_index=1 -->$/m
   );
   assert.doesNotMatch(markdown, /caller-turn-id|caller-record|999/);
 });

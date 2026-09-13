@@ -1949,7 +1949,7 @@ function headingMetadataComponents(metadata = {}) {
     components.push({
       type: 'turn-id',
       styleRole: STYLE_ROLES.TURN_ID,
-      text: `turn_id=${metadata.turn_id}`
+      text: String(metadata.turn_id)
     });
   }
   return components;
@@ -2037,7 +2037,7 @@ function projectedHeadingMetadataSuffix(event) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
   if (metadata.turn_id != null) {
-    fields.push(`turn_id=${metadata.turn_id}`);
+    fields.push(String(metadata.turn_id));
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;

@@ -67,15 +67,15 @@ test('Core derives source heading metadata and ignores caller-supplied semantic 
 
   assert.match(
     markdown,
-    /^## User \[2026-09-13 16:59:50\]: 1: turn_id=user-1 <!-- record_id=user-1 record_index=0 -->$/m
+    /^## User \[2026-09-13 16:59:50\]: 1: user-1 <!-- record_id=user-1 record_index=0 -->$/m
   );
   assert.match(
     markdown,
-    /^## ChatGPT \[2026-09-13 17:00:05\]: 3: turn_id=final-1 <!-- record_id=final-1 record_index=2 -->$/m
+    /^## ChatGPT \[2026-09-13 17:00:05\]: 3: final-1 <!-- record_id=final-1 record_index=2 -->$/m
   );
   assert.match(
     markdown,
-    /^### ChatGPT Commentary \[2026-09-13 17:00:00\]: 2: turn_id=commentary-1 <!-- record_id=commentary-1 record_index=1 -->$/m
+    /^### ChatGPT Commentary \[2026-09-13 17:00:00\]: 2: commentary-1 <!-- record_id=commentary-1 record_index=1 -->$/m
   );
   assert.doesNotMatch(markdown, /WRONG|999|caller-injected-id/);
   assert.doesNotMatch(markdown, /<!-- turn_id=/);
@@ -119,8 +119,8 @@ test('canonical HTML renders Core-owned heading metadata with semantic classes',
   ]);
   const html = renderCanonicalHtml(events, HEADING_OPTIONS);
 
-  assert.match(html, /<h2>.*transcript-user-heading.*User.*transcript-timestamp.*2026-09-13 16:59:50.*transcript-record-number.*1:.*transcript-turn-id.*turn_id=user-1.*<\/h2>/s);
-  assert.match(html, /<h2>.*transcript-assistant-heading.*ChatGPT.*transcript-timestamp.*2026-09-13 17:00:05.*transcript-record-number.*2:.*transcript-turn-id.*turn_id=final-1.*<\/h2>/s);
+  assert.match(html, /<h2>.*transcript-user-heading.*User.*transcript-timestamp.*2026-09-13 16:59:50.*transcript-record-number.*1:.*transcript-turn-id.*user-1.*<\/h2>/s);
+  assert.match(html, /<h2>.*transcript-assistant-heading.*ChatGPT.*transcript-timestamp.*2026-09-13 17:00:05.*transcript-record-number.*2:.*transcript-turn-id.*final-1.*<\/h2>/s);
   assert.match(html, /<!-- record_id=user-1 record_index=0 -->/);
   assert.match(html, /<!-- record_id=final-1 record_index=1 -->/);
 });

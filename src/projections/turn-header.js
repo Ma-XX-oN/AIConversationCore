@@ -96,7 +96,7 @@ export function buildTurnHeaderComponents(turn, options = {}) {
       components.push({
         type: 'turn-id',
         styleRole: STYLE_ROLES.TURN_ID,
-        text: `turn_id=${turnId}`
+        text: String(turnId)
       });
     }
   }

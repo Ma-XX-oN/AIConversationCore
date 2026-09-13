@@ -593,3 +593,13 @@ For composite Assistant turns, the enclosing Assistant heading is owned by the f
 The structured presentation tree carries the same derived heading metadata used by Markdown and HTML so virtualization can mount Core-owned units without reconstructing presentation semantics. Classic-browser and ESM entry points use the same projection policy and rendering contract.
 
 **Reason:** Presentation meaning must not diverge between DownloadConversation, AI-transcript, AgentPanelSpeaker, or future consumers. Keeping semantic values and formatting in Core prevents duplicate/mismatched metadata when one visible response spans multiple provider records and preserves one authoritative representation for virtualization.
+
+## D027 — Visible Turn IDs are unlabeled values
+
+**Status:** Accepted; refines D026 visible Turn-ID serialization.
+
+**Decision:** When Turn ID visibility is enabled, Core serializes the native source/provider Turn ID as the bare visible value. The semantic metadata field remains `turn_id`, but the visible heading component does not include a `turn_id=` label. Metadata order remains speaker, timestamp, record number, then Turn ID.
+
+Debug provenance is unaffected and remains explicitly labelled with `record_id=` and zero-based `record_index=` inside the Core-owned debug comment. Consumers must not add or remove the Turn-ID label themselves.
+
+**Reason:** The Turn ID is already an independently selectable, semantically styled heading component. Repeating its field name in every visible heading adds noise without adding identity information. Keeping the formatting decision in Core preserves the shared presentation contract across Markdown, HTML, structured presentation, and all consumers.

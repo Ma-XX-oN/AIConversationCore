@@ -51,7 +51,7 @@ test('turn_id is optional and uses provider source identity', () => {
   assert.equal(renderTurnHeader(turn), '## ChatGPT');
   assert.equal(
     renderTurnHeader(turn, { showTurnId: true }),
-    '## ChatGPT turn_id=chatgpt-assistant-source-id'
+    '## ChatGPT chatgpt-assistant-source-id'
   );
   assert.doesNotMatch(
     renderTurnHeader(turn, { showTurnId: true }),
@@ -68,7 +68,7 @@ test('timestamp, record number, and turn id compose independently', () => {
       recordNumber: 2,
       showTurnId: true
     }),
-    '## Claude [2026-01-02 12:00:02]: 2: turn_id=claude-record-uuid'
+    '## Claude [2026-01-02 12:00:02]: 2: claude-record-uuid'
   );
 
   assert.equal(
@@ -90,7 +90,7 @@ test('an explicit source turn id override can be projected when supplied', () =>
       showTurnId: true,
       turnId: 'explicit-source-id'
     }),
-    '## Codex turn_id=explicit-source-id'
+    '## Codex explicit-source-id'
   );
 });
 
@@ -123,7 +123,7 @@ test('default ANSI mapping preserves existing colours and gives turn id magenta'
     '\u001b[32m## ChatGPT\u001b[0m ' +
     '\u001b[36m[2026-01-02 12:00:02]:\u001b[0m ' +
     '\u001b[2m2:\u001b[0m ' +
-    '\u001b[35mturn_id=chatgpt-assistant-source-id\u001b[0m'
+    '\u001b[35mchatgpt-assistant-source-id\u001b[0m'
   );
 });
 
@@ -141,7 +141,7 @@ test('HTML uses stable semantic classes instead of ANSI concepts', () => {
     '<h2><span class="transcript-assistant-heading">Claude</span> ' +
     '<span class="transcript-timestamp">[2026-01-02 00:00:02]:</span> ' +
     '<span class="transcript-record-number">2:</span> ' +
-    '<span class="transcript-turn-id">turn_id=claude-record-uuid</span></h2>'
+    '<span class="transcript-turn-id">claude-record-uuid</span></h2>'
   );
 });
 

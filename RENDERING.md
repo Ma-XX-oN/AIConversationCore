@@ -291,4 +291,4 @@ Public Markdown/HTML projection options expose heading **visibility policy**, no
 
 Core derives timestamp, one-based record number, native source/provider turn ID, and debug `record_id` / zero-based `record_index` from canonical source provenance. Callers must not build those fields or comments themselves. Core also places the same derived metadata on presentation-tree headings so virtualized consumers do not have to recreate heading semantics.
 
-Visible metadata order is timestamp, record number, then turn ID. Debug provenance is a separate Core-owned comment. When a provider has no suitable native turn ID (for example Codex records), requesting Turn ID emits no invented value.
+Visible metadata order is timestamp, record number, then Turn ID. The visible Turn ID is the bare native source/provider value; it is not prefixed with `turn_id=`. Debug provenance is a separate Core-owned comment. When a provider has no suitable native Turn ID (for example Codex records), requesting Turn ID emits no invented value.
