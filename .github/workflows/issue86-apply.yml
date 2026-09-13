@@ -38,7 +38,18 @@ jobs:
           text = path.read_text(encoding='utf-8')
           start = text.index('# Public HTML must carry the same heading projection options as Markdown.')
           end = text.index('# Keep the classic browser bundle on the same public projection chain as ESM.')
-          path.write_text(text[:start] + text[end:], encoding='utf-8')
+          text = text[:start] + text[end:]
+          replacements = [
+            ('  """    `// - src/projections/markdown.js', '  r"""    `// - src/projections/markdown.js', 1),
+            ('  """    `// - src/projections/style.js', '  r"""    `// - src/projections/style.js', 1),
+            ('  """    `${turns}', '  r"""    `${turns}', 2),
+          ]
+          for old, new, expected in replacements:
+            count = text.count(old)
+            if count != expected:
+              raise SystemExit(f'expected {expected} raw-string marker(s) for {old!r}, found {count}')
+            text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
           PY
       - name: Apply implementation patches
         run: |
