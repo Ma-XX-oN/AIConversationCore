@@ -73,6 +73,20 @@ function sourceDate(raw) {
 export function formatHeadingTimestamp(raw, timeZone = null) {
   const date = sourceDate(raw);
   if (!date) return null;
+  const offsetMatch = typeof timeZone === 'string'
+    ? timeZone.match(/^([+-])(\d{2}):(\d{2})$/)
+    : null;
+  if (offsetMatch) {
+    const hours = Number(offsetMatch[2]);
+    const minutes = Number(offsetMatch[3]);
+    if (hours > 23 || minutes > 59) {
+      throw new RangeError(`Invalid fixed-offset timezone: ${timeZone}`);
+    }
+    const sign = offsetMatch[1] === '-' ? -1 : 1;
+    const offsetMinutes = sign * ((hours * 60) + minutes);
+    const shifted = new Date(date.getTime() + (offsetMinutes * 60_000));
+    return shifted.toISOString().slice(0, 19).replace('T', ' ');
+  }
   const formatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',

@@ -46,6 +46,24 @@ test('Core-derived heading metadata composes timestamp, record number, and sourc
   );
 });
 
+test('Core-derived timestamp supports fixed-offset presentation timezones', () => {
+  const event = messageEvent('chatgpt', 'fixed-offset-message', {}, {
+    timestamp: '2026-08-31T15:00:00Z'
+  });
+  assert.match(
+    renderCanonicalMarkdown([event], {
+      heading: { timestamp: true, timeZone: '-04:00' }
+    }),
+    /^## User \[2026-08-31 11:00:00\]:$/m
+  );
+  assert.match(
+    renderCanonicalMarkdown([event], {
+      heading: { timestamp: true, timeZone: '+05:30' }
+    }),
+    /^## User \[2026-08-31 20:30:00\]:$/m
+  );
+});
+
 test('caller semantic heading metadata cannot override Core source provenance', () => {
   const event = messageEvent('chatgpt', 'activity-record-id', {
     heading_metadata: {
