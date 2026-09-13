@@ -35,7 +35,7 @@ test('ChatGPT response starts once and commentary breaks thought consecutiveness
   const markdown = renderCanonicalMarkdown(events);
 
   assert.equal((markdown.match(/^## ChatGPT(?: |$)/gm) ?? []).length, 1);
-  assert.match(markdown, /^## ChatGPT <!-- record_id=turn-17 record_index=17 -->/m);
+  assert.match(markdown, /^## ChatGPT <!-- record_id=turn-21 record_index=21 -->/m);
   assert.match(markdown, /<summary>Having 2 thoughts<\/summary>|<summary>Having 2 thoughts<\/summary>/);
   assert.match(markdown, /<summary>Having 2 thoughts<\/summary> <!-- record_id=turn-17 record_index=17 -->\n<!-- record_id=turn-18 record_index=18 -->/);
   assert.match(markdown, /### ChatGPT Commentary <!-- record_id=turn-19 record_index=19 -->/);

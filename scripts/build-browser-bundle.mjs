@@ -102,7 +102,11 @@ export async function buildBrowserBundle() {
     baseSource,
     chatgptSource,
     turnsSource,
+    styleSource,
+    headingMetadataSource,
     markdownSource,
+    markdownRevisionsSource,
+    markdownVisibilitySource,
     presentationSource,
     revisionVisibilitySource,
     presentationRevisionsSource,
@@ -116,7 +120,11 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/adapters/chatgpt-base.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/adapters/chatgpt.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/derive/turns.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/style.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/heading-metadata.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/markdown-revisions.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/projections/markdown-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/presentation.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/revision-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/presentation-revisions.js'), 'utf8'),
@@ -142,7 +150,50 @@ export async function buildBrowserBundle() {
     exportedFunction: 'deriveTurns',
     localFunction: 'deriveTurns'
   });
-  const markdown = moduleBody(markdownSource, {
+  let style = multiExportModuleBody(styleSource, [
+    'getDefaultProjectionTheme',
+    'configureProjectionTheme',
+    'resetProjectionTheme',
+    'resolveProjectionTheme'
+  ]);
+  style = replaceOnce(
+    style,
+    'export const STYLE_ROLES',
+    'const STYLE_ROLES',
+    'STYLE_ROLES export'
+  );
+  const headingMetadata = multiExportModuleBody(
+    headingMetadataSource,
+    [
+      'resolveHeadingPolicy',
+      'formatHeadingTimestamp',
+      'deriveHeadingMetadata',
+      'withCoreHeadingMetadata',
+      'headingMetadataComponents',
+      'renderHeadingDebugComment'
+    ],
+    ["import { STYLE_ROLES } from './style.js';"]
+  );
+  const markdownBase = moduleBody(markdownSource, {
+    importLines: [
+      "import { renderHeadingDebugComment } from './heading-metadata.js';"
+    ],
+    exportedFunction: 'renderCanonicalMarkdown',
+    localFunction: 'renderBaseMarkdown'
+  });
+  const markdownRevisions = moduleBody(markdownRevisionsSource, {
+    importLines: [
+      "import { renderCanonicalMarkdown as renderBaseMarkdown } from './markdown.js';"
+    ],
+    exportedFunction: 'renderCanonicalMarkdown',
+    localFunction: 'renderRevisionMarkdown'
+  });
+  const markdownVisibility = moduleBody(markdownVisibilitySource, {
+    importLines: [
+      "import { withCoreHeadingMetadata } from './heading-metadata.js';",
+      "import { renderCanonicalMarkdown as renderRevisionMarkdown } from './markdown-revisions.js';",
+      "import { projectRevisionVisibility } from './revision-visibility.js';"
+    ],
     exportedFunction: 'renderCanonicalMarkdown',
     localFunction: 'renderCanonicalMarkdown'
   });
@@ -158,6 +209,7 @@ export async function buildBrowserBundle() {
   ]);
   const presentationRevisions = moduleBody(presentationRevisionsSource, {
     importLines: [
+      "import { deriveHeadingMetadata } from './heading-metadata.js';",
       "import { buildCanonicalPresentation as buildBasePresentation } from './presentation.js';",
       "import { isHistoricalRevision } from './revision-visibility.js';"
     ],
@@ -165,8 +217,14 @@ export async function buildBrowserBundle() {
     localFunction: 'buildCanonicalPresentation'
   });
 
+  let htmlPrepared = htmlSource;
+  htmlPrepared = removeImportBlock(
+    htmlPrepared,
+    "import {\n  headingMetadataComponents,\n  renderHeadingDebugComment\n} from './heading-metadata.js';",
+    './heading-metadata.js'
+  );
   let htmlBase = multiExportModuleBody(
-    htmlSource,
+    htmlPrepared,
     [
       'renderCanonicalBlockHtml',
       'renderCanonicalHtmlUnits',
@@ -174,25 +232,26 @@ export async function buildBrowserBundle() {
     ],
     [
       "import { marked } from 'marked';",
-      "import { buildCanonicalPresentation } from './presentation-revisions.js';"
+      "import { buildCanonicalPresentation } from './presentation-revisions.js';",
+      "import { resolveProjectionTheme, STYLE_ROLES } from './style.js';"
     ]
   );
   htmlBase = replaceOnce(
     htmlBase,
-    'function renderCanonicalHtmlUnits(events)',
-    'function renderBaseHtmlUnits(events)',
+    'function renderCanonicalHtmlUnits(events, options = {})',
+    'function renderBaseHtmlUnits(events, options = {})',
     'base HTML unit function name'
   );
   htmlBase = replaceOnce(
     htmlBase,
-    'function renderCanonicalHtml(events)',
-    'function renderBaseHtml(events)',
+    'function renderCanonicalHtml(events, options = {})',
+    'function renderBaseHtml(events, options = {})',
     'base HTML function name'
   );
   htmlBase = replaceOnce(
     htmlBase,
-    'return renderCanonicalHtmlUnits(events)',
-    'return renderBaseHtmlUnits(events)',
+    'return renderCanonicalHtmlUnits(events, options)',
+    'return renderBaseHtmlUnits(events, options)',
     'base HTML unit call'
   );
 
@@ -256,7 +315,11 @@ export async function buildBrowserBundle() {
     `// - src/adapters/chatgpt-base.js\n` +
     `// - src/adapters/chatgpt.js\n` +
     `// - src/derive/turns.js\n` +
+    `// - src/projections/style.js\n` +
+    `// - src/projections/heading-metadata.js\n` +
     `// - src/projections/markdown.js\n` +
+    `// - src/projections/markdown-revisions.js\n` +
+    `// - src/projections/markdown-visibility.js\n` +
     `// - src/projections/presentation.js\n` +
     `// - src/projections/revision-visibility.js\n` +
     `// - src/projections/presentation-revisions.js\n` +
@@ -270,9 +333,13 @@ export async function buildBrowserBundle() {
     `${base}\n\n` +
     `${chatgpt}\n\n` +
     `${turns}\n\n` +
-    `${markdown}\n\n` +
+    `${style}\n\n` +
+    `${headingMetadata}\n\n` +
+    `${markdownBase}\n\n` +
+    `${markdownRevisions}\n\n` +
     `${presentation}\n\n` +
     `${revisionVisibility}\n\n` +
+    `${markdownVisibility}\n\n` +
     `${presentationRevisions}\n\n` +
     `${htmlBase}\n\n` +
     `${wordIdentity}\n\n` +

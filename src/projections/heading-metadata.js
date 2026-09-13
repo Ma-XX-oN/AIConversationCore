@@ -161,6 +161,27 @@ export function withCoreHeadingMetadata(event, options = {}) {
   delete projection.heading_metadata;
   delete projection.debug_provenance;
   projection.heading_metadata = deriveHeadingMetadata(event, options);
+
+  const related = projection.related_sources &&
+      typeof projection.related_sources === 'object'
+    ? { ...projection.related_sources }
+    : {};
+  for (const [name, source] of Object.entries(event?.relationships ?? {})) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    const relatedProjection = {
+      ...(related[name] && typeof related[name] === 'object' ? related[name] : {})
+    };
+    delete relatedProjection.heading_metadata;
+    delete relatedProjection.debug_provenance;
+    relatedProjection.heading_metadata = deriveHeadingMetadata({
+      provider: source.provider ?? event?.provider ?? null,
+      source_record_id: source.record_id ?? null,
+      source_index: Number.isInteger(source.record_index) ? source.record_index : null,
+      source
+    }, options);
+    related[name] = relatedProjection;
+  }
+  if (Object.keys(related).length) projection.related_sources = related;
   return { ...event, projection };
 }
 

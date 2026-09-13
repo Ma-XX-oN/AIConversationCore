@@ -580,3 +580,16 @@ transcript text must never be able to close or reparent Core's own turn, reasoni
 tool, or other semantic containers. Escaping at the Markdown-leaf boundary keeps
 source text visible while preserving D017's rule that Core alone owns presentation
 structure and D019's one canonical word-identity path.
+
+
+## D026 — Heading semantics and debug provenance are Core-owned
+
+**Status:** Accepted; supersedes D015 wherever D015 allows consumers to supply semantic heading/debug values.
+
+**Decision:** AIConversationCore derives transcript-heading semantics from canonical source provenance and owns their serialization. Public consumers may select presentation policy only: whether timestamp, one-based source record number, source/provider turn ID, and debug provenance are shown, plus presentation settings such as timezone or styling. Consumers do not supply the semantic values themselves and do not construct `turn_id=...`, record-number, timestamp, or debug-comment text.
+
+For composite Assistant turns, the enclosing Assistant heading is owned by the final Assistant message source when one exists. Commentary and other independently headed structures retain their own source provenance. Related-source structures, including Claude sub-agent invocation headings, receive the same Core-derived metadata treatment. Debug comments use Core's canonical `record_id` and zero-based `record_index` fields and are rendered by Core.
+
+The structured presentation tree carries the same derived heading metadata used by Markdown and HTML so virtualization can mount Core-owned units without reconstructing presentation semantics. Classic-browser and ESM entry points use the same projection policy and rendering contract.
+
+**Reason:** Presentation meaning must not diverge between DownloadConversation, AI-transcript, AgentPanelSpeaker, or future consumers. Keeping semantic values and formatting in Core prevents duplicate/mismatched metadata when one visible response spans multiple provider records and preserves one authoritative representation for virtualization.

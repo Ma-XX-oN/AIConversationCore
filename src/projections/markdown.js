@@ -1,3 +1,5 @@
+import { renderHeadingDebugComment } from './heading-metadata.js';
+
 /**
  * Escapes text for safe insertion into generated HTML fragments.
  *
@@ -65,9 +67,8 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.record_number != null) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
-  const turnId = metadata.turn_id ?? event?.source_record_id;
-  if (metadata.show_turn_id && turnId != null) {
-    fields.push(`turn_id=${turnId}`);
+  if (metadata.turn_id != null) {
+    fields.push(`turn_id=${metadata.turn_id}`);
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
@@ -118,6 +119,11 @@ function projectedThoughtHeading(event, number) {
  */
 function projectedComment(event, quoted = false) {
   const projection = event?.projection ?? {};
+  const coreComment = renderHeadingDebugComment(projection.heading_metadata ?? {});
+  if (coreComment) return quoted ? quoteMarkdown(coreComment) : coreComment;
+
+  // Internal compatibility for old direct-renderer tests. Public Core renderers
+  // strip this caller field and derive debug provenance from canonical source.
   if (!projection.debug_provenance) return '';
   const fields = [];
   if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
@@ -686,16 +692,20 @@ function renderChatGPTAssistantSegment(segment, events) {
   }
   if (!body.length) return [];
   const headingEvent = segment[0];
-  // Consumer response-heading metadata may differ from the first activity event's own heading metadata.
-  const responseHeadingEvent = headingEvent?.projection?.response_heading_suffix != null
+  const finalMessageEvent = [...messages].reverse()[0] ?? null;
+  const semanticHeadingEvent = finalMessageEvent ?? headingEvent;
+  // Generic caller decoration remains compatible, but semantic metadata comes
+  // from the Core-selected final response event rather than an opaque suffix.
+  const responseHeadingSuffix = headingEvent?.projection?.response_heading_suffix;
+  const responseHeadingEvent = responseHeadingSuffix != null
     ? {
-        ...headingEvent,
+        ...semanticHeadingEvent,
         projection: {
-          ...headingEvent.projection,
-          heading_suffix: headingEvent.projection.response_heading_suffix
+          ...(semanticHeadingEvent?.projection ?? {}),
+          heading_suffix: responseHeadingSuffix
         }
       }
-    : headingEvent;
+    : semanticHeadingEvent;
   return [projectedSection(responseHeadingEvent, `${projectedHeading(responseHeadingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
 }
 

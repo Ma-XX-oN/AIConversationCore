@@ -122,3 +122,39 @@ test('generated browser bundle matches ESM canonical word-handle lookup', async 
   );
   assert.deepEqual(plain(actual), plain(expected));
 });
+
+
+test('generated browser bundle matches ESM Core-owned heading metadata', async () => {
+  const records = await loadJsonl(fixtureUrl);
+  const bundle = await buildBrowserBundle();
+  const context = vm.createContext({ URL });
+  vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
+
+  const options = {
+    heading: {
+      timestamp: true,
+      recordNumber: true,
+      turnId: true,
+      debugProvenance: true,
+      timeZone: 'UTC'
+    }
+  };
+  const esmEvents = adaptChatGPTRecords(records);
+  const browserEvents = context.AIConversationCore.adaptChatGPTRecords(plain(records));
+  const expectedMarkdown = renderCanonicalMarkdown(esmEvents, options);
+  const actualMarkdown = context.AIConversationCore.renderCanonicalMarkdown(
+    browserEvents,
+    plain(options)
+  );
+  const expectedHtml = renderCanonicalHtml(esmEvents, options);
+  const actualHtml = context.AIConversationCore.renderCanonicalHtml(
+    browserEvents,
+    plain(options)
+  );
+
+  assert.equal(actualMarkdown, expectedMarkdown);
+  assert.equal(actualHtml, expectedHtml);
+  assert.match(expectedMarkdown, /turn_id=/);
+  assert.match(expectedMarkdown, /record_index=/);
+  assert.match(expectedHtml, /transcript-turn-id/);
+});

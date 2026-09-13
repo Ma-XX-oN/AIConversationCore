@@ -84,7 +84,11 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 // - src/adapters/chatgpt-base.js
 // - src/adapters/chatgpt.js
 // - src/derive/turns.js
+// - src/projections/style.js
+// - src/projections/heading-metadata.js
 // - src/projections/markdown.js
+// - src/projections/markdown-revisions.js
+// - src/projections/markdown-visibility.js
 // - src/projections/presentation.js
 // - src/projections/revision-visibility.js
 // - src/projections/presentation-revisions.js
@@ -1622,6 +1626,335 @@ function deriveTurns(events) {
   return turns;
 }
 
+/** Stable semantic style-role names exposed to projection consumers. */
+const STYLE_ROLES = Object.freeze({
+  USER_HEADING: 'user-heading',
+  ASSISTANT_HEADING: 'assistant-heading',
+  TIMESTAMP: 'timestamp',
+  RECORD_NUMBER: 'record-number',
+  TURN_ID: 'turn-id'
+});
+
+/** Immutable default projection theme used as the reset and merge baseline. */
+const DEFAULT_THEME = Object.freeze({
+  ansi: Object.freeze({
+    [STYLE_ROLES.USER_HEADING]: '\u001b[33m',
+    [STYLE_ROLES.ASSISTANT_HEADING]: '\u001b[32m',
+    [STYLE_ROLES.TIMESTAMP]: '\u001b[36m',
+    [STYLE_ROLES.RECORD_NUMBER]: '\u001b[2m',
+    [STYLE_ROLES.TURN_ID]: '\u001b[35m',
+    reset: '\u001b[0m'
+  }),
+  html: Object.freeze({
+    [STYLE_ROLES.USER_HEADING]: 'transcript-user-heading',
+    [STYLE_ROLES.ASSISTANT_HEADING]: 'transcript-assistant-heading',
+    [STYLE_ROLES.TIMESTAMP]: 'transcript-timestamp',
+    [STYLE_ROLES.RECORD_NUMBER]: 'transcript-record-number',
+    [STYLE_ROLES.TURN_ID]: 'transcript-turn-id'
+  })
+});
+
+/** Mutable process-wide projection theme produced by applying consumer overrides to the default. */
+let configuredTheme = cloneTheme(DEFAULT_THEME);
+
+/**
+ * Handles clone theme.
+ *
+ * @param {Object<string, *>} theme - The projection theme containing ANSI and HTML style-role mappings.
+ * @returns {Object<string, *>} A detached projection-theme object containing copied ANSI and HTML role maps.
+ */
+function cloneTheme(theme) {
+  return {
+    ansi: { ...(theme?.ansi ?? {}) },
+    html: { ...(theme?.html ?? {}) }
+  };
+}
+
+/**
+ * Handles merge theme.
+ *
+ * @param {Object<string, *>} base - The base projection theme on which overrides are applied.
+ * @param {Object<string, *>|null} overrides - Optional projection-theme role overrides to merge with the current/base theme.
+ * @returns {Object<string, *>} A new projection theme formed by overlaying the supplied role maps on the base theme.
+ */
+function mergeTheme(base, overrides) {
+  return {
+    ansi: { ...base.ansi, ...(overrides?.ansi ?? {}) },
+    html: { ...base.html, ...(overrides?.html ?? {}) }
+  };
+}
+
+/**
+ * Gets default projection theme.
+ *
+ * @returns {Object<string, *>} A detached copy of the currently configured projection theme.
+ */
+function getDefaultProjectionTheme() {
+  return cloneTheme(configuredTheme);
+}
+
+/**
+ * Configures projection theme.
+ *
+ * @param {Object<string, *>} overrides - Optional projection-theme role overrides to merge with the current/base theme.
+ * @returns {Object<string, *>} A detached copy of the newly configured projection theme.
+ */
+function configureProjectionTheme(overrides = {}) {
+  configuredTheme = mergeTheme(configuredTheme, overrides);
+  return getDefaultProjectionTheme();
+}
+
+/**
+ * Resets projection theme.
+ *
+ * @returns {Object<string, *>} A detached copy of the restored built-in projection theme.
+ */
+function resetProjectionTheme() {
+  configuredTheme = cloneTheme(DEFAULT_THEME);
+  return getDefaultProjectionTheme();
+}
+
+/**
+ * Handles resolve projection theme.
+ *
+ * @param {Object<string, *>|null} overrides - Optional projection-theme role overrides to merge with the current/base theme.
+ * @returns {Object<string, *>} A new effective projection theme combining the configured theme with optional per-call overrides.
+ */
+function resolveProjectionTheme(overrides = null) {
+  return mergeTheme(configuredTheme, overrides);
+}
+
+/** Default heading-presentation policy when a caller supplies no preference. */
+const DEFAULT_HEADING_POLICY = Object.freeze({
+  timestamp: false,
+  recordNumber: false,
+  turnId: false,
+  debugProvenance: false,
+  timeZone: null
+});
+
+/**
+ * Resolves the Core heading-presentation policy from public projection options.
+ *
+ * Callers select visibility/presentation preferences only. Semantic values such
+ * as timestamps, record numbers, source turn IDs, and debug identities are
+ * always derived by Core from canonical source provenance.
+ *
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {Object<string, *>} Normalized heading-presentation policy.
+ */
+function resolveHeadingPolicy(options = {}) {
+  const heading = options?.heading && typeof options.heading === 'object'
+    ? options.heading
+    : {};
+  return {
+    timestamp: heading.timestamp === true,
+    recordNumber: heading.recordNumber === true,
+    turnId: heading.turnId === true,
+    debugProvenance: heading.debugProvenance === true,
+    timeZone: typeof heading.timeZone === 'string' && heading.timeZone.trim()
+      ? heading.timeZone.trim()
+      : DEFAULT_HEADING_POLICY.timeZone
+  };
+}
+
+/**
+ * Converts one provider timestamp retained in canonical source provenance to a Date.
+ *
+ * Numeric provider timestamps are interpreted as Unix seconds unless their
+ * magnitude already indicates milliseconds. ISO/date strings are parsed using
+ * the platform Date implementation. Invalid or absent values yield null.
+ *
+ * @param {*} raw - Canonical source timestamp value.
+ * @returns {Date|null} Parsed source timestamp or null.
+ */
+function sourceDate(raw) {
+  if (raw == null || raw === '') return null;
+  let value = raw;
+  if (typeof raw === 'string' && /^-?\d+(?:\.\d+)?$/.test(raw.trim())) {
+    value = Number(raw);
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const milliseconds = Math.abs(value) < 1e12 ? value * 1000 : value;
+    const date = new Date(milliseconds);
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+/**
+ * Formats one source timestamp using Core's canonical transcript date grammar.
+ *
+ * The grammar is `YYYY-MM-DD HH:MM:SS`. A caller may select an IANA timezone as
+ * presentation policy, but never supplies the formatted timestamp itself.
+ *
+ * @param {*} raw - Canonical source timestamp value.
+ * @param {string|null} timeZone - Optional IANA timezone name.
+ * @returns {string|null} Canonical formatted timestamp or null.
+ */
+function formatHeadingTimestamp(raw, timeZone = null) {
+  const date = sourceDate(raw);
+  if (!date) return null;
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    ...(timeZone ? { timeZone } : {})
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, part.value])
+  );
+  if (!parts.year || !parts.month || !parts.day ||
+      !parts.hour || !parts.minute || !parts.second) return null;
+  return `${parts.year}-${parts.month}-${parts.day} ` +
+    `${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
+/**
+ * Returns canonical source provenance for heading projection from one event.
+ *
+ * @param {Object<string, *>} event - Canonical event.
+ * @returns {Object<string, *>} Canonical source provenance view.
+ */
+function headingSource(event) {
+  const source = event?.source && typeof event.source === 'object'
+    ? event.source
+    : {};
+  return {
+    provider: event?.provider ?? source.provider ?? null,
+    record_id: source.record_id ?? event?.source_record_id ?? null,
+    record_index: Number.isInteger(source.record_index)
+      ? source.record_index
+      : Number.isInteger(event?.source_index) ? event.source_index : null,
+    turn_id: source.turn_id ?? null,
+    timestamp: source.timestamp ?? source.create_time ?? source.update_time ?? null
+  };
+}
+
+/**
+ * Derives Core-owned semantic heading metadata for one canonical event.
+ *
+ * @param {Object<string, *>} event - Canonical event supplying source provenance.
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {Object<string, *>} Core-owned semantic heading metadata.
+ */
+function deriveHeadingMetadata(event, options = {}) {
+  const policy = resolveHeadingPolicy(options);
+  const source = headingSource(event);
+  const metadata = {};
+
+  if (policy.timestamp) {
+    const timestamp = formatHeadingTimestamp(source.timestamp, policy.timeZone);
+    if (timestamp) metadata.timestamp = timestamp;
+  }
+  if (policy.recordNumber && Number.isInteger(source.record_index)) {
+    metadata.record_number = source.record_index + 1;
+  }
+  if (policy.turnId && typeof source.turn_id === 'string' && source.turn_id) {
+    metadata.turn_id = source.turn_id;
+  }
+  if (policy.debugProvenance) {
+    const debug = {};
+    if (source.record_id != null) debug.record_id = source.record_id;
+    if (Number.isInteger(source.record_index)) debug.record_index = source.record_index;
+    if (Object.keys(debug).length) metadata.debug = debug;
+  }
+  return metadata;
+}
+
+/**
+ * Replaces caller semantic heading projection with Core-derived metadata.
+ *
+ * Generic projection fields remain intact, but callers cannot override semantic
+ * heading values or debug provenance by placing them in `projection`.
+ *
+ * @param {Object<string, *>} event - Canonical event to project.
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {Object<string, *>} Event clone carrying Core-owned heading metadata.
+ */
+function withCoreHeadingMetadata(event, options = {}) {
+  const projection = { ...(event?.projection ?? {}) };
+  delete projection.heading_metadata;
+  delete projection.debug_provenance;
+  projection.heading_metadata = deriveHeadingMetadata(event, options);
+
+  const related = projection.related_sources &&
+      typeof projection.related_sources === 'object'
+    ? { ...projection.related_sources }
+    : {};
+  for (const [name, source] of Object.entries(event?.relationships ?? {})) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    const relatedProjection = {
+      ...(related[name] && typeof related[name] === 'object' ? related[name] : {})
+    };
+    delete relatedProjection.heading_metadata;
+    delete relatedProjection.debug_provenance;
+    relatedProjection.heading_metadata = deriveHeadingMetadata({
+      provider: source.provider ?? event?.provider ?? null,
+      source_record_id: source.record_id ?? null,
+      source_index: Number.isInteger(source.record_index) ? source.record_index : null,
+      source
+    }, options);
+    related[name] = relatedProjection;
+  }
+  if (Object.keys(related).length) projection.related_sources = related;
+  return { ...event, projection };
+}
+
+/**
+ * Builds ordered semantic heading components from Core-owned metadata.
+ *
+ * @param {Object<string, *>} metadata - Core-owned heading metadata.
+ * @returns {Array<Object<string, string>>} Ordered visible metadata components.
+ */
+function headingMetadataComponents(metadata = {}) {
+  const components = [];
+  if (metadata.timestamp != null) {
+    components.push({
+      type: 'timestamp',
+      styleRole: STYLE_ROLES.TIMESTAMP,
+      text: `[${metadata.timestamp}]:`
+    });
+  }
+  if (metadata.record_number != null) {
+    components.push({
+      type: 'record-number',
+      styleRole: STYLE_ROLES.RECORD_NUMBER,
+      text: `${metadata.record_number}:`
+    });
+  }
+  if (metadata.turn_id != null) {
+    components.push({
+      type: 'turn-id',
+      styleRole: STYLE_ROLES.TURN_ID,
+      text: `turn_id=${metadata.turn_id}`
+    });
+  }
+  return components;
+}
+
+/**
+ * Renders Core-owned debug provenance as the canonical Markdown/HTML comment.
+ *
+ * @param {Object<string, *>} metadata - Core-owned heading metadata.
+ * @returns {string} Debug provenance comment or an empty string.
+ */
+function renderHeadingDebugComment(metadata = {}) {
+  const debug = metadata?.debug ?? {};
+  const fields = [];
+  if (debug.record_id != null) fields.push(`record_id=${debug.record_id}`);
+  if (Number.isInteger(debug.record_index)) fields.push(`record_index=${debug.record_index}`);
+  return fields.length ? `<!-- ${fields.join(' ')} -->` : '';
+}
+
 /**
  * Escapes text for safe insertion into generated HTML fragments.
  *
@@ -1689,9 +2022,8 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.record_number != null) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
-  const turnId = metadata.turn_id ?? event?.source_record_id;
-  if (metadata.show_turn_id && turnId != null) {
-    fields.push(`turn_id=${turnId}`);
+  if (metadata.turn_id != null) {
+    fields.push(`turn_id=${metadata.turn_id}`);
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
@@ -1742,6 +2074,11 @@ function projectedThoughtHeading(event, number) {
  */
 function projectedComment(event, quoted = false) {
   const projection = event?.projection ?? {};
+  const coreComment = renderHeadingDebugComment(projection.heading_metadata ?? {});
+  if (coreComment) return quoted ? quoteMarkdown(coreComment) : coreComment;
+
+  // Internal compatibility for old direct-renderer tests. Public Core renderers
+  // strip this caller field and derive debug provenance from canonical source.
   if (!projection.debug_provenance) return '';
   const fields = [];
   if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
@@ -2310,16 +2647,20 @@ function renderChatGPTAssistantSegment(segment, events) {
   }
   if (!body.length) return [];
   const headingEvent = segment[0];
-  // Consumer response-heading metadata may differ from the first activity event's own heading metadata.
-  const responseHeadingEvent = headingEvent?.projection?.response_heading_suffix != null
+  const finalMessageEvent = [...messages].reverse()[0] ?? null;
+  const semanticHeadingEvent = finalMessageEvent ?? headingEvent;
+  // Generic caller decoration remains compatible, but semantic metadata comes
+  // from the Core-selected final response event rather than an opaque suffix.
+  const responseHeadingSuffix = headingEvent?.projection?.response_heading_suffix;
+  const responseHeadingEvent = responseHeadingSuffix != null
     ? {
-        ...headingEvent,
+        ...semanticHeadingEvent,
         projection: {
-          ...headingEvent.projection,
-          heading_suffix: headingEvent.projection.response_heading_suffix
+          ...(semanticHeadingEvent?.projection ?? {}),
+          heading_suffix: responseHeadingSuffix
         }
       }
-    : headingEvent;
+    : semanticHeadingEvent;
   return [projectedSection(responseHeadingEvent, `${projectedHeading(responseHeadingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
 }
 
@@ -2722,7 +3063,7 @@ function renderNotice(event) {
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @returns {string} The complete canonical Markdown transcript projection.
  */
-function renderCanonicalMarkdown(events) {
+function renderBaseMarkdown(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
   const sections = [];
   // Per-render mutable numbering state for Codex question sections; it is not shared across render calls.
@@ -2759,6 +3100,127 @@ function renderCanonicalMarkdown(events) {
   }
   flushAssistant();
   return sections.join('\n\n') + '\n\n';
+}
+
+/**
+ * Returns the human-readable Assistant label for one canonical provider.
+ *
+ * @param {string} provider - Canonical provider identifier.
+ * @returns {string} Canonical transcript actor label.
+ */
+function providerLabel(provider) {
+  if (provider === 'claude') return 'Claude';
+  if (provider === 'codex') return 'Codex';
+  return 'ChatGPT';
+}
+
+/**
+ * Returns the visible revision/execution suffix for one canonical turn event.
+ *
+ * @param {Object<string, *>} event - Canonical User/Assistant event.
+ * @returns {string} Parenthesized status suffix or an empty string.
+ */
+function turnStatusSuffix(event) {
+  const statuses = [];
+  if (event?.revision_status && event.revision_status !== 'normal') {
+    statuses.push(Number.isInteger(event.revision_depth)
+      ? `${event.revision_status} ${event.revision_depth}`
+      : event.revision_status);
+  }
+  if (event?.execution_status === 'aborted') statuses.push('aborted');
+  return statuses.length ? ` (${statuses.join(', ')})` : '';
+}
+
+/**
+ * Returns the canonical Markdown heading label for one revision-bearing message.
+ *
+ * @param {Object<string, *>} event - Canonical User/Assistant message event.
+ * @returns {string} Heading label without status or metadata.
+ */
+function headingLabel(event) {
+  return event?.role === 'user'
+    ? '## User'
+    : `## ${providerLabel(event?.provider)}`;
+}
+
+/**
+ * Removes one already-rendered copy of a status suffix from immediately after
+ * the actor label.
+ *
+ * Base Markdown can already contain `projection.heading_suffix` before consumer
+ * metadata such as `<!-- record_index=... -->`.  Removing only a trailing suffix
+ * therefore misses that case and duplicates the status when this canonical
+ * post-pass positions it next to the actor label.
+ *
+ * @param {string} line - One rendered Markdown heading line.
+ * @param {number} insertionIndex - Index immediately after label/ANSI reset.
+ * @param {string} suffix - Canonical revision/execution suffix.
+ * @returns {string} Heading with the pre-existing adjacent suffix removed.
+ */
+function removeAdjacentSuffix(line, insertionIndex, suffix) {
+  const before = line.slice(0, insertionIndex);
+  let after = line.slice(insertionIndex);
+  if (after.startsWith(suffix)) {
+    after = after.slice(suffix.length);
+  }
+  return before + after;
+}
+
+/**
+ * Positions revision status immediately after User/Assistant labels.
+ *
+ * Base rendering may append `projection.heading_suffix` before consumer heading
+ * metadata, and an Assistant section may be headed by reasoning/commentary that
+ * precedes its final message. This canonical post-pass therefore pairs visible
+ * message generations with their rendered actor headings and places the status
+ * next to the actor label without depending on which event opened the section.
+ *
+ * @param {string} markdown - Base canonical Markdown.
+ * @param {Array<Object<string, *>>} events - Ordered canonical events.
+ * @returns {string} Revision-aware Markdown.
+ */
+function positionTurnStatuses(markdown, events) {
+  const statuses = events
+    .filter(event => event?.visibility !== 'hidden' && event?.kind === 'message' &&
+      (event?.role === 'user' || event?.role === 'assistant'))
+    .map(event => ({
+      label: headingLabel(event),
+      suffix: turnStatusSuffix(event)
+    }))
+    .filter(item => item.suffix);
+  if (!statuses.length) return markdown;
+
+  let statusIndex = 0;
+  return markdown.split('\n').map(line => {
+    if (statusIndex >= statuses.length) return line;
+    const item = statuses[statusIndex];
+    const labelIndex = line.indexOf(item.label);
+    if (labelIndex < 0) return line;
+
+    const afterLabel = labelIndex + item.label.length;
+    let insertionIndex = afterLabel;
+    const resetMatch = line.slice(afterLabel).match(/^(\x1b\[[0-9;]*m)/);
+    if (resetMatch) insertionIndex += resetMatch[1].length;
+
+    const withoutExistingSuffix = removeAdjacentSuffix(
+      line,
+      insertionIndex,
+      item.suffix);
+    statusIndex += 1;
+    return `${withoutExistingSuffix.slice(0, insertionIndex)}${item.suffix}` +
+      `${withoutExistingSuffix.slice(insertionIndex)}`;
+  }).join('\n');
+}
+
+/**
+ * Renders canonical Markdown with revision/execution status positioned as part
+ * of both User and Assistant heading labels before consumer metadata.
+ *
+ * @param {Array<Object<string, *>>} events - Ordered canonical event stream.
+ * @returns {string} Canonical transcript Markdown.
+ */
+function renderRevisionMarkdown(events) {
+  return positionTurnStatuses(renderBaseMarkdown(events), events);
 }
 
 // Version of the provider-independent canonical presentation-tree contract.
@@ -3319,6 +3781,26 @@ function projectRevisionVisibility(events, options = {}) {
 }
 
 /**
+ * Renders canonical Markdown after applying projection-time revision visibility.
+ *
+ * Markdown is a serialization rather than an interactive retained DOM, so events
+ * that are not effectively visible are omitted from this output. Canonical
+ * normalization itself still retains them. Heading presentation values are
+ * derived by Core from canonical source provenance; callers provide visibility
+ * policy only and cannot inject semantic heading values.
+ *
+ * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {string} Canonical Markdown for the selected visibility projection.
+ */
+function renderCanonicalMarkdown(events, options = {}) {
+  const projected = projectRevisionVisibility(events, options)
+    .map(event => withCoreHeadingMetadata(event, options));
+  const visible = projected.filter(event => event?.projection?.visible !== false);
+  return renderRevisionMarkdown(visible);
+}
+
+/**
  * Returns the visible revision/execution suffix for one canonical turn event.
  *
  * @param {Object<string, *>} event - Canonical User/Assistant event.
@@ -3368,13 +3850,61 @@ function revisionMessageForTurn(turn, sourceEvents) {
 }
 
 /**
+ * Finds the canonical source event that owns one rendered turn heading.
+ *
+ * Assistant activity may start with reasoning or Commentary before a final
+ * response message. The enclosing Assistant heading therefore belongs to the
+ * last final Assistant message when present, while a User heading belongs to its
+ * User message. If a turn has no ordinary message, the first same-role source
+ * event supplies the heading provenance.
+ *
+ * @param {Object<string, *>} turn - Canonical presentation turn.
+ * @param {Array<Object<string, *>>} sourceEvents - Resolved turn source events.
+ * @returns {Object<string, *>|null} Heading-owning canonical event or null.
+ */
+function headingEventForTurn(turn, sourceEvents) {
+  const role = turn?.actor?.role;
+  if (role === 'assistant') {
+    return [...sourceEvents].reverse().find(event =>
+      event?.role === 'assistant' && event?.kind === 'message') ??
+      sourceEvents.find(event => event?.role === 'assistant') ?? null;
+  }
+  if (role === 'user') {
+    return sourceEvents.find(event =>
+      event?.role === 'user' && event?.kind === 'message') ??
+      sourceEvents.find(event => event?.role === 'user') ?? null;
+  }
+  return sourceEvents[0] ?? null;
+}
+
+/**
+ * Adds Core-owned heading metadata to presentation descendants that map to one
+ * canonical source event.
+ *
+ * @param {Object<string, *>} node - Canonical presentation node.
+ * @param {Map<string, Object<string, *>>} eventsById - Canonical events by ID.
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {void} The presentation node is annotated in place.
+ */
+function annotateNodeHeadingMetadata(node, eventsById, options) {
+  const event = eventsById.get(node?.event_id);
+  if (event) {
+    const metadata = deriveHeadingMetadata(event, options);
+    if (Object.keys(metadata).length) node.heading_metadata = metadata;
+  }
+  for (const child of node?.children ?? []) {
+    annotateNodeHeadingMetadata(child, eventsById, options);
+  }
+}
+
+/**
  * Returns Core-owned effective visibility metadata for one revision-bearing
  * presentation turn.
  *
- * A revision lineage remains one stable presentation inventory.  Projection
+ * A revision lineage remains one stable presentation inventory. Projection
  * visibility may change without changing IDs, status, or depth, so downstream
  * interactive consumers receive both the current effective visibility and the
- * stable fact that a turn belongs to revision history.  Consumers therefore do
+ * stable fact that a turn belongs to revision history. Consumers therefore do
  * not need to interpret status strings or provider-native rollback markers.
  *
  * @param {Object<string, *>} revisionEvent - Revision-bearing message event.
@@ -3395,17 +3925,27 @@ function revisionTurnProjection(revisionEvent, sourceEvents) {
 
 /**
  * Builds the canonical presentation tree and carries canonical revision status,
- * depth, and effective visibility into both User and Assistant turns.
+ * heading metadata, depth, and effective visibility into presentation nodes.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical event stream.
+ * @param {Object<string, *>} options - Public Core projection options.
  * @returns {Object<string, *>} Canonical presentation tree.
  */
-function buildCanonicalPresentation(events) {
+function buildCanonicalPresentation(events, options = {}) {
   const presentation = buildBasePresentation(events);
   const eventsById = new Map(events.map(event => [event?.id, event]));
 
   for (const turn of presentation.turns ?? []) {
     const sourceEvents = sourceEventsForTurn(turn, eventsById);
+    const headingEvent = headingEventForTurn(turn, sourceEvents);
+    if (headingEvent) {
+      const metadata = deriveHeadingMetadata(headingEvent, options);
+      if (Object.keys(metadata).length) turn.heading_metadata = metadata;
+    }
+    for (const child of turn.children ?? []) {
+      annotateNodeHeadingMetadata(child, eventsById, options);
+    }
+
     const sourceEvent = revisionMessageForTurn(turn, sourceEvents);
     const suffix = turnStatusSuffix(sourceEvent);
     if (!suffix) continue;
@@ -3598,9 +4138,11 @@ function renderSourceAnchors(node, emittedSourceIndexes) {
  */
 function renderMarkdownNode(node, emittedSourceIndexes, className = 'presentation-content') {
   const anchors = renderSourceAnchors(node, emittedSourceIndexes);
+  const debug = renderHeadingDebugComment(node?.heading_metadata ?? {});
   const markdown = nodeMarkdown(node);
   const body = markdown ? renderMarkdown(markdown) : '';
-  return `<div class="${className}" data-presentation-id="${htmlEscape(node?.id ?? '')}">${anchors}${body}</div>`;
+  return `<div class="${className}" data-presentation-id="${htmlEscape(node?.id ?? '')}">` +
+    `${debug}${anchors}${body}</div>`;
 }
 
 /**
@@ -3767,13 +4309,46 @@ function renderNode(node, emittedSourceIndexes) {
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical turn HTML.
  */
-function renderTurn(turn, emittedSourceIndexes) {
+function renderTurnHeading(turn, options = {}) {
   const label = turn?.actor?.label || (turn?.actor?.role === 'user' ? 'User' : 'Agent');
+  const metadata = turn?.heading_metadata ?? {};
+  const components = headingMetadataComponents(metadata);
+  const debug = renderHeadingDebugComment(metadata);
+  if (!components.length && !debug) return `<h2>${htmlEscape(label)}</h2>`;
+
+  const theme = resolveProjectionTheme(options?.theme ?? null);
+  const speakerRole = turn?.actor?.role === 'user'
+    ? STYLE_ROLES.USER_HEADING
+    : STYLE_ROLES.ASSISTANT_HEADING;
+  const speakerClass = theme.html[speakerRole] ?? '';
+  const speaker = speakerClass
+    ? `<span class="${htmlEscape(speakerClass)}">${htmlEscape(label)}</span>`
+    : `<span>${htmlEscape(label)}</span>`;
+  const fields = components.map(component => {
+    const className = theme.html[component.styleRole] ?? '';
+    const value = htmlEscape(component.text);
+    return className
+      ? `<span class="${htmlEscape(className)}">${value}</span>`
+      : `<span>${value}</span>`;
+  });
+  if (debug) fields.push(debug);
+  return `<h2>${[speaker, ...fields].join(' ')}</h2>`;
+}
+
+/**
+ * Renders one canonical turn from the provider-independent presentation tree.
+ *
+ * @param {Object<string, *>} turn - Canonical presentation turn.
+ * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {string} Canonical turn HTML.
+ */
+function renderTurn(turn, emittedSourceIndexes, options = {}) {
   const children = (turn?.children ?? [])
     .map(node => renderNode(node, emittedSourceIndexes))
     .join('');
   return `<section class="transcript-turn" data-presentation-id="${htmlEscape(turn?.id ?? '')}">` +
-    `<h2>${htmlEscape(label)}</h2>` +
+    `${renderTurnHeading(turn, options)}` +
     `<blockquote class="transcript-turn-body">${children}</blockquote></section>`;
 }
 
@@ -3786,18 +4361,19 @@ function renderTurn(turn, emittedSourceIndexes) {
  * semantics from tags, classes, or source-anchor counts.
  *
  * @param {Array<Object<string, *>>} events - Ordered normalized canonical events.
+ * @param {Object<string, *>} options - Projection options.
  * @returns {Array<Object<string, *>>} Ordered indivisible canonical HTML units.
  */
-function renderBaseHtmlUnits(events) {
+function renderBaseHtmlUnits(events, options = {}) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
-  const presentation = buildCanonicalPresentation(events);
+  const presentation = buildCanonicalPresentation(events, options);
   const emittedSourceIndexes = new Set();
   return (presentation.turns ?? []).map(turn => ({
     id: turn?.id ?? '',
     kind: 'turn',
     atomic: true,
     source: (turn?.source ?? []).map(source => ({ ...source })),
-    html: renderTurn(turn, emittedSourceIndexes)
+    html: renderTurn(turn, emittedSourceIndexes, options)
   }));
 }
 
@@ -3809,10 +4385,11 @@ function renderBaseHtmlUnits(events) {
  * same Core-owned complete-turn units exposed to interactive consumers.
  *
  * @param {Array<Object<string, *>>} events - Ordered normalized canonical events.
+ * @param {Object<string, *>} options - Projection options.
  * @returns {string} Complete canonical HTML transcript.
  */
-function renderBaseHtml(events) {
-  return renderBaseHtmlUnits(events)
+function renderBaseHtml(events, options = {}) {
+  return renderBaseHtmlUnits(events, options)
     .map(unit => unit.html)
     .join('');
 }
@@ -4921,7 +5498,7 @@ function wordBlocksForPresentationNode(node) {
  * Appends authoritative word provenance for one presentation subtree.
  *
  * Block word texts are rendered and tokenized by the same Core helpers as
- * the complete projection.  The complete-unit render later verifies this
+ * the complete projection. The complete-unit render later verifies this
  * sequence exactly before provenance is attached, so this path can never
  * silently align by text or ordinal when the renderings disagree.
  *
@@ -5026,7 +5603,7 @@ function renderCanonicalHtmlUnits(events, options = {}) {
     throw new TypeError('Canonical events must be an array.');
   }
   const projectedEvents = projectRevisionVisibility(events, options);
-  const presentation = buildCanonicalPresentation(projectedEvents);
+  const presentation = buildCanonicalPresentation(projectedEvents, options);
   const eventsById = new Map(projectedEvents.map(event => [event?.id, event]));
   const turnsById = new Map((presentation.turns ?? []).map(turn => [
     String(turn?.id ?? ''),
@@ -5038,7 +5615,7 @@ function renderCanonicalHtmlUnits(events, options = {}) {
     turnWordProvenance(turn)
   ]));
 
-  return renderBaseHtmlUnits(projectedEvents).map(unit => {
+  return renderBaseHtmlUnits(projectedEvents, options).map(unit => {
     const revisionHtml = applyTurnRevisionAttributes(unit.html, turnsById);
     const annotated = annotateCanonicalHtmlWords(revisionHtml, wordState);
     const provenance = provenanceByTurnId.get(String(unit?.id ?? '')) ?? [];

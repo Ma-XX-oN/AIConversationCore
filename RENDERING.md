@@ -271,3 +271,24 @@ HTML and add only application integration such as styling, DOM lifecycle,
 virtualization, navigation, search, speech, and highlighting. They must not render
 presentation-node semantics themselves or reparse canonical Markdown to recover
 those semantics.
+
+
+## Core-owned heading metadata
+
+Public Markdown/HTML projection options expose heading **visibility policy**, not semantic values:
+
+```js
+{
+  heading: {
+    timestamp: true,
+    recordNumber: true,
+    turnId: true,
+    debugProvenance: false,
+    timeZone: 'America/Toronto'
+  }
+}
+```
+
+Core derives timestamp, one-based record number, native source/provider turn ID, and debug `record_id` / zero-based `record_index` from canonical source provenance. Callers must not build those fields or comments themselves. Core also places the same derived metadata on presentation-tree headings so virtualized consumers do not have to recreate heading semantics.
+
+Visible metadata order is timestamp, record number, then turn ID. Debug provenance is a separate Core-owned comment. When a provider has no suitable native turn ID (for example Codex records), requesting Turn ID emits no invented value.

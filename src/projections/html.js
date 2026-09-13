@@ -1,6 +1,11 @@
 import { marked } from 'marked';
 
+import {
+  headingMetadataComponents,
+  renderHeadingDebugComment
+} from './heading-metadata.js';
 import { buildCanonicalPresentation } from './presentation-revisions.js';
+import { resolveProjectionTheme, STYLE_ROLES } from './style.js';
 
 /**
  * Escapes text for safe insertion into generated structural HTML.
@@ -175,9 +180,11 @@ function renderSourceAnchors(node, emittedSourceIndexes) {
  */
 function renderMarkdownNode(node, emittedSourceIndexes, className = 'presentation-content') {
   const anchors = renderSourceAnchors(node, emittedSourceIndexes);
+  const debug = renderHeadingDebugComment(node?.heading_metadata ?? {});
   const markdown = nodeMarkdown(node);
   const body = markdown ? renderMarkdown(markdown) : '';
-  return `<div class="${className}" data-presentation-id="${htmlEscape(node?.id ?? '')}">${anchors}${body}</div>`;
+  return `<div class="${className}" data-presentation-id="${htmlEscape(node?.id ?? '')}">` +
+    `${debug}${anchors}${body}</div>`;
 }
 
 /**
@@ -344,13 +351,46 @@ function renderNode(node, emittedSourceIndexes) {
  * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
  * @returns {string} Canonical turn HTML.
  */
-function renderTurn(turn, emittedSourceIndexes) {
+function renderTurnHeading(turn, options = {}) {
   const label = turn?.actor?.label || (turn?.actor?.role === 'user' ? 'User' : 'Agent');
+  const metadata = turn?.heading_metadata ?? {};
+  const components = headingMetadataComponents(metadata);
+  const debug = renderHeadingDebugComment(metadata);
+  if (!components.length && !debug) return `<h2>${htmlEscape(label)}</h2>`;
+
+  const theme = resolveProjectionTheme(options?.theme ?? null);
+  const speakerRole = turn?.actor?.role === 'user'
+    ? STYLE_ROLES.USER_HEADING
+    : STYLE_ROLES.ASSISTANT_HEADING;
+  const speakerClass = theme.html[speakerRole] ?? '';
+  const speaker = speakerClass
+    ? `<span class="${htmlEscape(speakerClass)}">${htmlEscape(label)}</span>`
+    : `<span>${htmlEscape(label)}</span>`;
+  const fields = components.map(component => {
+    const className = theme.html[component.styleRole] ?? '';
+    const value = htmlEscape(component.text);
+    return className
+      ? `<span class="${htmlEscape(className)}">${value}</span>`
+      : `<span>${value}</span>`;
+  });
+  if (debug) fields.push(debug);
+  return `<h2>${[speaker, ...fields].join(' ')}</h2>`;
+}
+
+/**
+ * Renders one canonical turn from the provider-independent presentation tree.
+ *
+ * @param {Object<string, *>} turn - Canonical presentation turn.
+ * @param {Set<number>} emittedSourceIndexes - Source indexes already emitted.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {string} Canonical turn HTML.
+ */
+function renderTurn(turn, emittedSourceIndexes, options = {}) {
   const children = (turn?.children ?? [])
     .map(node => renderNode(node, emittedSourceIndexes))
     .join('');
   return `<section class="transcript-turn" data-presentation-id="${htmlEscape(turn?.id ?? '')}">` +
-    `<h2>${htmlEscape(label)}</h2>` +
+    `${renderTurnHeading(turn, options)}` +
     `<blockquote class="transcript-turn-body">${children}</blockquote></section>`;
 }
 
@@ -363,18 +403,19 @@ function renderTurn(turn, emittedSourceIndexes) {
  * semantics from tags, classes, or source-anchor counts.
  *
  * @param {Array<Object<string, *>>} events - Ordered normalized canonical events.
+ * @param {Object<string, *>} options - Projection options.
  * @returns {Array<Object<string, *>>} Ordered indivisible canonical HTML units.
  */
-export function renderCanonicalHtmlUnits(events) {
+export function renderCanonicalHtmlUnits(events, options = {}) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
-  const presentation = buildCanonicalPresentation(events);
+  const presentation = buildCanonicalPresentation(events, options);
   const emittedSourceIndexes = new Set();
   return (presentation.turns ?? []).map(turn => ({
     id: turn?.id ?? '',
     kind: 'turn',
     atomic: true,
     source: (turn?.source ?? []).map(source => ({ ...source })),
-    html: renderTurn(turn, emittedSourceIndexes)
+    html: renderTurn(turn, emittedSourceIndexes, options)
   }));
 }
 
@@ -386,10 +427,11 @@ export function renderCanonicalHtmlUnits(events) {
  * same Core-owned complete-turn units exposed to interactive consumers.
  *
  * @param {Array<Object<string, *>>} events - Ordered normalized canonical events.
+ * @param {Object<string, *>} options - Projection options.
  * @returns {string} Complete canonical HTML transcript.
  */
-export function renderCanonicalHtml(events) {
-  return renderCanonicalHtmlUnits(events)
+export function renderCanonicalHtml(events, options = {}) {
+  return renderCanonicalHtmlUnits(events, options)
     .map(unit => unit.html)
     .join('');
 }
