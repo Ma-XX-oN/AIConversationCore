@@ -12,6 +12,7 @@ on:
       - issue-82-word-provenance
       - issue-83-word-separators
       - issue-84-unmatched-raw-blockquote-regression
+      - issue-86-response-heading-metadata
   pull_request:
     branches:
       - main
