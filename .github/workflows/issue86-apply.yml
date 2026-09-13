@@ -6,6 +6,7 @@ on:
       - issue-86-response-heading-metadata
     paths:
       - 'scripts/issue86-apply.py'
+      - '.github/workflows/issue86-apply.yml'
 
 permissions:
   contents: write
@@ -17,6 +18,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Correct JavaScript escape matching in apply helper
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/issue86-apply.py')
+          text = path.read_text(encoding='utf-8')
+          old = '  """  const headingEvent = segment[0];'
+          new = '  r"""  const headingEvent = segment[0];'
+          count = text.count(old)
+          if count != 2:
+            raise SystemExit(f'expected two response-heading literals, found {count}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
       - name: Apply implementation patch
         run: python scripts/issue86-apply.py
       - name: Rebuild browser bundle
