@@ -154,7 +154,12 @@ test('generated browser bundle matches ESM Core-owned heading metadata', async (
 
   assert.equal(actualMarkdown, expectedMarkdown);
   assert.equal(actualHtml, expectedHtml);
-  assert.match(expectedMarkdown, /turn_id=/);
+  assert.match(expectedMarkdown, /: 2: user-1 /);
+  assert.match(expectedMarkdown, /: 10: final-1 /);
+  assert.match(expectedMarkdown, /: 4: commentary-1 /);
+  assert.doesNotMatch(expectedMarkdown, /turn_id=/);
+  assert.match(expectedMarkdown, /record_id=/);
   assert.match(expectedMarkdown, /record_index=/);
   assert.match(expectedHtml, /transcript-turn-id/);
+  assert.doesNotMatch(expectedHtml, />turn_id=/);
 });
