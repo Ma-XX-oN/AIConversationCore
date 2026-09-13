@@ -69,6 +69,14 @@ for old, new in [
   text = text.replace(old, new)
 path.write_text(text, encoding='utf-8')
 
+path = Path('tests/browser-bundle.test.js')
+text = path.read_text(encoding='utf-8')
+old = '''  assert.equal(actualMarkdown, expectedMarkdown);\n  assert.equal(actualHtml, expectedHtml);\n  assert.match(expectedMarkdown, /turn_id=/);\n  assert.match(expectedMarkdown, /record_index=/);\n  assert.match(expectedHtml, /transcript-turn-id/);'''
+new = '''  assert.equal(actualMarkdown, expectedMarkdown);\n  assert.equal(actualHtml, expectedHtml);\n  assert.match(expectedMarkdown, /: 2: user-1 /);\n  assert.match(expectedMarkdown, /: 10: final-1 /);\n  assert.match(expectedMarkdown, /: 4: commentary-1 /);\n  assert.doesNotMatch(expectedMarkdown, /turn_id=/);\n  assert.match(expectedMarkdown, /record_id=/);\n  assert.match(expectedMarkdown, /record_index=/);\n  assert.match(expectedHtml, /transcript-turn-id/);\n  assert.doesNotMatch(expectedHtml, />turn_id=/);'''
+if old not in text:
+  raise RuntimeError('browser-bundle heading metadata assertion block not found')
+path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
 rendering = Path('RENDERING.md')
 text = rendering.read_text(encoding='utf-8')
 old = ('Visible metadata order is timestamp, record number, then turn ID. Debug provenance is a separate Core-owned comment. '
