@@ -104,7 +104,7 @@ function wordBlocksForPresentationNode(node) {
  * Appends authoritative word provenance for one presentation subtree.
  *
  * Block word texts are rendered and tokenized by the same Core helpers as
- * the complete projection.  The complete-unit render later verifies this
+ * the complete projection. The complete-unit render later verifies this
  * sequence exactly before provenance is attached, so this path can never
  * silently align by text or ordinal when the renderings disagree.
  *
@@ -209,7 +209,7 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
     throw new TypeError('Canonical events must be an array.');
   }
   const projectedEvents = projectRevisionVisibility(events, options);
-  const presentation = buildCanonicalPresentation(projectedEvents);
+  const presentation = buildCanonicalPresentation(projectedEvents, options);
   const eventsById = new Map(projectedEvents.map(event => [event?.id, event]));
   const turnsById = new Map((presentation.turns ?? []).map(turn => [
     String(turn?.id ?? ''),
@@ -221,7 +221,7 @@ export function renderCanonicalHtmlUnits(events, options = {}) {
     turnWordProvenance(turn)
   ]));
 
-  return renderBaseHtmlUnits(projectedEvents).map(unit => {
+  return renderBaseHtmlUnits(projectedEvents, options).map(unit => {
     const revisionHtml = applyTurnRevisionAttributes(unit.html, turnsById);
     const annotated = annotateCanonicalHtmlWords(revisionHtml, wordState);
     const provenance = provenanceByTurnId.get(String(unit?.id ?? '')) ?? [];
