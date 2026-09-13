@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install dependencies
+        run: npm ci
       - name: Correct JavaScript escape matching in apply helper
         run: |
           python - <<'PY'
@@ -34,7 +36,9 @@ jobs:
       - name: Apply implementation patch
         run: python scripts/issue86-apply.py
       - name: Rebuild browser bundle
-        run: node scripts/build-browser-bundle.mjs
+        run: npm run build:browser
+      - name: Run full Core tests before commit
+        run: npm test
       - name: Commit implementation and remove apply scaffolding
         run: |
           git config user.name 'github-actions[bot]'
