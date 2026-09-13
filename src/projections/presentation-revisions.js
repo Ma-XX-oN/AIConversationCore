@@ -1,3 +1,4 @@
+import { deriveHeadingMetadata } from './heading-metadata.js';
 import { buildCanonicalPresentation as buildBasePresentation } from './presentation.js';
 import { isHistoricalRevision } from './revision-visibility.js';
 
@@ -51,13 +52,61 @@ function revisionMessageForTurn(turn, sourceEvents) {
 }
 
 /**
+ * Finds the canonical source event that owns one rendered turn heading.
+ *
+ * Assistant activity may start with reasoning or Commentary before a final
+ * response message. The enclosing Assistant heading therefore belongs to the
+ * last final Assistant message when present, while a User heading belongs to its
+ * User message. If a turn has no ordinary message, the first same-role source
+ * event supplies the heading provenance.
+ *
+ * @param {Object<string, *>} turn - Canonical presentation turn.
+ * @param {Array<Object<string, *>>} sourceEvents - Resolved turn source events.
+ * @returns {Object<string, *>|null} Heading-owning canonical event or null.
+ */
+function headingEventForTurn(turn, sourceEvents) {
+  const role = turn?.actor?.role;
+  if (role === 'assistant') {
+    return [...sourceEvents].reverse().find(event =>
+      event?.role === 'assistant' && event?.kind === 'message') ??
+      sourceEvents.find(event => event?.role === 'assistant') ?? null;
+  }
+  if (role === 'user') {
+    return sourceEvents.find(event =>
+      event?.role === 'user' && event?.kind === 'message') ??
+      sourceEvents.find(event => event?.role === 'user') ?? null;
+  }
+  return sourceEvents[0] ?? null;
+}
+
+/**
+ * Adds Core-owned heading metadata to presentation descendants that map to one
+ * canonical source event.
+ *
+ * @param {Object<string, *>} node - Canonical presentation node.
+ * @param {Map<string, Object<string, *>>} eventsById - Canonical events by ID.
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {void} The presentation node is annotated in place.
+ */
+function annotateNodeHeadingMetadata(node, eventsById, options) {
+  const event = eventsById.get(node?.event_id);
+  if (event) {
+    const metadata = deriveHeadingMetadata(event, options);
+    if (Object.keys(metadata).length) node.heading_metadata = metadata;
+  }
+  for (const child of node?.children ?? []) {
+    annotateNodeHeadingMetadata(child, eventsById, options);
+  }
+}
+
+/**
  * Returns Core-owned effective visibility metadata for one revision-bearing
  * presentation turn.
  *
- * A revision lineage remains one stable presentation inventory.  Projection
+ * A revision lineage remains one stable presentation inventory. Projection
  * visibility may change without changing IDs, status, or depth, so downstream
  * interactive consumers receive both the current effective visibility and the
- * stable fact that a turn belongs to revision history.  Consumers therefore do
+ * stable fact that a turn belongs to revision history. Consumers therefore do
  * not need to interpret status strings or provider-native rollback markers.
  *
  * @param {Object<string, *>} revisionEvent - Revision-bearing message event.
@@ -78,17 +127,27 @@ function revisionTurnProjection(revisionEvent, sourceEvents) {
 
 /**
  * Builds the canonical presentation tree and carries canonical revision status,
- * depth, and effective visibility into both User and Assistant turns.
+ * heading metadata, depth, and effective visibility into presentation nodes.
  *
  * @param {Array<Object<string, *>>} events - Ordered canonical event stream.
+ * @param {Object<string, *>} options - Public Core projection options.
  * @returns {Object<string, *>} Canonical presentation tree.
  */
-export function buildCanonicalPresentation(events) {
+export function buildCanonicalPresentation(events, options = {}) {
   const presentation = buildBasePresentation(events);
   const eventsById = new Map(events.map(event => [event?.id, event]));
 
   for (const turn of presentation.turns ?? []) {
     const sourceEvents = sourceEventsForTurn(turn, eventsById);
+    const headingEvent = headingEventForTurn(turn, sourceEvents);
+    if (headingEvent) {
+      const metadata = deriveHeadingMetadata(headingEvent, options);
+      if (Object.keys(metadata).length) turn.heading_metadata = metadata;
+    }
+    for (const child of turn.children ?? []) {
+      annotateNodeHeadingMetadata(child, eventsById, options);
+    }
+
     const sourceEvent = revisionMessageForTurn(turn, sourceEvents);
     const suffix = turnStatusSuffix(sourceEvent);
     if (!suffix) continue;
