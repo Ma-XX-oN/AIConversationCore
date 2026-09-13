@@ -1,0 +1,46 @@
+name: Issue 79 history HTML RED
+
+on:
+  push:
+    branches:
+      - issue-79-canonical-html-units
+    paths:
+      - '.github/workflows/issue-79-history-red.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: issue-79-canonical-html-units
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Require history-toggle HTML contract to reproduce
+        shell: bash
+        run: |
+          set +e
+          output="$(node --test tests/canonical-html-history-contract.test.js 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected history-toggle HTML contract to be RED before Core refinement.' >&2
+            exit 1
+          fi
+          grep -Fq 'Core HTML must identify historical turns' <<<"$output" || {
+            echo 'History-toggle RED failed for an unexpected reason.' >&2
+            exit 1
+          }
+          echo 'RED-PROVEN issue-79 historical-html-state'

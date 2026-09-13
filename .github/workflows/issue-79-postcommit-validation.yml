@@ -1,31 +1,23 @@
-name: CI
+name: Issue 79 committed implementation validation
 
 on:
   push:
     branches:
-      - main
-      - feature/canonical-presentation-html
-      - issue-72-speech-prefix-word-identity
       - issue-79-canonical-html-units
-      - issue-80-canonical-word-ids
-      - issue-81-word-handle-lookup
-      - issue-82-word-provenance
-      - issue-83-word-separators
-      - issue-84-unmatched-raw-blockquote-regression
-  pull_request:
-    branches:
-      - main
+    paths:
+      - '.github/workflows/issue-79-postcommit-validation.yml'
 
 permissions:
   contents: read
 
 jobs:
-  regression:
+  validate:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repository
+      - name: Check out exact implementation commit
         uses: actions/checkout@v4
+        with:
+          ref: dfc3bbb3a80946674dd026a27a099f1175194c8d
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -37,18 +29,22 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Node dependencies
+      - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
       - name: Check production JSDoc coverage
         run: node scripts/check-jsdoc.mjs
 
-      - name: Verify browser bundle is deterministic and current
+      - name: Verify browser bundle is current
+        shell: bash
         run: |
           node scripts/build-browser-bundle.mjs
           git diff --exit-code -- package-lock.json dist/aiconversationcore.chatgpt.browser.js
 
-      - name: Run core tests
+      - name: Run issue 79 regression
+        run: node --test tests/canonical-html-units.test.js
+
+      - name: Run full Core tests
         run: npm test
 
       - name: Run Phase 2 integrity gate

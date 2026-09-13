@@ -1,0 +1,105 @@
+name: Issue 79 history HTML GREEN
+
+on:
+  push:
+    branches:
+      - issue-79-canonical-html-units
+    paths:
+      - '.github/workflows/issue-79-history-green.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: issue-79-canonical-html-units
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Add Core-owned historical state attribute
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/projections/html-visibility.js')
+          text = path.read_text(encoding='utf-8')
+          old = """      const hiddenAttribute = projection.historical && !projection.visible
+        ? ' hidden'
+        : '';
+      return `<section class=\"${className}\" data-presentation-id=\"${id}\"` +
+        `${statusAttribute}${depthAttribute}${hiddenAttribute}>`;
+"""
+          new = """      const historicalAttribute = projection.historical
+        ? ' data-revision-historical=\"true\"'
+        : '';
+      const hiddenAttribute = projection.historical && !projection.visible
+        ? ' hidden'
+        : '';
+      return `<section class=\"${className}\" data-presentation-id=\"${id}\"` +
+        `${statusAttribute}${depthAttribute}${historicalAttribute}${hiddenAttribute}>`;
+"""
+          if text.count(old) != 1:
+            raise SystemExit(f'historical attribute patch anchor count={text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check JSDoc
+        run: node scripts/check-jsdoc.mjs
+
+      - name: Rebuild browser bundle
+        run: node scripts/build-browser-bundle.mjs
+
+      - name: Run history contract GREEN
+        run: node --test tests/canonical-html-history-contract.test.js
+
+      - name: Run canonical HTML unit regression
+        run: node --test tests/canonical-html-units.test.js
+
+      - name: Run full Core suite
+        run: npm test
+
+      - name: Run provider/golden gates
+        shell: bash
+        run: |
+          python tests/validate-phase2-baseline.py
+          python tests/validate-canonical-golden.py
+          python tests/validate-claude-canonical-golden.py
+          python tests/validate-codex-canonical-golden.py
+          python tests/validate-provider-example-regressions.py
+
+      - name: Verify deterministic bundle and diff hygiene
+        shell: bash
+        run: |
+          cp dist/aiconversationcore.chatgpt.browser.js "$RUNNER_TEMP/bundle.js"
+          node scripts/build-browser-bundle.mjs
+          cmp "$RUNNER_TEMP/bundle.js" dist/aiconversationcore.chatgpt.browser.js
+          git diff --check
+
+      - name: Commit verified Core refinement
+        shell: bash
+        run: |
+          git config user.name 'Ma-XX-oN'
+          git config user.email 'Ma-XX-oN@users.noreply.github.com'
+          git add src/projections/html-visibility.js \
+            dist/aiconversationcore.chatgpt.browser.js \
+            tests/canonical-html-history-contract.test.js
+          git diff --cached --check
+          git commit -m 'fix: expose historical turn state in canonical HTML (#79)'
+          git push origin HEAD:issue-79-canonical-html-units

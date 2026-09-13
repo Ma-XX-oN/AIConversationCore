@@ -222,7 +222,7 @@ turn ID       -> turn-id
 
 Output-specific mappings then apply those roles:
 
-- ANSI: User yellow, Assistant/provider green, timestamp cyan, record number dim,
+- ANSI: User yellow, Assistant/provider heading green, timestamp cyan, record number dim,
   and turn ID magenta/purple by default;
 - HTML: stable semantic CSS classes or equivalent structured style metadata;
 - plain text: no visual style while preserving component ordering/content;
@@ -237,6 +237,177 @@ This semantic-role layer is also where optional heading fields are composed.
 Showing timestamps, record numbers, and canonical `turn_id` values are independent
 projection options; enabling ANSI/HTML styling changes their presentation, not
 whether those fields exist.
+
+## Canonical HTML units for interactive virtualization
+
+Canonical HTML has an interactive unit projection in addition to the complete
+string form. Core renders both through the same HTML serializer. The initial
+unit policy returns complete presentation turns with stable source identity and
+an indivisible virtualization contract. This gives browser/WebView consumers a
+safe materialization boundary without exposing provider semantics or requiring
+them to parse canonical HTML to reconstruct grouping.
+
+A consumer owns viewport selection, spacers, measurement, scrolling, and DOM
+lifecycle. Core owns which rendered semantic subtree may be separated from
+another. Finer-grained cuts are an explicit future Core API/schema change, not a
+consumer heuristic.
+
+## Canonical interactive word identity
+
+Core owns one global interactive-word coordinate space for each canonical
+transcript projection. Word IDs are numeric, begin at 1, and increase monotonically
+and contiguously in canonical transcript order across all rendered turns/HTML
+units. They do not restart at turn, block, or virtualization boundaries.
+
+One Core word is one canonical interactive/spoken unit. The token grammar is part
+of the shared projection contract rather than a consumer implementation detail.
+For example, decimal/fractional values such as `13.234` and `35.4401545` are one
+word each. Inline presentation markup must not split one canonical word into
+multiple DOM identity elements. Core restructures its generated HTML as necessary
+so each canonical word is represented by exactly one word element, with any inline
+formatting that applies to part of that word nested inside that element.
+
+Canonical HTML serializes the numeric handle as the DOM identifier of that single
+word element:
+
+```html
+<span id="word-127">13.234</span>
+```
+
+For a word whose visible text crosses an inline formatting boundary, the formatting
+remains inside the one canonical word element. For example, a visible `turn_ids`
+formed by Markdown `turn_id**s**` is represented equivalently to:
+
+```html
+<span id="word-127">turn_id<strong>s</strong></span>
+```
+
+Public canonical HTML does not expose secondary `data-word-id` fragments for one
+word. Any temporary piece-level annotation used internally by Core is an
+implementation detail that must be collapsed before HTML leaves Core. Consumers
+must never repair inline markup or reconstruct one word from multiple DOM elements.
+
+`renderCanonicalHtmlUnits()` exposes the same ordered word records in each unit's
+`speech_words`; `projectCanonicalWords()` exposes the same identities as one
+transcript-wide list. These are two views of the same Core annotation pass, not
+independent tokenizers. The browser bundle must provide the same result as the ESM
+API.
+
+`locateCanonicalWord(events, wordId, options)` is the high-level lookup operation
+for consumers that hold a canonical numeric word handle but do not currently have
+its HTML materialized. It returns the authoritative canonical word record together
+with the complete Core-rendered unit containing that word. A valid positive word ID
+that is absent from the selected projection returns `null`. Invalid handles are
+rejected. Lookup is by numeric canonical identity only; visible text is never a
+lookup key or fallback.
+
+The lookup API intentionally does not expose a word-to-unit mapping table. Core may
+change its internal lookup implementation without changing consumer behaviour.
+Viewport selection, materialization-window size, scrolling, and neighbouring-unit
+policy remain consumer concerns; consumers ask Core for the semantic object they
+need rather than copying Core bookkeeping.
+
+Semantic group membership is structural and Core-owned. Existing presentation
+containers such as User Context, reasoning, code/fence content, and future semantic
+groups retain their stable container classes/structure; consumers must not infer
+those semantics from visible text or copy current policy onto every word. Group
+names attached to projected word records are descriptive metadata derived from
+those Core-owned ancestors, not a replacement for the structural HTML.
+
+Consumers may use a numeric word ID as a handle and ask Core higher-level lookup
+questions. Core retains the internal relationship from a word to its canonical
+turn/unit/block/provenance. Consumers must not rebuild a second word identity or
+word-to-unit map by tokenizing rendered HTML, searching duplicate text, or
+inventing fallback matching. Platform-specific playback, viewport policy, CSS,
+and interaction remain consumer-owned.
+
+## Canonical word provenance
+
+Canonical word identity includes Core-owned provenance in addition to the global
+numeric word handle.  Each `speech_words` record carries a `provenance` object with
+the owning presentation node, canonical event, canonical content block,
+block-relative canonical word index, and retained block source metadata.  The
+canonical `word_id` remains the identity used for seeking, highlighting,
+virtualization, and other cross-boundary operations; provenance describes what
+that word belongs to rather than creating another identity.
+
+Core derives this metadata from the same canonical presentation/block structures
+used by its renderer.  For leaves containing multiple blocks, Core builds the
+ordered per-block word provenance with the canonical word grammar and verifies it
+exactly against the words produced by the complete rendered unit before returning
+the projection.  A count or text mismatch is an invariant failure.  There is no
+fuzzy alignment, rendered-text search, or fallback association.
+
+`renderCanonicalHtmlUnits()` and `locateCanonicalWord()` expose the same
+provenance-bearing word record.  This lets consumers associate a word with their
+speech/display structures using canonical event/block identity without duplicating
+Core tokenization or maintaining a word-to-event/block map inferred from text.
+
+## Canonical word separators
+
+Canonical `speech_words` retain the exact visible whitespace immediately before
+each word in `separator_before`.  Core derives that separator from the same
+rendered visible stream and canonical token grammar that allocate the word ID;
+it is not reconstructed from source Markdown or inferred by a consumer.
+
+The first word of each canonical content block has an empty separator.  Subsequent
+separators preserve spaces and newlines inside that block exactly.  Because the
+canonical word grammar consumes every visible non-whitespace symbol, this retained
+separator is the complete inter-word information needed to reconstruct a block's
+visible word stream without introducing another tokenizer or text-alignment path.
+
+`separator_before` is transport metadata on the authoritative word record.  It
+does not create another identity, alter the one-element `word-N` DOM contract, or
+permit consumers to use text as an identity fallback.  `renderCanonicalHtmlUnits()`,
+`projectCanonicalWords()`, and `locateCanonicalWord()` expose the same enriched
+word records, and the browser bundle must remain equivalent to the ESM projection.
+
+## Canonical speech-navigation boundaries
+
+Canonical `speech_words` expose `navigation_boundary_before` on the first word of
+each structural speech-navigation unit.  The boundary is derived from the same
+Core-owned rendered structure used for canonical HTML and word identity.  Paragraphs,
+headings, list items, block quotes, preformatted blocks, and table rows therefore
+retain explicit navigation starts without requiring a consumer to parse HTML or
+infer structure from whitespace.
+
+A soft source newline inside one paragraph is not a structural navigation boundary,
+even though its exact newline remains available through `separator_before`.  The
+boundary flag is descriptive transport metadata on the existing numeric word
+identity; it neither allocates another identity nor changes the DOM word contract.
+Interactive consumers may use it to split platform-specific speech/navigation
+fragments while carrying the original canonical word IDs through unchanged.
+
+A speech/display consumer may use the separator stream to segment canonical words
+into platform-specific utterances while carrying the existing numeric word IDs
+through that transformation.  It must not retokenize rendered HTML, search for a
+matching subsequence, or reconstruct block-relative ordinals to recover identity.
+
+## Canonical ordered-list ordinal identity
+
+An ordered-list ordinal is a canonical interactive/spoken word.  It participates in
+the same transcript-global numeric `word_id` sequence as ordinary textual words;
+there is no separate prefix-token or structural-highlight identity space.
+
+The browser renders an ordered-list marker structurally, so the canonical DOM word
+element for the ordinal is the corresponding `<li>` itself.  For example:
+
+```html
+<li id="word-41" data-list-ordinal="3">
+  <span id="word-42">Third</span>
+  <span id="word-43">item</span>
+</li>
+```
+
+While word 41 is spoken, a consumer highlights `#word-41`, which naturally
+highlights the entire list item including its descendants.  When playback advances
+to word 42, ordinary word highlighting resumes.  Nested ordered-list ordinals put
+their own IDs on their own nested `<li>` elements, never on an ancestor.
+
+Core resolves the ordinal from ordered-list structure and exposes it through the
+same `speech_words`, `projectCanonicalWords()`, and `locateCanonicalWord()`
+contracts as every other canonical word.  Consumers do not parse Markdown, create
+hidden ordinal mapping elements, or invent a second association channel.
 
 ## Consumer boundaries
 
@@ -344,6 +515,15 @@ them separate.
 12. **Projection styling is semantic before it is format-specific.** Shared style
     roles belong to the projection/API layer; ANSI colours, CSS classes, and host
     theme choices are mappings of those roles rather than provider/canonical data.
+13. **One canonical word identity.** Interactive/spoken word IDs are global,
+    numeric, monotonically increasing, and shared by HTML, speech/highlight, and
+    navigation consumers. Each canonical word is one DOM word element in canonical
+    HTML; downstream consumers must not create parallel tokenization,
+    text-alignment, fragment-reassembly, or fallback identity paths.
+14. **Word-handle lookup remains a Core operation.** A consumer may hold a numeric
+    canonical word ID and request its authoritative word plus containing canonical
+    rendered unit. Consumers must not maintain a duplicate word-to-unit map or use
+    visible text as a lookup fallback.
 
 ## Migration principle
 

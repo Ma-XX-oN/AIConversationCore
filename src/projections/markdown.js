@@ -37,17 +37,23 @@ function providerLabel(provider) {
 
 
 /**
- * Renders a transcript heading with optional consumer-supplied projection metadata.
+ * Renders the optional metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
- * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
+ * @returns {string} The consumer-specific heading metadata suffix.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
   const metadata = projection.heading_metadata ?? {};
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
+  /**
+   * Applies one configured ANSI colour to heading metadata.
+   *
+   * @param {string} text - Metadata text to style.
+   * @param {string} colorName - Projection colour field name.
+   * @returns {string} Styled text, or the original text when no colour is configured.
+   */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
     return color ? `${color}${text}${reset}` : text;
@@ -67,6 +73,13 @@ function projectedHeadingMetadataSuffix(event) {
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
+/**
+ * Renders a transcript heading with optional consumer projection styling.
+ *
+ * @param {Object<string, *>} event - The canonical event being headed.
+ * @param {string} label - Canonical Markdown heading label.
+ * @returns {string} The consumer-decorated transcript heading.
+ */
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
@@ -549,13 +562,44 @@ function renderChatGPTToolEvent(event, events) {
 }
 
 /**
+ * Renders one semantic User-context block as a blockquoted details disclosure.
+ *
+ * @param {Object<string, *>} block - Canonical User-context block.
+ * @returns {string} Blockquoted Markdown/HTML details fragment.
+ */
+function renderUserContextBlock(block) {
+  const summary = htmlEscape(block?.summary ?? '# Context from my IDE setup:');
+  const body = String(block?.text ?? '');
+  return quoteMarkdown(`<details><summary>${summary}</summary>\n\n${body}\n\n</details>`);
+}
+
+/**
  * Renders user.
+ *
+ * Semantic User context is presented before the actual prompt in a blockquoted
+ * details disclosure. The prompt remains outside that blockquote so consumers
+ * can assign context and prompt distinct User speech voices without reparsing
+ * provider-native text. User events without semantic context retain the existing
+ * fully-blockquoted rendering contract.
  *
  * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {string} The complete User transcript section for the canonical event.
  */
 function renderUser(event) {
-  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
+  const blocks = Array.isArray(event?.blocks) ? event.blocks : [];
+  const contexts = blocks.filter(block => block?.type === 'user_context');
+  if (!contexts.length) {
+    return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
+  }
+
+  const promptEvent = {
+    ...event,
+    blocks: blocks.filter(block => block?.type !== 'user_context')
+  };
+  const parts = contexts.map(renderUserContextBlock);
+  const prompt = renderMessageBlocks(promptEvent);
+  if (prompt) parts.push(prompt);
+  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${parts.join('\n\n')}`);
 }
 
 /**
