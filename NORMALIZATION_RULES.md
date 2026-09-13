@@ -138,6 +138,12 @@ If the referenced source record is present in the same normalized dataset, the a
 
 Do not infer parentage from adjacency, chronology, speaker role, exchange identity, or any other heuristic.  A record without an explicit `metadata.parent_id` has no canonical parent relationship merely because a neighbouring record would be a plausible parent.  Reverse child lists, branch membership, and other derived graph relationships may be built later from explicit normalized identities; they must not rewrite source ordering or User/Assistant turn derivation.
 
+## Claude injected system text
+
+Claude Code may place system-generated XML blocks inside text content that is otherwise represented as message content.  The evidenced forms handled by the historical `AI-transcript.py` contract are `ide_opened_file`, `ide_selection`, `system-reminder` / `system_reminder`, `system`, `env`, `claude_background_info`, `user-prompt-submit-hook` / `user_prompt_submit_hook`, `command-name` / `command_name`, and `antml:*` blocks.
+
+These injected blocks are not visible conversation turns.  Remove them before creating visible Claude message content.  If removing the injected content leaves a text block empty, omit that block; if a visible message has no blocks left, omit the visible message event.  Ordinary text that remains beside an injected block stays visible and retains its source provenance.  Interactive/speech projections must preserve the same rule rather than reintroducing an empty User event after cleanup.
+
 ## Renderer independence from provider-native records
 
 Shared renderers and other downstream projections must consume canonical data, not inspect provider-native AI JSON DB records.
