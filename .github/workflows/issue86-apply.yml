@@ -40,6 +40,7 @@ jobs:
           end = text.index('# Keep the classic browser bundle on the same public projection chain as ESM.')
           text = text[:start] + text[end:]
           replacements = [
+            ('  """  let htmlPrepared = htmlSource;', '  r"""  let htmlPrepared = htmlSource;', 1),
             ('  """    `// - src/projections/markdown.js', '  r"""    `// - src/projections/markdown.js', 1),
             ('  """    `// - src/projections/style.js', '  r"""    `// - src/projections/style.js', 1),
             ('  """    `${turns}', '  r"""    `${turns}', 2),
