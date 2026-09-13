@@ -52,6 +52,15 @@ jobs:
               raise SystemExit(f'expected {expected} raw-string marker(s) for {old!r}, found {count}')
             text = text.replace(old, new)
           path.write_text(text, encoding='utf-8')
+
+          path = Path('scripts/issue86-green-fixes.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'assert.match(expectedHtml, /heading-turn-id/);'
+          new = 'assert.match(expectedHtml, /transcript-turn-id/);'
+          count = text.count(old)
+          if count != 1:
+            raise SystemExit(f'expected one stale HTML class assertion, found {count}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
           PY
       - name: Apply implementation patches
         run: |
