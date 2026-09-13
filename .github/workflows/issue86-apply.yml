@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
       - name: Install dependencies
         run: npm ci
-      - name: Correct JavaScript escape matching in apply helper
+      - name: Correct temporary apply helpers for current branch state
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -33,6 +33,12 @@ jobs:
           if count != 2:
             raise SystemExit(f'expected two response-heading literals, found {count}')
           path.write_text(text.replace(old, new), encoding='utf-8')
+
+          path = Path('scripts/issue86-bundle-apply.py')
+          text = path.read_text(encoding='utf-8')
+          start = text.index('# Public HTML must carry the same heading projection options as Markdown.')
+          end = text.index('# Keep the classic browser bundle on the same public projection chain as ESM.')
+          path.write_text(text[:start] + text[end:], encoding='utf-8')
           PY
       - name: Apply implementation patches
         run: |
@@ -47,7 +53,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/issue86-apply.yml scripts/issue86-apply.py scripts/issue86-bundle-apply.py
-          git add src/adapters/chatgpt-base.js src/adapters/claude.js src/adapters/codex.js src/projections/markdown.js src/projections/html.js src/projections/html-visibility.js scripts/build-browser-bundle.mjs dist/aiconversationcore.chatgpt.browser.js
+          git add src/adapters/chatgpt-base.js src/adapters/claude.js src/adapters/codex.js src/projections/markdown.js src/projections/html.js scripts/build-browser-bundle.mjs dist/aiconversationcore.chatgpt.browser.js
           git diff --check
           git commit -m 'projection: make heading semantics Core-owned (#86)'
           git push
