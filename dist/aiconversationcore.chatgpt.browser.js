@@ -3,8 +3,20 @@
 // - src/adapters/chatgpt-base.js
 // - src/adapters/chatgpt.js
 // - src/projections/markdown.js
+// Version source: package.json
 (function bootstrapAIConversationCore(global) {
   'use strict';
+
+const VERSION = "1.0.0";
+
+/**
+ * Returns the authoritative AIConversationCore version.
+ *
+ * @returns {string} The authoritative AIConversationCore version.
+ */
+function getVersion() {
+  return VERSION;
+}
 
 /**
  * Returns the string-valued text parts from a ChatGPT source record in source order.
@@ -1459,17 +1471,23 @@ function providerLabel(provider) {
 
 
 /**
- * Renders a transcript heading with optional consumer-supplied projection metadata.
+ * Renders the optional consumer-supplied metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
- * @returns {string} The heading with consumer-specific ANSI colour and suffix metadata applied.
+ * @returns {string} The consumer-specific ANSI-styled suffix metadata for the heading.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
   const metadata = projection.heading_metadata ?? {};
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
+  /**
+   * Applies one configured ANSI colour to projection metadata text.
+   *
+   * @param {string} text - The metadata text to style.
+   * @param {string} colorName - The projection colour setting to apply.
+   * @returns {string} The styled text, or the original text when no colour is configured.
+   */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
     return color ? `${color}${text}${reset}` : text;
@@ -1489,6 +1507,13 @@ function projectedHeadingMetadataSuffix(event) {
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
+/**
+ * Renders a transcript heading with optional consumer colour and metadata suffixes.
+ *
+ * @param {Object<string, *>} event - The canonical event whose projection metadata decorates the heading.
+ * @param {string} label - The canonical Markdown heading label before consumer decoration.
+ * @returns {string} The consumer-decorated transcript heading.
+ */
 function projectedHeading(event, label) {
   const projection = event?.projection ?? {};
   const colors = projection.colors ?? {};
@@ -2516,6 +2541,7 @@ function renderCanonicalMarkdown(events) {
 }
 
   global.AIConversationCore = Object.freeze({
+    getVersion,
     adaptChatGPTRecords,
     renderCanonicalMarkdown
   });
