@@ -3,11 +3,12 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-import { adaptChatGPTRecords, renderCanonicalMarkdown } from '../src/index.js';
+import { adaptChatGPTRecords, getVersion, renderCanonicalMarkdown } from '../src/index.js';
 import { buildBrowserBundle } from '../scripts/build-browser-bundle.mjs';
 
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', import.meta.url);
 const bundleUrl = new URL('../dist/aiconversationcore.chatgpt.browser.js', import.meta.url);
+const packageUrl = new URL('../package.json', import.meta.url);
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
@@ -26,8 +27,12 @@ test('generated classic browser bundle exposes the required DownloadConversation
   const bundle = await buildBrowserBundle();
   const context = vm.createContext({ URL });
   vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
+  const packageMetadata = JSON.parse(await readFile(packageUrl, 'utf8'));
 
   assert.equal(typeof context.AIConversationCore, 'object');
+  assert.equal(typeof context.AIConversationCore.getVersion, 'function');
+  assert.equal(context.AIConversationCore.getVersion(), packageMetadata.version);
+  assert.equal(context.AIConversationCore.getVersion(), getVersion());
   assert.equal(typeof context.AIConversationCore.adaptChatGPTRecords, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalMarkdown, 'function');
 });
