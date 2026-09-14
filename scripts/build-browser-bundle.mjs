@@ -53,11 +53,16 @@ function moduleBody(text, { importLine = null, exportedFunction, localFunction }
  * @returns {Promise<string>} A promise resolving to the complete generated browser-bundle source text.
  */
 export async function buildBrowserBundle() {
-  const [baseSource, chatgptSource, markdownSource] = await Promise.all([
+  const [baseSource, chatgptSource, markdownSource, packageSource] = await Promise.all([
     readFile(resolve(ROOT, 'src/adapters/chatgpt-base.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/adapters/chatgpt.js'), 'utf8'),
-    readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8')
+    readFile(resolve(ROOT, 'src/projections/markdown.js'), 'utf8'),
+    readFile(resolve(ROOT, 'package.json'), 'utf8')
   ]);
+  const version = JSON.parse(packageSource).version;
+  if (typeof version !== 'string' || !version) {
+    throw new Error('AIConversationCore package.json must contain a non-empty version string.');
+  }
 
   const base = moduleBody(baseSource, {
     exportedFunction: 'adaptChatGPTRecords',
@@ -78,12 +83,23 @@ export async function buildBrowserBundle() {
     `// - src/adapters/chatgpt-base.js\n` +
     `// - src/adapters/chatgpt.js\n` +
     `// - src/projections/markdown.js\n` +
+    `// Version source: package.json\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
     `  'use strict';\n\n` +
+    `const VERSION = ${JSON.stringify(version)};\n\n` +
+    `/**\n` +
+    ` * Returns the authoritative AIConversationCore version.\n` +
+    ` *\n` +
+    ` * @returns {string} The authoritative AIConversationCore version.\n` +
+    ` */\n` +
+    `function getVersion() {\n` +
+    `  return VERSION;\n` +
+    `}\n\n` +
     `${base}\n\n` +
     `${chatgpt}\n\n` +
     `${markdown}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
+    `    getVersion,\n` +
     `    adaptChatGPTRecords,\n` +
     `    renderCanonicalMarkdown\n` +
     `  });\n` +
