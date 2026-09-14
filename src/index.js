@@ -1,3 +1,17 @@
+import packageMetadata from '../package.json' with { type: 'json' };
+
+/**
+ * Returns the authoritative AIConversationCore version.
+ *
+ * The value is sourced from package.json so module callers do not maintain a
+ * second Core version literal.
+ *
+ * @returns {string} The authoritative AIConversationCore version.
+ */
+export function getVersion() {
+  return packageMetadata.version;
+}
+
 export {
   STYLE_ROLES,
   configureProjectionTheme,
