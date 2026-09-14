@@ -1,3 +1,14 @@
+import packageMetadata from '../package.json' with { type: 'json' };
+
+/**
+ * Returns the authoritative AIConversationCore semantic version.
+ *
+ * @returns {string} The version sourced from package.json.
+ */
+export function getVersion() {
+  return packageMetadata.version;
+}
+
 export {
   STYLE_ROLES,
   configureProjectionTheme,
