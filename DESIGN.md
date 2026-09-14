@@ -15,6 +15,22 @@ The core is not only an export/rendering library. Canonical data must also suppo
 interactive consumers that read, navigate, speak, highlight, or otherwise operate
 on individual turns and content ranges.
 
+## Version identity
+
+`package.json` is the single writable semantic-version authority for the core.
+Released versions use `x.y.z`; issue development versions use
+`x.y.z-issue.<issue>.<iteration>`. The first release baseline under this defined
+scheme is `1.0.0`.
+
+ESM/module consumers obtain the semantic version through `getVersion()`. The
+classic browser bundle embeds the same package value at deterministic generation
+time and exposes it as `AIConversationCore.getVersion()`. Consumers must not read
+Core package-layout details or carry their own duplicate Core version literal.
+
+Semantic version and exact source identity are different data. A host may report
+both the Core semantic version and a pinned commit SHA when exact provenance is
+needed; neither value substitutes for the other.
+
 ## Migration behaviour authority
 
 During migration, the current `AI-General-Memory/scripts/AI-transcript.py`
@@ -344,6 +360,9 @@ them separate.
 12. **Projection styling is semantic before it is format-specific.** Shared style
     roles belong to the projection/API layer; ANSI colours, CSS classes, and host
     theme choices are mappings of those roles rather than provider/canonical data.
+13. **Semantic version has one writable authority.** `package.json` owns the Core
+    semantic version, and all public packaging paths expose that value through the
+    Core API rather than maintaining parallel literals.
 
 ## Migration principle
 
