@@ -12,6 +12,7 @@ on:
       - issue-82-word-provenance
       - issue-83-word-separators
       - issue-84-unmatched-raw-blockquote-regression
+      - issue-94-version-api-agentpanel-line
   pull_request:
     branches:
       - main
