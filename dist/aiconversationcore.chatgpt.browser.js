@@ -97,8 +97,20 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 // - src/projections/word-element.js
 // - src/projections/html-visibility.js
 // - src/projections/structured.js
+// Version source: package.json
 (function bootstrapAIConversationCore(global) {
   'use strict';
+
+const VERSION = "1.0.0-issue.98.1";
+
+/**
+ * Returns the authoritative AIConversationCore version.
+ *
+ * @returns {string} The authoritative AIConversationCore version.
+ */
+function getVersion() {
+  return VERSION;
+}
 
 /**
  * Returns the string-valued text parts from a ChatGPT source record in source order.
@@ -5861,6 +5873,7 @@ function projectCanonicalConversation(events) {
 }
 
   global.AIConversationCore = Object.freeze({
+    getVersion,
     adaptChatGPTRecords,
     renderCanonicalMarkdown,
     renderCanonicalHtml,

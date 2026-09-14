@@ -114,7 +114,8 @@ export async function buildBrowserBundle() {
     wordIdentitySource,
     wordElementSource,
     htmlVisibilitySource,
-    structuredSource
+    structuredSource,
+    packageSource
   ] = await Promise.all([
     readFile(resolve(ROOT, 'node_modules/marked/lib/marked.umd.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/adapters/chatgpt-base.js'), 'utf8'),
@@ -132,8 +133,13 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/projections/word-identity.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/word-element.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/projections/html-visibility.js'), 'utf8'),
-    readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8')
+    readFile(resolve(ROOT, 'src/projections/structured.js'), 'utf8'),
+    readFile(resolve(ROOT, 'package.json'), 'utf8')
   ]);
+  const version = JSON.parse(packageSource).version;
+  if (typeof version !== 'string' || !version) {
+    throw new Error('AIConversationCore package.json must contain a non-empty version string.');
+  }
 
   const base = moduleBody(baseSource, {
     exportedFunction: 'adaptChatGPTRecords',
@@ -328,8 +334,18 @@ export async function buildBrowserBundle() {
     `// - src/projections/word-element.js\n` +
     `// - src/projections/html-visibility.js\n` +
     `// - src/projections/structured.js\n` +
+    `// Version source: package.json\n` +
     `(function bootstrapAIConversationCore(global) {\n` +
     `  'use strict';\n\n` +
+    `const VERSION = ${JSON.stringify(version)};\n\n` +
+    `/**\n` +
+    ` * Returns the authoritative AIConversationCore version.\n` +
+    ` *\n` +
+    ` * @returns {string} The authoritative AIConversationCore version.\n` +
+    ` */\n` +
+    `function getVersion() {\n` +
+    `  return VERSION;\n` +
+    `}\n\n` +
     `${base}\n\n` +
     `${chatgpt}\n\n` +
     `${turns}\n\n` +
@@ -347,6 +363,7 @@ export async function buildBrowserBundle() {
     `${htmlVisibility}\n\n` +
     `${structured}\n\n` +
     `  global.AIConversationCore = Object.freeze({\n` +
+    `    getVersion,\n` +
     `    adaptChatGPTRecords,\n` +
     `    renderCanonicalMarkdown,\n` +
     `    renderCanonicalHtml,\n` +
