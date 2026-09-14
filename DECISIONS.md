@@ -314,3 +314,27 @@ thought activity begins a new group.
 **Reason:** This is the user-selected canonical ChatGPT transcript grammar for the
 Phase 6 migration and resolves the previously undecided difference surfaced by the
 strict historical AI-transcript.py parity gate on 2026-08-30.
+
+## D017 — package.json is the authoritative semantic version source
+
+**Status:** Accepted
+
+**Decision:** `package.json` is the single writable source of the
+`AIConversationCore` semantic version. Released versions use `x.y.z`. Development
+versions use `x.y.z-issue.<issue>.<iteration>`. The first release baseline under
+this defined scheme is `1.0.0`.
+
+The public ESM API exposes `getVersion()`, which reads that package version. The
+classic browser bundle embeds the same package value when it is generated and
+exposes it through `AIConversationCore.getVersion()`. Consumers must use the public
+Core API rather than reading package-layout details or maintaining a second Core
+version literal.
+
+The semantic version does not replace exact commit identity. A caller that needs
+both release/development identity and exact source provenance should report both as
+separate values.
+
+**Reason:** Callers need a stable way to report the Core they are running without
+letting duplicated version strings drift. Keeping one writable version source and
+verifying all public packaging paths against it makes divergence an automated test
+failure rather than a maintenance convention.
