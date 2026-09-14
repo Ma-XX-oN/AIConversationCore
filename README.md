@@ -50,6 +50,17 @@ speaker model.
 
 The public JavaScript entry point is `src/index.js`.
 
+The public API includes `getVersion()`, which returns the authoritative Core
+semantic version from `package.json`. The generated classic browser bundle exposes
+the same value through `AIConversationCore.getVersion()`. Consumers must use that
+public API instead of copying a Core version literal or reading Core package-layout
+details.
+
+Released versions use `x.y.z`; issue development versions use
+`x.y.z-issue.<issue>.<iteration>`. The first release baseline under this defined
+scheme is `1.0.0`. Semantic version and exact commit SHA are separate provenance
+values and may both be reported when exact source identity is required.
+
 Turn-header projection is built from semantic components and style roles before
 format-specific rendering. The initial public API includes:
 
