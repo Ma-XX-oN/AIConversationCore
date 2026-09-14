@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - issue-97-version-api-ai-transcript-line
   pull_request:
     branches:
       - main
