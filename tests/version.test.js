@@ -8,5 +8,9 @@ const packageUrl = new URL('../package.json', import.meta.url);
 
 test('ESM version API matches the authoritative package version', async () => {
   const packageMetadata = JSON.parse(await readFile(packageUrl, 'utf8'));
+  assert.match(
+    packageMetadata.version,
+    /^\d+\.\d+\.\d+(?:-issue\.\d+\.\d+)?$/
+  );
   assert.equal(getVersion(), packageMetadata.version);
 });
