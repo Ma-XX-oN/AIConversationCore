@@ -13,7 +13,6 @@ on:
       - issue-83-word-separators
       - issue-84-unmatched-raw-blockquote-regression
       - issue-94-version-api-agentpanel-line
-      - issue-100-claude-retained-append
   pull_request:
     branches:
       - main
