@@ -415,21 +415,40 @@ export function adaptClaudeToolEvents(records) {
 }
 
 /**
- * Adapts Claude records.
+ * Creates the retained cross-record state required by Claude normalization.
  *
- * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
- * @returns {Array<Object<string, *>>} Canonical Claude events in provider source order, including correlated subagent/tool events.
+ * @returns {{agentCalls: Map<string, Object<string, *>>, toolNames: Map<string, string|null>}} Empty Claude adapter state.
  */
-export function adaptClaudeRecords(records) {
-  if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
-  // Canonical events are appended in the same order as their source records/blocks.
-  const events = [];
-  // Maps Claude subagent call IDs to their source call metadata so later results can be correlated.
-  const agentCalls = new Map();
-  // Maps tool-use IDs to tool names so result events retain the originating tool identity.
-  const toolNames = new Map();
+export function createClaudeAdapterState() {
+  return {
+    agentCalls: new Map(),
+    toolNames: new Map()
+  };
+}
 
-  records.forEach((record, sourceIndex) => {
+/**
+ * Adapts one contiguous Claude record slice at its absolute source position.
+ *
+ * The caller owns the state object and can reuse it across append-only slices.
+ * Previously processed provider records are not reread.
+ *
+ * @param {Array<Object<string, *>>} records - Newly observed Claude records.
+ * @param {number} firstSourceIndex - Absolute source index of the first record.
+ * @param {Object<string, *>} state - Retained Claude adapter state.
+ * @returns {Array<Object<string, *>>} Canonical events created by this slice.
+ */
+export function adaptClaudeRecordSlice(records, firstSourceIndex, state) {
+  if (!Array.isArray(records)) throw new TypeError('Claude records must be an array.');
+  if (!Number.isInteger(firstSourceIndex) || firstSourceIndex < 0) {
+    throw new TypeError('Claude firstSourceIndex must be a non-negative integer.');
+  }
+  if (!(state?.agentCalls instanceof Map) || !(state?.toolNames instanceof Map)) {
+    throw new TypeError('Claude adapter state is invalid.');
+  }
+
+  const events = [];
+  records.forEach((record, offset) => {
+    const sourceIndex = firstSourceIndex + offset;
     const queuedSubagent = queueSubagentEvent(record, sourceIndex);
     if (queuedSubagent) { events.push(queuedSubagent); return; }
     const content = record?.message?.content;
@@ -437,20 +456,32 @@ export function adaptClaudeRecords(records) {
 
     if (record?.type === 'assistant' && record?.message?.model === '<synthetic>') {
       content.forEach((block, blockIndex) => {
-        if (block?.type === 'text' && typeof block.text === 'string') events.push(noticeEvent(record, sourceIndex, block, blockIndex));
+        if (block?.type === 'text' && typeof block.text === 'string') {
+          events.push(noticeEvent(record, sourceIndex, block, blockIndex));
+        }
       });
       return;
     }
 
     content.forEach((block, blockIndex) => {
       if (!block || typeof block !== 'object') return;
-      if (block.type === 'text' && typeof block.text === 'string') { events.push(messageEvent(record, sourceIndex, block, blockIndex)); return; }
-      if (block.type === 'thinking' && typeof block.thinking === 'string') { events.push(reasoningEvent(record, sourceIndex, block, blockIndex)); return; }
+      if (block.type === 'text' && typeof block.text === 'string') {
+        events.push(messageEvent(record, sourceIndex, block, blockIndex));
+        return;
+      }
+      if (block.type === 'thinking' && typeof block.thinking === 'string') {
+        events.push(reasoningEvent(record, sourceIndex, block, blockIndex));
+        return;
+      }
       if (block.type === 'tool_use') {
-        if (typeof block.id === 'string') toolNames.set(block.id, block.name ?? null);
+        if (typeof block.id === 'string') {
+          state.toolNames.set(block.id, block.name ?? null);
+        }
         if (block.name === 'Agent' && typeof block.id === 'string') {
-          agentCalls.set(block.id, {
-            description: typeof block?.input?.description === 'string' ? block.input.description : null,
+          state.agentCalls.set(block.id, {
+            description: typeof block?.input?.description === 'string'
+              ? block.input.description
+              : null,
             source: baseSource(record, sourceIndex, blockIndex)
           });
           return;
@@ -460,7 +491,7 @@ export function adaptClaudeRecords(records) {
       }
       if (block.type !== 'tool_result') return;
       const callId = typeof block.tool_use_id === 'string' ? block.tool_use_id : null;
-      const agentCall = callId ? agentCalls.get(callId) : null;
+      const agentCall = callId ? state.agentCalls.get(callId) : null;
       if (agentCall) {
         const rawOutput = textFromToolResult(block.content);
         events.push(subagentEvent(
@@ -475,8 +506,23 @@ export function adaptClaudeRecords(records) {
         ));
         return;
       }
-      events.push(toolResultEvent(record, sourceIndex, block, blockIndex, callId ? toolNames.get(callId) : null));
+      events.push(toolResultEvent(
+        record,
+        sourceIndex,
+        block,
+        blockIndex,
+        callId ? state.toolNames.get(callId) : null));
     });
   });
   return events;
+}
+
+/**
+ * Adapts Claude records.
+ *
+ * @param {Array<Object<string, *>>} records - The ordered provider/source records to process.
+ * @returns {Array<Object<string, *>>} Canonical Claude events in provider source order, including correlated subagent/tool events.
+ */
+export function adaptClaudeRecords(records) {
+  return adaptClaudeRecordSlice(records, 0, createClaudeAdapterState());
 }

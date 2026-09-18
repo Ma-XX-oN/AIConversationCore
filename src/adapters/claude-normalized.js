@@ -1,6 +1,7 @@
 import {
-  adaptClaudeRecords as adaptClaudeRecordsRaw,
-  adaptClaudeToolEvents
+  adaptClaudeRecordSlice,
+  adaptClaudeToolEvents,
+  createClaudeAdapterState
 } from './claude.js';
 
 // Matches Claude Code XML blocks that are injected into text but are not user-visible transcript content.
@@ -21,16 +22,13 @@ function stripClaudeSystemText(text) {
 }
 
 /**
- * Adapts Claude records while preserving the established suppression of injected
- * system XML so those blocks cannot create empty or duplicate visible turns.
+ * Applies Claude visible-text normalization to already adapted canonical events.
  *
- * @param {Array<Object<string, *>>} records - Ordered Claude provider records.
- * @returns {Array<Object<string, *>>} Canonical Claude events with only visible message text retained.
+ * @param {Array<Object<string, *>>} events - Canonical Claude events to normalize.
+ * @returns {Array<Object<string, *>>} Events with injected system text removed.
  */
-export function adaptClaudeRecords(records) {
-  const events = adaptClaudeRecordsRaw(records);
+function normalizeClaudeEvents(events) {
   const normalized = [];
-
   for (const event of events) {
     if (event?.kind !== 'message' || !Array.isArray(event.blocks)) {
       normalized.push(event);
@@ -47,8 +45,31 @@ export function adaptClaudeRecords(records) {
     if (!blocks.length) continue;
     normalized.push({ ...event, blocks });
   }
-
   return normalized;
+}
+
+/**
+ * Creates an append-only Claude normalizer with retained cross-record state.
+ *
+ * @returns {Object<string, *>} Adapter exposing append(records, firstSourceIndex).
+ */
+export function createClaudeIncrementalAdapter() {
+  const state = createClaudeAdapterState();
+  return {
+    append: (records, firstSourceIndex = 0) => normalizeClaudeEvents(
+      adaptClaudeRecordSlice(records, firstSourceIndex, state))
+  };
+}
+
+/**
+ * Adapts Claude records while preserving the established suppression of injected
+ * system XML so those blocks cannot create empty or duplicate visible turns.
+ *
+ * @param {Array<Object<string, *>>} records - Ordered Claude provider records.
+ * @returns {Array<Object<string, *>>} Canonical Claude events with only visible message text retained.
+ */
+export function adaptClaudeRecords(records) {
+  return createClaudeIncrementalAdapter().append(records, 0);
 }
 
 export { adaptClaudeToolEvents };
