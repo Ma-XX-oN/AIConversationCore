@@ -173,3 +173,48 @@ test('retained Claude session preserves state across repeated append batches', (
   assert.equal(session.diagnostics.full_renormalization_passes, 0);
   assert.equal(session.diagnostics.appended_records_processed, 3);
 });
+
+
+test('retained Claude session matches complete-session projection after repeated appends', () => {
+  const initial = [
+    record('user-equivalence', 'user', 'user', text('Equivalence prompt.'))
+  ];
+  const agentCall = record('assistant-equivalence-agent', 'assistant', 'assistant', [{
+    type: 'tool_use',
+    id: 'toolu_equivalence_agent',
+    name: 'Agent',
+    input: { description: 'Check equivalence' },
+    caller: { type: 'direct' }
+  }]);
+  const agentResult = record('user-equivalence-result', 'user', 'user', [{
+    type: 'tool_result',
+    tool_use_id: 'toolu_equivalence_agent',
+    content: 'Equivalent result.\nagentId: agent-equivalence (internal ID - do not mention to user.)'
+  }]);
+  const finalAnswer = record(
+    'assistant-equivalence-final',
+    'assistant',
+    'assistant',
+    text('Equivalent final answer.'));
+
+  const incremental = createCanonicalConversationSession({
+    provider: 'claude',
+    records: initial
+  });
+  incremental.append([agentCall]);
+  incremental.append([agentResult]);
+  incremental.append([finalAnswer]);
+
+  const complete = createCanonicalConversationSession({
+    provider: 'claude',
+    records: [...initial, agentCall, agentResult, finalAnswer]
+  });
+
+  assert.deepEqual(
+    incremental.project(),
+    complete.project(),
+    'incremental Claude projection must equal complete-session projection');
+  assert.equal(incremental.diagnostics.initial_normalization_passes, 1);
+  assert.equal(incremental.diagnostics.full_renormalization_passes, 0);
+  assert.equal(incremental.diagnostics.appended_records_processed, 3);
+});
