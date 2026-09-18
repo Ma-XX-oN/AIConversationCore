@@ -417,7 +417,7 @@ export function adaptClaudeToolEvents(records) {
 /**
  * Creates the retained cross-record state required by Claude normalization.
  *
- * @returns {{agentCalls: Map<string, Object<string, *>>, toolNames: Map<string, string|null>}} Empty Claude adapter state.
+ * @returns {Object<string, *>} Empty retained Claude adapter state.
  */
 export function createClaudeAdapterState() {
   return {
