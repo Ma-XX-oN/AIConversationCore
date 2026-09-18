@@ -115,3 +115,61 @@ test('retained Claude session preserves Agent correlation across an append bound
   assert.equal(subagent.relationships.tool_call_id, 'toolu_agent');
   assert.equal(subagent.relationships.invocation_source.record_index, 0);
 });
+
+
+test('retained Claude session preserves state across repeated append batches', () => {
+  const session = createCanonicalConversationSession({
+    provider: 'claude',
+    records: [
+      record('user-1', 'user', 'user', text('Initial prompt.'))
+    ]
+  });
+  const beforeIds = session.events.map(event => event.id);
+
+  session.append([
+    record('assistant-agent', 'assistant', 'assistant', [{
+      type: 'tool_use',
+      id: 'toolu_agent_repeated',
+      name: 'Agent',
+      input: { description: 'Inspect repeated append state' },
+      caller: { type: 'direct' }
+    }])
+  ]);
+  session.append([
+    record('user-agent-result', 'user', 'user', [{
+      type: 'tool_result',
+      tool_use_id: 'toolu_agent_repeated',
+      content: 'Repeated append complete.\nagentId: agent-456 (internal ID - do not mention to user.)'
+    }])
+  ]);
+  session.append([
+    record('assistant-final', 'assistant', 'assistant', text('Final appended answer.'))
+  ]);
+
+  const projection = session.project();
+  assert.deepEqual(
+    projection.events.slice(0, beforeIds.length).map(event => event.id),
+    beforeIds);
+
+  const subagent = projection.events.find(event =>
+    event.source_record_id === 'user-agent-result');
+  assert.ok(subagent, 'the later Agent result must retain prior appended invocation state');
+  assert.equal(subagent.kind, 'subagent');
+  assert.equal(subagent.source_index, 2);
+  assert.equal(subagent.blocks[0].agent_id, 'agent-456');
+  assert.equal(
+    subagent.blocks[0].description,
+    'Inspect repeated append state');
+  assert.equal(
+    subagent.relationships.invocation_source.record_index,
+    1);
+
+  const final = projection.events.find(event =>
+    event.source_record_id === 'assistant-final');
+  assert.ok(final, 'the third append batch must enter canonical state');
+  assert.equal(final.source_index, 3);
+  assert.equal(final.blocks[0].text, 'Final appended answer.');
+  assert.equal(session.diagnostics.initial_normalization_passes, 1);
+  assert.equal(session.diagnostics.full_renormalization_passes, 0);
+  assert.equal(session.diagnostics.appended_records_processed, 3);
+});
