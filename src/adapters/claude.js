@@ -21,7 +21,9 @@ function baseSource(record, sourceIndex, blockIndex = null) {
   const source = {
     provider: 'claude',
     record_id: record?.uuid ?? record?.message?.id ?? null,
-    record_index: sourceIndex
+    record_index: sourceIndex,
+    turn_id: typeof record?.uuid === 'string' ? record.uuid : null,
+    timestamp: record?.timestamp ?? null
   };
   if (Number.isInteger(blockIndex)) source.block_index = blockIndex;
   return source;

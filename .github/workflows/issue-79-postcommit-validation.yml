@@ -1,0 +1,66 @@
+name: Issue 79 committed implementation validation
+
+on:
+  push:
+    branches:
+      - issue-79-canonical-html-units
+    paths:
+      - '.github/workflows/issue-79-postcommit-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact implementation commit
+        uses: actions/checkout@v4
+        with:
+          ref: dfc3bbb3a80946674dd026a27a099f1175194c8d
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check production JSDoc coverage
+        run: node scripts/check-jsdoc.mjs
+
+      - name: Verify browser bundle is current
+        shell: bash
+        run: |
+          node scripts/build-browser-bundle.mjs
+          git diff --exit-code -- package-lock.json dist/aiconversationcore.chatgpt.browser.js
+
+      - name: Run issue 79 regression
+        run: node --test tests/canonical-html-units.test.js
+
+      - name: Run full Core tests
+        run: npm test
+
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
+
+      - name: Validate whitespace and patch integrity
+        run: git diff --check

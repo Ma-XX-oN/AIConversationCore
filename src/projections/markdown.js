@@ -1,3 +1,5 @@
+import { renderHeadingDebugComment } from './heading-metadata.js';
+
 /**
  * Escapes text for safe insertion into generated HTML fragments.
  *
@@ -37,10 +39,10 @@ function providerLabel(provider) {
 
 
 /**
- * Renders the optional consumer-supplied metadata suffix for a transcript heading.
+ * Renders the optional metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @returns {string} The consumer-specific ANSI-styled suffix metadata for the heading.
+ * @returns {string} The consumer-specific heading metadata suffix.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
@@ -48,11 +50,11 @@ function projectedHeadingMetadataSuffix(event) {
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
   /**
-   * Applies one configured ANSI colour to projection metadata text.
+   * Applies one configured ANSI colour to heading metadata.
    *
-   * @param {string} text - The metadata text to style.
-   * @param {string} colorName - The projection colour setting to apply.
-   * @returns {string} The styled text, or the original text when no colour is configured.
+   * @param {string} text - Metadata text to style.
+   * @param {string} colorName - Projection colour field name.
+   * @returns {string} Styled text, or the original text when no colour is configured.
    */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
@@ -65,19 +67,18 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.record_number != null) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
-  const turnId = metadata.turn_id ?? event?.source_record_id;
-  if (metadata.show_turn_id && turnId != null) {
-    fields.push(`turn_id=${turnId}`);
+  if (metadata.turn_id != null) {
+    fields.push(String(metadata.turn_id));
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
 /**
- * Renders a transcript heading with optional consumer colour and metadata suffixes.
+ * Renders a transcript heading with optional consumer projection styling.
  *
- * @param {Object<string, *>} event - The canonical event whose projection metadata decorates the heading.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
+ * @param {Object<string, *>} event - The canonical event being headed.
+ * @param {string} label - Canonical Markdown heading label.
  * @returns {string} The consumer-decorated transcript heading.
  */
 function projectedHeading(event, label) {
@@ -118,6 +119,11 @@ function projectedThoughtHeading(event, number) {
  */
 function projectedComment(event, quoted = false) {
   const projection = event?.projection ?? {};
+  const coreComment = renderHeadingDebugComment(projection.heading_metadata ?? {});
+  if (coreComment) return quoted ? quoteMarkdown(coreComment) : coreComment;
+
+  // Internal compatibility for old direct-renderer tests. Public Core renderers
+  // strip this caller field and derive debug provenance from canonical source.
   if (!projection.debug_provenance) return '';
   const fields = [];
   if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
@@ -562,13 +568,44 @@ function renderChatGPTToolEvent(event, events) {
 }
 
 /**
+ * Renders one semantic User-context block as a blockquoted details disclosure.
+ *
+ * @param {Object<string, *>} block - Canonical User-context block.
+ * @returns {string} Blockquoted Markdown/HTML details fragment.
+ */
+function renderUserContextBlock(block) {
+  const summary = htmlEscape(block?.summary ?? '# Context from my IDE setup:');
+  const body = String(block?.text ?? '');
+  return quoteMarkdown(`<details><summary>${summary}</summary>\n\n${body}\n\n</details>`);
+}
+
+/**
  * Renders user.
+ *
+ * Semantic User context is presented before the actual prompt in a blockquoted
+ * details disclosure. The prompt remains outside that blockquote so consumers
+ * can assign context and prompt distinct User speech voices without reparsing
+ * provider-native text. User events without semantic context retain the existing
+ * fully-blockquoted rendering contract.
  *
  * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {string} The complete User transcript section for the canonical event.
  */
 function renderUser(event) {
-  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
+  const blocks = Array.isArray(event?.blocks) ? event.blocks : [];
+  const contexts = blocks.filter(block => block?.type === 'user_context');
+  if (!contexts.length) {
+    return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
+  }
+
+  const promptEvent = {
+    ...event,
+    blocks: blocks.filter(block => block?.type !== 'user_context')
+  };
+  const parts = contexts.map(renderUserContextBlock);
+  const prompt = renderMessageBlocks(promptEvent);
+  if (prompt) parts.push(prompt);
+  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${parts.join('\n\n')}`);
 }
 
 /**
@@ -655,16 +692,20 @@ function renderChatGPTAssistantSegment(segment, events) {
   }
   if (!body.length) return [];
   const headingEvent = segment[0];
-  // Consumer response-heading metadata may differ from the first activity event's own heading metadata.
-  const responseHeadingEvent = headingEvent?.projection?.response_heading_suffix != null
+  const finalMessageEvent = [...messages].reverse()[0] ?? null;
+  const semanticHeadingEvent = finalMessageEvent ?? headingEvent;
+  // Generic caller decoration remains compatible, but semantic metadata comes
+  // from the Core-selected final response event rather than an opaque suffix.
+  const responseHeadingSuffix = headingEvent?.projection?.response_heading_suffix;
+  const responseHeadingEvent = responseHeadingSuffix != null
     ? {
-        ...headingEvent,
+        ...semanticHeadingEvent,
         projection: {
-          ...headingEvent.projection,
-          heading_suffix: headingEvent.projection.response_heading_suffix
+          ...(semanticHeadingEvent?.projection ?? {}),
+          heading_suffix: responseHeadingSuffix
         }
       }
-    : headingEvent;
+    : semanticHeadingEvent;
   return [projectedSection(responseHeadingEvent, `${projectedHeading(responseHeadingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
 }
 

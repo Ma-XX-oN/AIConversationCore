@@ -4,6 +4,17 @@ on:
   push:
     branches:
       - main
+      - feature/canonical-presentation-html
+      - issue-72-speech-prefix-word-identity
+      - issue-79-canonical-html-units
+      - issue-80-canonical-word-ids
+      - issue-81-word-handle-lookup
+      - issue-82-word-provenance
+      - issue-83-word-separators
+      - issue-84-unmatched-raw-blockquote-regression
+      - issue-86-response-heading-metadata
+      - issue-89-turn-id-without-prefix
+      - issue-98-version-api-downloadconversation-line
   pull_request:
     branches:
       - main
@@ -29,8 +40,16 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Check production JSDoc coverage
         run: node scripts/check-jsdoc.mjs
+
+      - name: Verify browser bundle is deterministic and current
+        run: |
+          node scripts/build-browser-bundle.mjs
+          git diff --exit-code -- package-lock.json dist/aiconversationcore.chatgpt.browser.js
 
       - name: Run core tests
         run: npm test
@@ -49,3 +68,6 @@ jobs:
 
       - name: Validate provider example regressions
         run: python tests/validate-provider-example-regressions.py
+
+      - name: Validate whitespace and patch integrity
+        run: git diff --check

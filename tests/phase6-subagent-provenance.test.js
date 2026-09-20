@@ -45,16 +45,16 @@ test('Claude subagent heading uses invocation projection while debug also expose
     ...base,
     projection: {
       heading_suffix: ' [completion]',
-      debug_provenance: true,
       related_sources: {
         invocation_source: {
-          heading_suffix: ' [invocation]',
-          debug_provenance: true
+          heading_suffix: ' [invocation]'
         }
       }
     }
   };
-  const markdown = renderCanonicalMarkdown([event]);
+  const markdown = renderCanonicalMarkdown([event], {
+    heading: { debugProvenance: true }
+  });
   assert.match(markdown, /^## Claude Sub-agent agent-safe-1 \[invocation\] <!-- record_index=0 -->/m);
   assert.match(markdown, /^<!-- record_index=1 -->$/m);
   assert.equal(markdown.includes('## Claude Sub-agent agent-safe-1 [completion]'), false);
