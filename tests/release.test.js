@@ -4,6 +4,8 @@ import test from 'node:test';
 
 import {
   assertBundleVersion,
+  assertPackageVersion,
+  buildPreparePlan,
   buildReleasePlan,
   parseReleaseVersion
 } from '../scripts/release-lib.mjs';
@@ -18,17 +20,30 @@ test('release versions are plain semantic versions and reject development qualif
   assert.throws(() => parseReleaseVersion('1.2'), /plain semantic version/);
 });
 
-test('release plan stages the version authority and artifact and atomically pushes commit plus tag', () => {
-  assert.deepEqual(buildReleasePlan('1.2.3', 'main'), {
+test('release preparation changes only version authority and artifact and never creates a tag', () => {
+  assert.deepEqual(buildPreparePlan('1.2.3', 'issue-102-scripted-release-tags'), {
     version: '1.2.3',
-    tag: 'v1.2.3',
-    branch: 'main',
-    commitMessage: 'release: v1.2.3',
-    tagMessage: 'AIConversationCore v1.2.3',
+    branch: 'issue-102-scripted-release-tags',
+    commitMessage: 'release: prepare v1.2.3',
     stagedPaths: [
       'package.json',
       'dist/aiconversationcore.chatgpt.browser.js'
     ],
+    pushArgs: [
+      'push',
+      'origin',
+      'HEAD:issue-102-scripted-release-tags'
+    ]
+  });
+  assert.throws(() => buildPreparePlan('1.2.3', 'main'), /issue branch/);
+});
+
+test('final release is main-only and atomically publishes main plus the annotated tag', () => {
+  assert.deepEqual(buildReleasePlan('1.2.3', 'main'), {
+    version: '1.2.3',
+    tag: 'v1.2.3',
+    branch: 'main',
+    tagMessage: 'AIConversationCore v1.2.3',
     pushArgs: [
       'push',
       '--atomic',
@@ -37,9 +52,16 @@ test('release plan stages the version authority and artifact and atomically push
       'refs/tags/v1.2.3'
     ]
   });
+  assert.throws(() => buildReleasePlan('1.2.3', 'issue-102-scripted-release-tags'), /main/);
 });
 
-test('release bundle version must exactly equal the requested release version', () => {
+test('package and generated browser bundle must both equal the requested release version', () => {
+  assert.doesNotThrow(() => assertPackageVersion('{"version":"1.2.3"}\n', '1.2.3'));
+  assert.throws(
+    () => assertPackageVersion('{"version":"1.2.2"}\n', '1.2.3'),
+    /package version 1\.2\.2 does not match release version 1\.2\.3/
+  );
+
   assert.doesNotThrow(() => assertBundleVersion('const VERSION = "1.2.3";\n', '1.2.3'));
   assert.throws(
     () => assertBundleVersion('const VERSION = "1.2.2";\n', '1.2.3'),
@@ -51,11 +73,15 @@ test('release bundle version must exactly equal the requested release version', 
   );
 });
 
-test('package wiring and durable browser-bundle documentation require the scripted release path', async () => {
+test('package wiring and durable documentation require prepare, close, merge, then tag', async () => {
   const packageMetadata = JSON.parse(await readFile(packageUrl, 'utf8'));
   const documentation = await readFile(browserBundleDocUrl, 'utf8');
 
+  assert.equal(packageMetadata.scripts?.['release:prepare'], 'node scripts/prepare-release.mjs');
   assert.equal(packageMetadata.scripts?.release, 'node scripts/release.mjs');
+  assert.match(documentation, /npm run release:prepare -- <version>/);
+  assert.match(documentation, /close the owning issue/i);
+  assert.match(documentation, /merge.*`main`/i);
   assert.match(documentation, /npm run release -- <version>/);
   assert.match(documentation, /git push --atomic/);
   assert.match(documentation, /annotated `vX\.Y\.Z` tag/);
