@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:browser": "node scripts/build-browser-bundle.mjs",
+    "release": "node scripts/release.mjs",
     "test": "node --test"
   }
 }
