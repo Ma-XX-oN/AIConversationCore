@@ -15,33 +15,71 @@ export function parseReleaseVersion(value) {
 }
 
 /**
- * Builds the immutable release plan used by the release script and its tests.
+ * Requires a valid non-empty Git branch name without whitespace.
  *
- * @param {string} version - Requested plain semantic release version.
- * @param {string} branch - Current release branch name.
- * @returns {Object<string, *>} Release paths, commit/tag identities, and atomic push arguments.
+ * @param {string} branch - Current branch name.
+ * @returns {string} The validated branch name.
  */
-export function buildReleasePlan(version, branch) {
-  const releaseVersion = parseReleaseVersion(version);
+function validatedBranch(branch) {
   if (typeof branch !== 'string' || !branch.trim() || branch !== branch.trim() || /\s/.test(branch)) {
     throw new Error('Release branch must be a non-empty branch name without whitespace.');
   }
-  const tag = `v${releaseVersion}`;
+  return branch;
+}
+
+/**
+ * Builds the stable-version preparation plan for an issue-owned branch.
+ *
+ * @param {string} version - Requested plain semantic release version.
+ * @param {string} branch - Current issue-owned development branch.
+ * @returns {Object<string, *>} Exact release-preparation commit/staging/push plan.
+ */
+export function buildPreparePlan(version, branch) {
+  const releaseVersion = parseReleaseVersion(version);
+  const releaseBranch = validatedBranch(branch);
+  if (!/^issue-\d+-/.test(releaseBranch)) {
+    throw new Error('Release preparation must run on an issue branch.');
+  }
   return {
     version: releaseVersion,
-    tag,
-    branch,
-    commitMessage: `release: ${tag}`,
-    tagMessage: `AIConversationCore ${tag}`,
+    branch: releaseBranch,
+    commitMessage: `release: prepare v${releaseVersion}`,
     stagedPaths: [
       'package.json',
       'dist/aiconversationcore.chatgpt.browser.js'
     ],
     pushArgs: [
       'push',
+      'origin',
+      `HEAD:${releaseBranch}`
+    ]
+  };
+}
+
+/**
+ * Builds the post-merge stable-tag publication plan.
+ *
+ * @param {string} version - Requested plain semantic release version.
+ * @param {string} branch - Current branch, which must be `main`.
+ * @returns {Object<string, *>} Exact annotated-tag identity and atomic push plan.
+ */
+export function buildReleasePlan(version, branch) {
+  const releaseVersion = parseReleaseVersion(version);
+  const releaseBranch = validatedBranch(branch);
+  if (releaseBranch !== 'main') {
+    throw new Error('Final release tagging must run on main after the issue is closed and merged.');
+  }
+  const tag = `v${releaseVersion}`;
+  return {
+    version: releaseVersion,
+    tag,
+    branch: releaseBranch,
+    tagMessage: `AIConversationCore ${tag}`,
+    pushArgs: [
+      'push',
       '--atomic',
       'origin',
-      `HEAD:${branch}`,
+      'HEAD:main',
       `refs/tags/${tag}`
     ]
   };
@@ -62,6 +100,22 @@ export function packageTextWithVersion(packageText, version) {
   }
   metadata.version = releaseVersion;
   return `${JSON.stringify(metadata, null, 2)}\n`;
+}
+
+/**
+ * Requires package.json to report the requested release version.
+ *
+ * @param {string} packageText - package.json source text.
+ * @param {string} version - Requested plain semantic release version.
+ * @returns {void}
+ */
+export function assertPackageVersion(packageText, version) {
+  const releaseVersion = parseReleaseVersion(version);
+  const metadata = JSON.parse(packageText);
+  const actual = metadata?.version;
+  if (actual !== releaseVersion) {
+    throw new Error(`package version ${actual ?? '(missing)'} does not match release version ${releaseVersion}.`);
+  }
 }
 
 /**
