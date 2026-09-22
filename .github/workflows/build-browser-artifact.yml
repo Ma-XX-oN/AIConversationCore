@@ -8,8 +8,10 @@ on:
       - 'feature/**'
     paths:
       - package.json
+      - package-lock.json
       - scripts/build-browser-bundle.mjs
       - 'src/**'
+      - .github/workflows/build-browser-artifact.yml
 
 permissions:
   contents: write
@@ -31,6 +33,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Install deterministic build dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Build deterministic browser artifact
         run: npm run build:browser
