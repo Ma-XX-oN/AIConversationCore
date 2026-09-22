@@ -43,16 +43,20 @@ function rootDocuments() {
     .map(entry => entry.name);
 }
 
+// Authoritative production/tooling source files governed by the maintained-file limit.
 const sourceFiles = [
   ...collectFiles('src', new Set(['.js', '.mjs'])),
   ...collectFiles('scripts', new Set(['.js', '.mjs']))
 ];
+// Maintained architecture/process documents governed by the same editable-size boundary.
 const documentFiles = [
   ...rootDocuments(),
   ...collectFiles('docs', new Set(['.md'])),
   ...collectFiles('decisions', new Set(['.md']))
 ];
+// Unique sorted inventory checked deterministically on every CI invocation.
 const files = [...new Set([...sourceFiles, ...documentFiles])].sort();
+// Policy failures accumulated so CI reports every oversized maintained file in one run.
 const violations = [];
 
 for (const relative of files) {
