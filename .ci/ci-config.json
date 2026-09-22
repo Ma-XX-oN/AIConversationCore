@@ -1,0 +1,8 @@
+{
+  "matrixPath": ".ci/test-matrix.json",
+  "version": {
+    "kind": "json",
+    "path": "package.json",
+    "key": "version"
+  }
+}
