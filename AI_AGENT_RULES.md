@@ -4,7 +4,7 @@ These rules are mandatory for AI-assisted work in this repository.
 
 ## Repository is authoritative
 
-Read `README.md`, `DESIGN.md`, `TESTING.md`, `ROADMAP.md`, `DECISIONS.md`, and `NORMALIZATION_RULES.md` before making architectural or behavioural changes.  Do not rely on chat history or memory when the repository documents the decision.
+Read `README.md`, `DESIGN.md`, `TESTING.md`, `ROADMAP.md`, `DECISIONS.md`, and `NORMALIZATION_RULES.md` before making architectural or behavioural changes.  Read any focused design document cross-referenced by those files for the subsystem being changed.  Do not rely on chat history or memory when the repository documents the decision.
 
 ## Preserve proven behaviour
 
@@ -46,6 +46,18 @@ Do not rely on ordinary `//` comments as the function-level documentation marker
 
 ## Documentation
 
-Architectural decisions and reversals belong in `DECISIONS.md`.  Stable design and invariants belong in `DESIGN.md`.  Current migration sequencing/state belongs in `ROADMAP.md`.  Test contracts belong in `TESTING.md`.  Durable normalization/rendering-shape rules belong in `NORMALIZATION_RULES.md`.
+Architectural decisions and reversals belong in `DECISIONS.md`.  Stable design and invariants belong in `DESIGN.md` or a focused design document cross-referenced from it.  Current migration sequencing/state belongs in `ROADMAP.md`.  Test contracts belong in `TESTING.md`.  Durable normalization/rendering-shape rules belong in `NORMALIZATION_RULES.md`.
+
+Documentation must make the repository navigable without requiring an agent or maintainer to rediscover the architecture by rereading all implementation code.  For each subsystem it documents, record:
+
+- what the subsystem and its constituent parts do;
+- which responsibilities belong to each part and which responsibilities explicitly do not;
+- the control/data flow and important invariants between parts;
+- the concrete files/modules that implement each responsibility; and
+- cross-references to related design, decision, testing, and normalization documents.
+
+Keep both production source files and documentation files to approximately 500 lines or fewer.  When a file approaches or exceeds that size, split it along coherent responsibility boundaries rather than allowing an oversized catch-all file.  For documentation, keep a concise overview/index document and cross-reference focused documents so the architecture remains discoverable.  A split must preserve a clear ownership map; it must not scatter one responsibility arbitrarily across unrelated files.
+
+When implementation moves, splits, or changes responsibility, update the relevant responsibility/file-location map in the same logical change.  Documentation must distinguish implemented/current behaviour from planned/future behaviour.
 
 When a change alters one of those contracts, update the corresponding document in the same logical change.
