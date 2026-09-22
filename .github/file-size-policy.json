@@ -1,7 +1,11 @@
 {
   "max_lines": 500,
   "legacy_max_lines": {
+    "src/adapters/chatgpt-base.js": 867,
+    "src/adapters/chatgpt.js": 547,
+    "src/adapters/codex.js": 580,
     "src/adapters/session.js": 535,
+    "src/projections/markdown.js": 1148,
     "src/projections/word-identity.js": 641
   }
 }
