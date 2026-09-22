@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: core-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   regression:
     runs-on: ubuntu-latest
@@ -29,8 +33,16 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Check production JSDoc coverage
         run: node scripts/check-jsdoc.mjs
+
+      - name: Verify browser bundle is deterministic and current
+        run: |
+          node scripts/build-browser-bundle.mjs
+          git diff --exit-code -- package-lock.json dist/aiconversationcore.chatgpt.browser.js
 
       - name: Run core tests
         run: npm test
@@ -49,3 +61,6 @@ jobs:
 
       - name: Validate provider example regressions
         run: python tests/validate-provider-example-regressions.py
+
+      - name: Validate whitespace and patch integrity
+        run: git diff --check

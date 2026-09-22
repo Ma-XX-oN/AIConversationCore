@@ -375,6 +375,12 @@ extractor and Markdown formatter. Migration must converge those projections on o
 canonical normalization path rather than retaining both parsers behind the new
 core.
 
+
+The Phase 8 HTML virtualization boundary is tracked by #79. Core exposes
+complete rendered turn units as the initial legal materialization boundary so
+AgentPanelSpeaker can virtualize without reparsing `<details>` ownership or
+source-anchor grouping. Viewport/window mechanics remain in AgentPanelSpeaker.
+
 ## Phase 9 — Additional providers/models
 
 After the existing `AI-transcript.py` providers have been migrated and stabilized,
