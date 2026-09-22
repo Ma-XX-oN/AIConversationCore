@@ -29,5 +29,10 @@ export { renderCanonicalMarkdown } from './projections/markdown.js';
 
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
+export {
+  applyChatGPTLiveObservation,
+  createChatGPTLiveState,
+  reduceChatGPTLiveObservations
+} from './adapters/chatgpt-live.js';
 export { adaptClaudeRecords, adaptClaudeToolEvents } from './adapters/claude-normalized.js';
 export { adaptCodexRecords, adaptCodexToolEvents } from './adapters/codex.js';
