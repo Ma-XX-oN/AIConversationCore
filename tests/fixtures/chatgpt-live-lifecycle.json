@@ -1,0 +1,374 @@
+{
+  "schema": "chatgpt-live-provider-observations-v1",
+  "provenance": {
+    "source": "DownloadConversation issue #157 reconciled primary capture corpus",
+    "note": "Payload shapes and semantic combinations are fixed from captured ChatGPT-Web evidence. Fixture-local IDs are used where the reconciled excerpt did not preserve the original exchange ID. Expected values are evidence/spec oracles, not implementation-derived."
+  },
+  "scenarios": [
+    {
+      "name": "ordinary-initial-success",
+      "observations": [
+        {
+          "observed_at": "2026-09-21T01:15:25.248Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "message": "Turn exchange complete",
+            "status": "info",
+            "origin": "logger",
+            "logger": { "name": "turn-analytics" },
+            "turn_analytics": {
+              "turn_trace_id": "ordinary-success-trace",
+              "turn_exchange_id": "4682cb6a-1e3d-448b-829e-e69091145a3c",
+              "trigger": "submit",
+              "result": "success",
+              "completion_endpoint": "/f/conversation",
+              "stream_protocol": "sse",
+              "stream_encoding": "v1",
+              "received_final_assistant_message": true
+            }
+          }
+        }
+      ],
+      "expected": {
+        "exchange_id": "4682cb6a-1e3d-448b-829e-e69091145a3c",
+        "outcome": "completed",
+        "provider_reported_final_assistant": true,
+        "observed_final_assistant": false
+      }
+    },
+    {
+      "name": "async-success-before-websocket-final",
+      "observations": [
+        {
+          "observed_at": "2026-09-21T05:59:54.680Z",
+          "transport": "websocket",
+          "direction": "response",
+          "endpoint": "/backend-api/celsius/ws/user",
+          "payload": {
+            "type": "conversation-update",
+            "payload": {
+              "conversation_id": "6ab06eba-88e8-83ea-855a-d7a22259bd77",
+              "update_type": "set-conversation-async-status",
+              "update_content": {
+                "conversation_async_status": 5,
+                "is_async_correction": false
+              }
+            },
+            "metadata": null
+          }
+        },
+        {
+          "observed_at": "2026-09-21T06:00:24.207Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "message": "Turn exchange complete",
+            "status": "info",
+            "origin": "logger",
+            "logger": { "name": "turn-analytics" },
+            "turn_analytics": {
+              "turn_trace_id": "async-image-trace",
+              "turn_exchange_id": "c2b40401-f76c-48ad-a9be-99cc0b3a2654",
+              "result": "success",
+              "success_method": "initial_stream",
+              "turn_use_case": "image gen",
+              "received_final_assistant_message": false
+            }
+          }
+        },
+        {
+          "observed_at": "2026-09-21T06:00:24.300Z",
+          "transport": "websocket",
+          "direction": "response",
+          "endpoint": "/backend-api/celsius/ws/user",
+          "payload": {
+            "type": "message",
+            "topic_id": "conversations",
+            "payload": {
+              "type": "conversation-turn-complete",
+              "payload": {
+                "conversation_id": "6ab06eba-88e8-83ea-855a-d7a22259bd77"
+              },
+              "metadata": null
+            }
+          }
+        },
+        {
+          "observed_at": "2026-09-21T06:01:12.799Z",
+          "transport": "websocket",
+          "direction": "response",
+          "endpoint": "/backend-api/celsius/ws/user",
+          "payload": {
+            "type": "conversation-update",
+            "payload": {
+              "conversation_id": "6ab06eba-88e8-83ea-855a-d7a22259bd77",
+              "update_type": "add-messages",
+              "update_content": {
+                "messages": [
+                  {
+                    "id": "cacec62d-2731-4eac-a6ce-02ab95bf93b9",
+                    "author": { "role": "assistant", "name": null, "metadata": {} },
+                    "content": { "content_type": "text", "parts": ["fixture final"] },
+                    "status": "finished_successfully",
+                    "end_turn": true,
+                    "metadata": {
+                      "turn_exchange_id": "c2b40401-f76c-48ad-a9be-99cc0b3a2654",
+                      "working_turn_id": "c2b40401-f76c-48ad-a9be-99cc0b3a2654"
+                    },
+                    "recipient": "all",
+                    "channel": "final"
+                  }
+                ]
+              }
+            },
+            "metadata": null
+          }
+        },
+        {
+          "observed_at": "2026-09-21T06:01:15.315Z",
+          "transport": "websocket",
+          "direction": "response",
+          "endpoint": "/backend-api/celsius/ws/user",
+          "payload": {
+            "type": "conversation-update",
+            "payload": {
+              "conversation_id": "6ab06eba-88e8-83ea-855a-d7a22259bd77",
+              "update_type": "set-conversation-async-status",
+              "update_content": {
+                "conversation_async_status": 4,
+                "is_async_correction": false
+              }
+            },
+            "metadata": null
+          }
+        }
+      ],
+      "expected": {
+        "exchange_id": "c2b40401-f76c-48ad-a9be-99cc0b3a2654",
+        "outcome": "completed",
+        "provider_reported_final_assistant": false,
+        "observed_final_assistant": true,
+        "conversation_id": "6ab06eba-88e8-83ea-855a-d7a22259bd77",
+        "conversation_turn_complete_observed": true,
+        "latest_async_status": 4
+      }
+    },
+    {
+      "name": "final-assistant-does-not-prevent-later-exchange-failure",
+      "observations": [
+        {
+          "observed_at": "2026-09-20T00:00:00.000Z",
+          "transport": "websocket",
+          "direction": "response",
+          "endpoint": "/backend-api/celsius/ws/user",
+          "payload": {
+            "type": "conversation-update",
+            "payload": {
+              "conversation_id": "fixture-max-context-conversation",
+              "update_type": "add-messages",
+              "update_content": {
+                "messages": [
+                  {
+                    "id": "fixture-max-context-final",
+                    "author": { "role": "assistant" },
+                    "content": { "content_type": "text", "parts": ["provisional final"] },
+                    "status": "finished_successfully",
+                    "end_turn": true,
+                    "metadata": {
+                      "turn_exchange_id": "fixture-max-context-exchange",
+                      "working_turn_id": "fixture-max-context-exchange"
+                    },
+                    "channel": "final"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "observed_at": "2026-09-20T00:00:01.000Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "message": "Turn exchange complete",
+            "status": "error",
+            "origin": "logger",
+            "logger": { "name": "turn-analytics" },
+            "turn_analytics": {
+              "turn_trace_id": "fixture-max-context-trace",
+              "turn_exchange_id": "fixture-max-context-exchange",
+              "result": "error",
+              "received_final_assistant_message": true,
+              "error": {
+                "reason": "request_failed",
+                "status_code": 500
+              }
+            }
+          }
+        },
+        {
+          "observed_at": "2026-09-20T00:00:01.100Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "message": "Stream error",
+            "turn_exchange_id": "fixture-max-context-exchange",
+            "request_type": "send",
+            "request_status": 500,
+            "request_code": "conversation_too_large",
+            "is_network_error": false
+          }
+        }
+      ],
+      "expected": {
+        "exchange_id": "fixture-max-context-exchange",
+        "outcome": "failed",
+        "provider_reported_final_assistant": true,
+        "observed_final_assistant": true,
+        "error_reason": "request_failed",
+        "error_status_code": 500,
+        "provider_code": "conversation_too_large"
+      }
+    },
+    {
+      "name": "explicit-user-stop-cancellation",
+      "observations": [
+        {
+          "observed_at": "2026-09-22T03:52:26.000Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "date": 1790049116254,
+            "message": "Client stop requested - user_stop_mouse",
+            "stage": "before_stop_conversation",
+            "reason": "user_stop_mouse",
+            "conversation_id": "6ab13b62-c184-83e9-b835-12cd382adad2",
+            "turn_trace_id": "0f606d45-c8f9-465d-9e99-73dd3f68b4b0",
+            "current_request_is_active": true
+          }
+        },
+        {
+          "observed_at": "2026-09-22T03:52:26.264Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "date": 1790049117019,
+            "message": "Client stop - user_stop_mouse",
+            "stage": "after_stop_conversation",
+            "reason": "user_stop_mouse",
+            "conversation_id": "6ab13b62-c184-83e9-b835-12cd382adad2",
+            "turn_trace_id": "0f606d45-c8f9-465d-9e99-73dd3f68b4b0",
+            "current_request_is_active": true
+          }
+        },
+        {
+          "observed_at": "2026-09-22T03:52:26.329Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "date": 1790049117084,
+            "message": "Turn exchange complete",
+            "status": "info",
+            "origin": "logger",
+            "logger": { "name": "turn-analytics" },
+            "turn_analytics": {
+              "turn_trace_id": "0f606d45-c8f9-465d-9e99-73dd3f68b4b0",
+              "turn_exchange_id": "fixture-canceled-exchange",
+              "result": "canceled",
+              "received_final_assistant_message": false
+            }
+          }
+        }
+      ],
+      "expected": {
+        "exchange_id": "fixture-canceled-exchange",
+        "outcome": "canceled",
+        "provider_reported_final_assistant": false,
+        "trace_id": "0f606d45-c8f9-465d-9e99-73dd3f68b4b0",
+        "stop_requested": true
+      }
+    },
+    {
+      "name": "stop-control-is-not-cancellation",
+      "observations": [
+        {
+          "observed_at": "2026-09-22T04:26:17.830Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "message": "Escape Stop Menu Action",
+            "turn_trace_id": "58715b40-97ce-46b4-a9f5-9477176b0361",
+            "conversation_id": "6ab13b62-c184-83e9-b835-12cd382adad2"
+          }
+        },
+        {
+          "observed_at": "2026-09-22T04:26:18.000Z",
+          "transport": "fetch",
+          "direction": "request",
+          "endpoint": "/ces/v1/t",
+          "payload": {
+            "message": "Turn exchange complete",
+            "status": "info",
+            "origin": "logger",
+            "logger": { "name": "turn-analytics" },
+            "turn_analytics": {
+              "turn_trace_id": "58715b40-97ce-46b4-a9f5-9477176b0361",
+              "turn_exchange_id": "fixture-stop-then-success-exchange",
+              "result": "success",
+              "received_final_assistant_message": true
+            }
+          }
+        }
+      ],
+      "expected": {
+        "exchange_id": "fixture-stop-then-success-exchange",
+        "outcome": "completed",
+        "trace_id": "58715b40-97ce-46b4-a9f5-9477176b0361",
+        "stop_requested": true
+      }
+    },
+    {
+      "name": "stream-status-complete-is-not-exchange-success",
+      "observations": [
+        {
+          "observed_at": "2026-09-21T00:44:43.024Z",
+          "transport": "fetch",
+          "direction": "response",
+          "endpoint": "/backend-api/conversation/fixture-conversation/stream_status",
+          "payload": { "status": "COMPLETE" }
+        }
+      ],
+      "expected": {
+        "conversation_id": "fixture-conversation",
+        "stream_status": "COMPLETE",
+        "exchange_count": 0
+      }
+    },
+    {
+      "name": "is-stop-requested-is-control-not-outcome",
+      "observations": [
+        {
+          "observed_at": "2026-09-20T12:00:00.000Z",
+          "transport": "fetch",
+          "direction": "response",
+          "endpoint": "/backend-api/conversation/fixture-stop-requested-conversation/stream_status",
+          "payload": { "status": "IS_STOP_REQUESTED" }
+        }
+      ],
+      "expected": {
+        "conversation_id": "fixture-stop-requested-conversation",
+        "stream_status": "IS_STOP_REQUESTED",
+        "exchange_count": 0
+      }
+    }
+  ]
+}
