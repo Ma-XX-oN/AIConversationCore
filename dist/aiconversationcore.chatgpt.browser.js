@@ -7,7 +7,7 @@
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.0-issue.34.1";
 
 /**
  * Returns the authoritative AIConversationCore version.
