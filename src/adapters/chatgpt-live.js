@@ -1,3 +1,4 @@
+/** ChatGPT provider exchange-result values mapped to canonical lifecycle outcomes. */
 const PROVIDER_OUTCOME = Object.freeze({
   success: 'completed',
   error: 'failed',
@@ -114,7 +115,7 @@ function evidenceOf(observation, observationIndex, kind) {
  *
  * @param {Array<*>} values - Mutable scalar array.
  * @param {*} value - Scalar value to add.
- * @returns {void}
+ * @returns {void} No value is returned.
  */
 function addUnique(values, value) {
   if (!values.includes(value)) values.push(value);
