@@ -4,8 +4,11 @@ import { execFileSync } from 'node:child_process';
 
 import { evaluateBranchPolicy } from './branch-policy-lib.mjs';
 
+// Repository root used for policy configuration and Git command execution.
 const root = process.cwd();
+// Absolute path to the repository-maintained branch policy configuration.
 const configPath = path.join(root, '.github', 'branch-policy.json');
+// Parsed branch policy configuration used for this invocation.
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 /**
@@ -58,20 +61,30 @@ function importedBranchLabel(importedSha, declaredDependencies) {
   return preferred ? preferred.slice('origin/'.length) : importedSha;
 }
 
+// Branch whose ancestry is being checked, resolved from explicit CI context first.
 const branch = process.env.BRANCH_POLICY_BRANCH
   || process.env.GITHUB_HEAD_REF
   || process.env.GITHUB_REF_NAME
   || git(['rev-parse', '--abbrev-ref', 'HEAD']);
+// Per-branch policy override, or an empty policy when none is declared.
 const branchConfig = config.branches?.[branch] ?? {};
+// Declared integration parent for the branch under inspection.
 const declaredParent = branchConfig.parent ?? config.default_parent;
+// Explicitly allowed dependency branches whose histories may be imported.
 const allowedDependencies = branchConfig.allowed_dependencies ?? [];
+// Pull-request base supplied by CI when this invocation is validating a PR.
 const prBase = process.env.BRANCH_POLICY_PR_BASE || process.env.GITHUB_BASE_REF || null;
+// Exact branch head SHA whose merge ancestry is being inspected.
 const headSha = process.env.BRANCH_POLICY_HEAD_SHA || git(['rev-parse', 'HEAD']);
+// Remote-tracking ref for the declared parent branch.
 const parentRef = `origin/${declaredParent}`;
+// Common ancestor delimiting the branch-owned commit range.
 const mergeBase = git(['merge-base', headSha, parentRef]);
+// Merge commits, with parent SHAs, contained in the branch-owned range.
 const mergeLines = git([
   'rev-list', '--reverse', '--merges', '--parents', `${mergeBase}..${headSha}`
 ]);
+// Structured imported-parent facts passed into the deterministic policy evaluator.
 const mergeCommits = [];
 
 for (const line of mergeLines.split(/\r?\n/).filter(Boolean)) {
@@ -87,6 +100,7 @@ for (const line of mergeLines.split(/\r?\n/).filter(Boolean)) {
   }
 }
 
+// Final deterministic policy violations established from the collected Git facts.
 const violations = evaluateBranchPolicy({
   branch,
   declared_parent: declaredParent,

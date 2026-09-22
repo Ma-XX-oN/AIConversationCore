@@ -1,3 +1,9 @@
+/**
+ * Normalizes an optional list-valued policy field to an array.
+ *
+ * @param {*} value - Candidate policy value supplied by parsed configuration/input.
+ * @returns {Array<*>} The original array, or an empty array when the value is not an array.
+ */
 const normalizeList = (value) => Array.isArray(value) ? value : [];
 
 /**
