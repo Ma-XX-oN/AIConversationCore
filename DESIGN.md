@@ -1,538 +1,145 @@
 # AIConversationCore Design
 
+This document is the architecture index. Detailed subsystem contracts live in focused documents so no maintained design document becomes a monolith.
+
 ## Purpose
 
-`AIConversationCore` normalizes heterogeneous AI conversation/event records into a
-single canonical representation, then provides shared renderers/projections over
-that representation.
+AIConversationCore converts provider-specific conversation/event records into one canonical semantic model and then projects that model into Markdown, HTML, structured, speech/navigation, and other consumer-facing forms.
 
-The design goal is semantic consistency across consumers. Provider differences
-must be represented explicitly rather than flattened away, while equivalent
-concepts must be normalized once rather than reimplemented independently by each
-application.
+Provider differences are resolved once in Core. Consumers must not reinterpret provider semantics, reconstruct canonical structure from rendered text, or maintain parallel semantic models.
 
-The core is not only an export/rendering library. Canonical data must also support
-interactive consumers that read, navigate, speak, highlight, or otherwise operate
-on individual turns and content ranges.
+## Behaviour authority during migration
 
-## Migration behaviour authority
+`AI-General-Memory/scripts/AI-transcript.py` remains the default behavioural source for ChatGPT, Claude, and Codex during migration, subject to explicitly documented evidence-backed exceptions.
 
-During migration, the current `AI-General-Memory/scripts/AI-transcript.py`
-implementation is the canonical behavioural/rendering reference for every provider
-it recognizes, currently ChatGPT, Claude, and Codex. This defines the default
-behaviour to extract and preserve; it does not make the Python implementation, CLI
-structure, or provider-specific storage code the target architecture.
+Current ChatGPT exceptions are citation presentation and authenticated image/resource resolution, where verified DownloadConversation evidence is authoritative for those narrow capabilities.
 
-Provider behaviour must be decomposed into provider adapters, canonical events and
-blocks, derived turns/relationships, and shared renderers/projections. Adding a new
-provider should therefore require a new adapter plus any genuinely new canonical
-semantics, not a new independent renderer.
+Any new conflict between established implementations requires evidence, user review, a tracked issue, and a recorded decision before canonical behaviour changes.
 
-A separately verified defect or capability gap may supersede the current Python
-behaviour for a specific semantic. Such changes require their own evidence, issue,
-tests, and migration decision rather than being folded into unrelated extraction.
+## Architecture map
 
-Two ChatGPT-specific exceptions are currently established:
+| Responsibility | Owns | Does not own | Primary files | Detailed docs/tests |
+| --- | --- | --- | --- | --- |
+| Provider normalization | Provider-record interpretation, source identity, canonical event construction | Rendering/UI | `src/adapters/chatgpt.js`, `src/adapters/claude.js`, `src/adapters/claude-events.js`, `src/adapters/codex.js` | `NORMALIZATION_RULES.md`, provider adapter tests |
+| Claude visible normalization | Injected-system-text suppression and retained Claude correlation wrapper | Session lifecycle/UI | `src/adapters/claude-normalized.js` | `RETAINED_SESSIONS.md`, `tests/claude-retained-session.test.js` |
+| Interactive/session normalization | Provider session records, phase/lifecycle metadata | Long-lived retained-session orchestration | `src/adapters/session.js`, `src/adapters/speech-session*.js` | interactive/speech session tests |
+| Retained canonical sessions | Long-lived canonical inventory, append dispatch, projection counters | Provider-specific Codex revision rules | `src/session/canonical-session.js` | `RETAINED_SESSIONS.md`, retained-session tests |
+| Codex retained state | Rollback/revision tracking, model-change notices, append-only Codex updates, User Context speech selection | Generic session API | `src/session/codex-retained.js` | `RETAINED_SESSIONS.md`, Codex retained/revision tests |
+| Presentation tree | Provider-independent turn/reasoning/tool structure | Host DOM/window policy | `src/projections/presentation*.js` | `RENDERING.md`, `INTERACTIVE_PROJECTIONS.md` |
+| Markdown | Canonical Markdown serialization | Consumer-specific formatting repair | `src/projections/markdown*.js` | `RENDERING.md`, renderer/golden tests |
+| HTML | Canonical HTML serialization and complete rendered units | Viewport/materialization policy | `src/projections/html*.js` | `INTERACTIVE_PROJECTIONS.md`, HTML tests |
+| Word identity/navigation | Core-owned numeric word IDs, provenance, separators, navigation boundaries, lookup | Consumer retokenization/alignment | `src/projections/word-identity.js`, `src/projections/word-element.js` | `INTERACTIVE_PROJECTIONS.md`, word tests |
+| Heading metadata/style roles | Core-derived heading semantics and semantic presentation roles | Provider adapters/UI theme mechanics | `src/projections/heading-metadata.js`, `src/projections/turn-header.js` | heading tests, decisions D014/D026/D027 |
+| Browser artifact | Deterministic classic-browser bundle generated from authoritative modules | Hand-maintained browser logic | `scripts/build-browser-bundle.mjs`, `dist/aiconversationcore.chatgpt.browser.js` | `BROWSER_BUNDLE.md`, bundle parity tests |
+| Branch/workflow invariants | Parent ownership, declared dependency imports, maintained-file size | Feature semantics | `scripts/check-branch-policy.mjs`, `scripts/check-maintained-file-size.mjs`, `.github/*.json` | `BRANCHING.md`, `AI_AGENT_RULES.md` |
 
-1. **Citations.** Canonical ChatGPT citation rendering is taken from verified
-   `DownloadConversation` behaviour. Existing browser/screenshot evidence showed
-   that the Python renderer's citation presentation was not correct enough. This
-   exception applies only to ChatGPT citation semantics/rendering; it does not make
-   `DownloadConversation` authoritative for unrelated behaviour.
-2. **Images/resource resolution.** The Python renderer's source-position and
-   missing/unavailable semantics remain useful behavioural evidence, but actual
-   image-resource resolution must be verified against `DownloadConversation`.
-   `DownloadConversation` remains an API-driven transcript renderer; its image
-   capability is API/resource resolution, not DOM transcript rendering or a DOM
-   content fallback.
+When a responsibility moves or a module splits, update this table and the relevant focused document in the same logical change.
 
-For any other difference between `AI-transcript.py` and another verified consumer,
-the project must not choose an implementation automatically. Present the competing
-behaviours and evidence to the user and record the user's decision before using
-that difference in a canonical golden or migration implementation.
+## Canonical model
 
-## Architectural layers
+The canonical primitive is an ordered event stream/graph. Turns and other higher-level structures are derived from events rather than assumed User/Assistant pairs.
 
-### 1. Provider adapters
+Canonical events preserve at least:
 
-Each provider/model adapter translates raw provider records into canonical events.
-ChatGPT is the first migration priority, but the architecture is explicitly
-multi-provider because the canonical behavioural source already recognizes
-ChatGPT, Claude, and Codex.
+- stable canonical identity;
+- provider/source identity and source index;
+- event kind, role/actor, channel, and visibility;
+- explicit relationships such as call/result and parent/source links when evidenced;
+- ordered canonical content blocks;
+- provider metadata required for later interpretation.
 
-Expected adapter structure:
+Unknown source data must remain explicit/diagnosable rather than silently disappearing.
+
+## Provider adapters
+
+Adapters answer one question: **what does this provider-specific record mean?**
+
+They may construct canonical events and preserve provider metadata, but they do not own Markdown/HTML styling, host UI, playback, storage, browser acquisition, or consumer-specific rendering repair.
+
+Claude event construction is deliberately separated from traversal/correlation:
 
 ```text
-src/
-  adapters/
-    chatgpt.js
-    claude.js
-    codex.js
-    ...
+Claude provider records
+    |
+    v
+src/adapters/claude.js
+  record traversal + retained call correlation
+    |
+    v
+src/adapters/claude-events.js
+  canonical event/provenance construction
+    |
+    v
+src/adapters/claude-normalized.js
+  visible-text filtering + retained incremental wrapper
 ```
 
-Adapters answer: **what does this provider-specific record mean?**
+## Canonical projections
 
-They must preserve source identity and provider-specific metadata needed for
-future interpretation.
+Normalization and rendering are separate. Markdown, HTML, structured, speech, and navigation projections consume canonical semantics; they do not rediscover provider semantics.
 
-### 2. Canonical model
+Equivalent canonical semantics must render equivalently regardless of provider. Core owns structural presentation grouping; consumers own platform presentation, viewport policy, playback engines, and host UI.
 
-The canonical primitive is an ordered event stream/graph, not a User/Assistant
-pair.
+See `RENDERING.md` for renderer contracts and `INTERACTIVE_PROJECTIONS.md` for HTML units, word identity, provenance, navigation boundaries, and lookup.
 
-A canonical event needs enough information to express at least:
+## Retained sessions
 
-- stable canonical ID
-- source/provider
-- source record ID
-- event kind
-- role/actor
-- channel
-- visibility
-- ordering information
-- parent/child relationships
-- call/result relationships
-- branch/exchange relationships where available
-- normalized content blocks
-- provider-specific metadata/raw-source reference
+Long-lived consumers use `createCanonicalConversationSession()` rather than repeatedly normalizing an unchanged provider prefix.
 
-Expected event kinds include, but are not limited to:
+The provider-neutral session coordinator lives in `src/session/canonical-session.js`. Provider-specific state lives behind retained adapters:
 
-- message
-- commentary
-- reasoning_summary
-- tool_call
-- tool_result
-- subagent
-- system_context
-- attachment
-- image
-- artifact
-- citation
+- Claude correlation state: `src/adapters/claude.js` / `claude-normalized.js`;
+- Codex revision/rollback state: `src/session/codex-retained.js`.
 
-The schema must remain extensible. Encountering an unknown provider record type
-must not require silently discarding it.
-
-### 3. Content blocks
-
-Events should carry structured content blocks rather than a pre-rendered Markdown
-blob. Expected block types include:
-
-- text
-- code
-- citation
-- link
-- file
-- image
-- artifact
-- structured/tool data
-
-Blocks should retain source provenance/ranges where available. This is important
-for interactive consumers such as `AgentPanelSpeaker` and future
-`DownloadConversation` turn-reading functionality, which need stable mappings
-between source content, displayed content, spoken content, and highlighted
-content.
-
-Where practical, canonical blocks/projections should expose stable identifiers and
-ranges so consumers do not have to parse rendered Markdown or rediscover semantic
-boundaries independently.
-
-### 4. Derived structure
-
-Turns are derived from events.
-
-Turn derivation does not require User/Assistant alternation or a matching
-opposite-role turn. Consecutive User turns and consecutive Assistant turns are
-valid. A turn is preserved according to the semantics of its own events and the
-explicit derivation rules for content such as Assistant reasoning/commentary.
-
-Other derived relationships may include:
-
-- exchanges
-- branches
-- delegated/subagent trees
-- visible transcript projection
-- speakable/displayable projections
-
-Derived turns must be directly consumable by interactive applications. Consumers
-must be able to navigate or request an individual turn without reparsing Markdown
-or assuming an alternating speaker pattern.
-
-### 5. Shared renderers/projections
-
-Shared renderers consume canonical data. The first shared renderer is Markdown.
-
-The Markdown renderer owns all canonical serialization choices including:
-
-- Markdown escaping
-- HTML escaping
-- code-fence language selection
-- tool-call/tool-result formatting
-- commentary/reasoning presentation
-- citation HTML/links
-- attachment/image/artifact rendering
-- provider pointer/link resolution such as `sandbox:` and `sediment://`
-- whitespace normalization
-
-The same input must produce the same canonical Markdown output regardless of which
-consumer invokes the renderer.
-
-Additional projections may include:
-
-- plain/display text
-- speech/highlight projection
-- turn-navigation/read projection
-- canonical JSON interchange
-
-Speech/highlight and turn-reading projections may be shared by both
-`AgentPanelSpeaker` and `DownloadConversation`. The design must not assume that
-speech, highlighting, or interactive turn traversal belongs to only one consumer.
-
-### 6. Semantic projection styling
-
-Presentation styling is downstream of canonical conversation semantics.  Shared
-projections should first expose semantic components and style roles, then map those
-roles into output-format-specific presentation.
-
-For turn headings, initial semantic roles include:
-
-- `user-heading`
-- `assistant-heading`
-- `timestamp`
-- `record-number`
-- `turn-id`
-
-The core API must expose the role definitions and default mappings through a
-shared configuration surface.  The intended public API is a global/default
-projection-theme setup function, with per-render overrides where useful.  The exact
-function name is implementation detail, but the capability is part of the core API
-contract and must be documented when implemented.
-
-Provider adapters do not own style information.  Canonical events/turns do not
-contain ANSI colours or CSS classes merely for presentation.  Instead, a heading
-projection may expose semantic components such as:
-
-```text
-speaker       -> assistant-heading
-timestamp     -> timestamp
-record number -> record-number
-turn ID       -> turn-id
-```
-
-Output-specific mappings then apply those roles:
-
-- ANSI: User yellow, Assistant/provider heading green, timestamp cyan, record number dim,
-  and turn ID magenta/purple by default;
-- HTML: stable semantic CSS classes or equivalent structured style metadata;
-- plain text: no visual style while preserving component ordering/content;
-- other projections: consumer-appropriate mappings of the same roles.
-
-Consumers must be able to query/override the shared role mapping rather than
-copying role definitions.  In particular, `AgentPanelSpeaker` may consume either
-core-generated HTML with stable semantic classes or structured header components
-and map the roles into WebView2/CSS itself.
-
-This semantic-role layer is also where optional heading fields are composed.
-Showing timestamps, record numbers, and canonical `turn_id` values are independent
-projection options; enabling ANSI/HTML styling changes their presentation, not
-whether those fields exist.
-
-## Canonical HTML units for interactive virtualization
-
-Canonical HTML has an interactive unit projection in addition to the complete
-string form. Core renders both through the same HTML serializer. The initial
-unit policy returns complete presentation turns with stable source identity and
-an indivisible virtualization contract. This gives browser/WebView consumers a
-safe materialization boundary without exposing provider semantics or requiring
-them to parse canonical HTML to reconstruct grouping.
-
-A consumer owns viewport selection, spacers, measurement, scrolling, and DOM
-lifecycle. Core owns which rendered semantic subtree may be separated from
-another. Finer-grained cuts are an explicit future Core API/schema change, not a
-consumer heuristic.
-
-## Canonical interactive word identity
-
-Core owns one global interactive-word coordinate space for each canonical
-transcript projection. Word IDs are numeric, begin at 1, and increase monotonically
-and contiguously in canonical transcript order across all rendered turns/HTML
-units. They do not restart at turn, block, or virtualization boundaries.
-
-One Core word is one canonical interactive/spoken unit. The token grammar is part
-of the shared projection contract rather than a consumer implementation detail.
-For example, decimal/fractional values such as `13.234` and `35.4401545` are one
-word each. Inline presentation markup must not split one canonical word into
-multiple DOM identity elements. Core restructures its generated HTML as necessary
-so each canonical word is represented by exactly one word element, with any inline
-formatting that applies to part of that word nested inside that element.
-
-Canonical HTML serializes the numeric handle as the DOM identifier of that single
-word element:
-
-```html
-<span id="word-127">13.234</span>
-```
-
-For a word whose visible text crosses an inline formatting boundary, the formatting
-remains inside the one canonical word element. For example, a visible `turn_ids`
-formed by Markdown `turn_id**s**` is represented equivalently to:
-
-```html
-<span id="word-127">turn_id<strong>s</strong></span>
-```
-
-Public canonical HTML does not expose secondary `data-word-id` fragments for one
-word. Any temporary piece-level annotation used internally by Core is an
-implementation detail that must be collapsed before HTML leaves Core. Consumers
-must never repair inline markup or reconstruct one word from multiple DOM elements.
-
-`renderCanonicalHtmlUnits()` exposes the same ordered word records in each unit's
-`speech_words`; `projectCanonicalWords()` exposes the same identities as one
-transcript-wide list. These are two views of the same Core annotation pass, not
-independent tokenizers. The browser bundle must provide the same result as the ESM
-API.
-
-`locateCanonicalWord(events, wordId, options)` is the high-level lookup operation
-for consumers that hold a canonical numeric word handle but do not currently have
-its HTML materialized. It returns the authoritative canonical word record together
-with the complete Core-rendered unit containing that word. A valid positive word ID
-that is absent from the selected projection returns `null`. Invalid handles are
-rejected. Lookup is by numeric canonical identity only; visible text is never a
-lookup key or fallback.
-
-The lookup API intentionally does not expose a word-to-unit mapping table. Core may
-change its internal lookup implementation without changing consumer behaviour.
-Viewport selection, materialization-window size, scrolling, and neighbouring-unit
-policy remain consumer concerns; consumers ask Core for the semantic object they
-need rather than copying Core bookkeeping.
-
-Semantic group membership is structural and Core-owned. Existing presentation
-containers such as User Context, reasoning, code/fence content, and future semantic
-groups retain their stable container classes/structure; consumers must not infer
-those semantics from visible text or copy current policy onto every word. Group
-names attached to projected word records are descriptive metadata derived from
-those Core-owned ancestors, not a replacement for the structural HTML.
-
-Consumers may use a numeric word ID as a handle and ask Core higher-level lookup
-questions. Core retains the internal relationship from a word to its canonical
-turn/unit/block/provenance. Consumers must not rebuild a second word identity or
-word-to-unit map by tokenizing rendered HTML, searching duplicate text, or
-inventing fallback matching. Platform-specific playback, viewport policy, CSS,
-and interaction remain consumer-owned.
-
-## Canonical word provenance
-
-Canonical word identity includes Core-owned provenance in addition to the global
-numeric word handle.  Each `speech_words` record carries a `provenance` object with
-the owning presentation node, canonical event, canonical content block,
-block-relative canonical word index, and retained block source metadata.  The
-canonical `word_id` remains the identity used for seeking, highlighting,
-virtualization, and other cross-boundary operations; provenance describes what
-that word belongs to rather than creating another identity.
-
-Core derives this metadata from the same canonical presentation/block structures
-used by its renderer.  For leaves containing multiple blocks, Core builds the
-ordered per-block word provenance with the canonical word grammar and verifies it
-exactly against the words produced by the complete rendered unit before returning
-the projection.  A count or text mismatch is an invariant failure.  There is no
-fuzzy alignment, rendered-text search, or fallback association.
-
-`renderCanonicalHtmlUnits()` and `locateCanonicalWord()` expose the same
-provenance-bearing word record.  This lets consumers associate a word with their
-speech/display structures using canonical event/block identity without duplicating
-Core tokenization or maintaining a word-to-event/block map inferred from text.
-
-## Canonical word separators
-
-Canonical `speech_words` retain the exact visible whitespace immediately before
-each word in `separator_before`.  Core derives that separator from the same
-rendered visible stream and canonical token grammar that allocate the word ID;
-it is not reconstructed from source Markdown or inferred by a consumer.
-
-The first word of each canonical content block has an empty separator.  Subsequent
-separators preserve spaces and newlines inside that block exactly.  Because the
-canonical word grammar consumes every visible non-whitespace symbol, this retained
-separator is the complete inter-word information needed to reconstruct a block's
-visible word stream without introducing another tokenizer or text-alignment path.
-
-`separator_before` is transport metadata on the authoritative word record.  It
-does not create another identity, alter the one-element `word-N` DOM contract, or
-permit consumers to use text as an identity fallback.  `renderCanonicalHtmlUnits()`,
-`projectCanonicalWords()`, and `locateCanonicalWord()` expose the same enriched
-word records, and the browser bundle must remain equivalent to the ESM projection.
-
-## Canonical speech-navigation boundaries
-
-Canonical `speech_words` expose `navigation_boundary_before` on the first word of
-each structural speech-navigation unit.  The boundary is derived from the same
-Core-owned rendered structure used for canonical HTML and word identity.  Paragraphs,
-headings, list items, block quotes, preformatted blocks, and table rows therefore
-retain explicit navigation starts without requiring a consumer to parse HTML or
-infer structure from whitespace.
-
-A soft source newline inside one paragraph is not a structural navigation boundary,
-even though its exact newline remains available through `separator_before`.  The
-boundary flag is descriptive transport metadata on the existing numeric word
-identity; it neither allocates another identity nor changes the DOM word contract.
-Interactive consumers may use it to split platform-specific speech/navigation
-fragments while carrying the original canonical word IDs through unchanged.
-
-A speech/display consumer may use the separator stream to segment canonical words
-into platform-specific utterances while carrying the existing numeric word IDs
-through that transformation.  It must not retokenize rendered HTML, search for a
-matching subsequence, or reconstruct block-relative ordinals to recover identity.
-
-## Canonical ordered-list ordinal identity
-
-An ordered-list ordinal is a canonical interactive/spoken word.  It participates in
-the same transcript-global numeric `word_id` sequence as ordinary textual words;
-there is no separate prefix-token or structural-highlight identity space.
-
-The browser renders an ordered-list marker structurally, so the canonical DOM word
-element for the ordinal is the corresponding `<li>` itself.  For example:
-
-```html
-<li id="word-41" data-list-ordinal="3">
-  <span id="word-42">Third</span>
-  <span id="word-43">item</span>
-</li>
-```
-
-While word 41 is spoken, a consumer highlights `#word-41`, which naturally
-highlights the entire list item including its descendants.  When playback advances
-to word 42, ordinary word highlighting resumes.  Nested ordered-list ordinals put
-their own IDs on their own nested `<li>` elements, never on an ancestor.
-
-Core resolves the ordinal from ordered-list structure and exposes it through the
-same `speech_words`, `projectCanonicalWords()`, and `locateCanonicalWord()`
-contracts as every other canonical word.  Consumers do not parse Markdown, create
-hidden ordinal mapping elements, or invent a second association channel.
+See `RETAINED_SESSIONS.md` for lifecycle, append, diagnostics, and file ownership.
 
 ## Consumer boundaries
 
 ### DownloadConversation
 
-Owns browser-specific acquisition and recorder behaviour:
-
-- ChatGPT Conversation API capture
-- authentication/request-context capture
-- pagination/recovery
-- API/resource resolution for ChatGPT attachments/images where browser credentials
-  or browser-accessible resource context are required
-- Tampermonkey UI
-- File System Access API operations
-- recorder state/resume
-- browser-side playback/reading UI when implemented
-
-It should delegate provider interpretation and shared rendering/projection logic
-to `AIConversationCore` once the relevant canonical behaviour has been extracted.
-Its verified ChatGPT citation behaviour and image/resource-resolution capability
-remain migration evidence as described above.
-
-`DownloadConversation` is expected to gain the ability to read/navigate individual
-turns in the near future, with functionality conceptually similar to parts of
-`AgentPanelSpeaker`. Therefore the core must preserve enough structured content,
-turn identity, ordering, provenance, and source/display ranges for both consumers
-to share the same semantic interpretation rather than developing parallel
-implementations.
-
-The existing Tampermonkey form remains the target during this migration. A browser
-extension can be built later without changing core semantics.
+Owns browser acquisition/authentication, ChatGPT API capture, recovery/pagination, File System Access operations, userscript UI, and browser-specific playback/UI. It delegates provider semantics and canonical rendering/projection to Core.
 
 ### AI-transcript.py
 
-During migration, current `AI-transcript.py` behaviour is the default canonical
-reference for all providers it recognizes, subject to the explicitly documented,
-evidence-backed exceptions above. After each behaviour slice has been extracted
-and verified, Python should delegate that shared semantic/rendering behaviour to
-the JavaScript core rather than maintain a second implementation.
+Owns CLI, source/file discovery, JSONL I/O, filtering/session commands, and output routing. During migration it remains behavioural evidence, but shared semantics move into JavaScript Core.
 
-Python continues to own:
+### AgentPanelSpeaker.NET
 
-- CLI
-- file/source discovery
-- JSONL I/O
-- grep/filter/session commands
-- output routing
+Owns WinForms/WebView2, Windows speech synthesis, playback/timing/highlighting UI, viewport/materialization policy, and platform integration. It consumes Core identities/projections rather than reparsing Markdown/HTML.
 
-The eventual bridge should use a persistent Node.js worker or equivalent
-single-process mechanism rather than spawning one JavaScript process per record.
+### Multi-AI
 
-### AgentPanelSpeaker
-
-Owns:
-
-- C#/Windows application behaviour
-- WebView2
-- SAPI synthesis/playback
-- timing/highlighting UI
-
-It should consume canonical events/content or a core-generated speech/display
-projection, not parse Markdown to rediscover transcript semantics.
-
-Where `AgentPanelSpeaker` and `DownloadConversation` need equivalent turn-reading,
-speech, display, or highlighting semantics, those semantics belong in a shared
-core projection unless there is a demonstrated platform-specific reason to keep
-them separate.
+Owns orchestration/process/browser-worker concerns. Where it consumes conversation semantics, it must use the same Core contract rather than create another provider interpretation.
 
 ## Critical invariants
 
-1. **Lossless-enough normalization.** Provider-specific information needed for
-   current or future interpretation must not be discarded solely because it has
-   no current canonical field.
-2. **Arbitrary turn sequences are valid.** Available events and derived turns
-   remain valid regardless of the surrounding speaker-role sequence. User and
-   Assistant turns do not have to alternate, and no opposite-role counterpart is
-   required.
-3. **Ordering must preserve observed/source ordering unless actual evidence shows
-   that a provider requires a different rule.** Do not replace working
-   chronological association/grouping based on speculation.
-4. **Normalization and rendering are separate.** Provider semantics are resolved
-   before Markdown/speech/display serialization.
-5. **One canonical renderer per output format.** Consumers must not maintain
-   subtly different Markdown implementations.
-6. **No browser/application APIs in the core.** Platform-specific acquisition,
-   storage, UI, playback, and credential-bound resource resolution stay in
-   consumers.
-7. **Unknown data is explicit.** Unsupported/unknown records remain representable
-   and diagnosable rather than silently disappearing.
-8. **Stable provenance.** Canonical events/blocks should retain enough source
-   identity to trace rendered output back to originating provider records.
-9. **Interactive turn access is a core use case.** Canonical and derived data must
-   support individual-turn navigation/reading without reparsing rendered Markdown
-   or assuming User/Assistant alternation.
-10. **Shared interactive semantics stay shared.** If multiple consumers need the
-    same speech/display/highlight/turn-reading interpretation, implement that
-    semantic projection once in the core and keep platform-specific playback/UI in
-    the consumer.
-11. **AI-transcript.py is the default migration behaviour authority across
-    supported providers, with explicit evidence-backed exceptions.** Current
-    ChatGPT exceptions are citations and image/resource resolution. Any new
-    difference requires user review and an explicit recorded decision before it
-    can alter canonical behaviour. The final shared implementation remains
-    JavaScript.
-12. **Projection styling is semantic before it is format-specific.** Shared style
-    roles belong to the projection/API layer; ANSI colours, CSS classes, and host
-    theme choices are mappings of those roles rather than provider/canonical data.
-13. **One canonical word identity.** Interactive/spoken word IDs are global,
-    numeric, monotonically increasing, and shared by HTML, speech/highlight, and
-    navigation consumers. Each canonical word is one DOM word element in canonical
-    HTML; downstream consumers must not create parallel tokenization,
-    text-alignment, fragment-reassembly, or fallback identity paths.
-14. **Word-handle lookup remains a Core operation.** A consumer may hold a numeric
-    canonical word ID and request its authoritative word plus containing canonical
-    rendered unit. Consumers must not maintain a duplicate word-to-unit map or use
-    visible text as a lookup fallback.
+1. Provider-specific information needed for current/future interpretation is preserved.
+2. Arbitrary turn sequences are valid; User/Assistant alternation is not required.
+3. Source/observed ordering is preserved unless provider evidence proves another rule.
+4. Provider semantics are resolved before rendering.
+5. Each output format has one canonical Core renderer/projection path.
+6. Browser/application APIs remain outside Core.
+7. Unknown data remains explicit and diagnosable.
+8. Canonical events/blocks retain stable source provenance.
+9. Interactive turn access is a first-class Core use case.
+10. Semantics shared by multiple consumers belong in Core; platform mechanics remain downstream.
+11. Word identity is Core-owned and never reconstructed by consumer text matching.
+12. Generated browser output is derived deterministically from modular authoritative source.
+13. Substantive source modules and maintained docs stay below the repository size limit; legacy exceptions may not grow.
+14. Architecture/docs identify responsibility, boundaries, data flow, files, and tests so future changes can navigate by design rather than rereading the repository.
+
+## Documentation map
+
+- `NORMALIZATION_RULES.md` — canonical normalization rules.
+- `RENDERING.md` — presentation tree and rendering contracts.
+- `INTERACTIVE_PROJECTIONS.md` — HTML units, words, navigation, lookup.
+- `RETAINED_SESSIONS.md` — long-lived session/append architecture.
+- `BROWSER_BUNDLE.md` — deterministic browser artifact.
+- `TESTING.md` — verification requirements.
+- `BRANCHING.md` — branch ownership/integration rules.
+- `DECISIONS.md` — decision index with focused decision files.
+- `AI_AGENT_RULES.md` — mandatory repository workflow/invariants.
 
 ## Migration principle
 
-Do not rewrite functioning systems around an unproven new abstraction in one
-step. Extract one vertical slice at a time, verify it against the applicable
-canonical behaviour source and relevant consumer evidence, then continue.
-
-ChatGPT is the first provider being extracted, but its adapter must not define the
-core in a way that prevents Claude, Codex, or future providers from using the same
-canonical event/block/turn and renderer architecture.
-
-Architectural cleanup must not be bundled with unrelated behaviour changes.
+Extract one coherent vertical slice at a time, establish regression evidence, preserve verified behaviour, verify all affected Core and dependent-consumer paths, and then integrate the issue back into its declared parent. Architectural cleanup must not be hidden inside unrelated behavioural changes.

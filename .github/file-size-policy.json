@@ -1,0 +1,7 @@
+{
+  "max_lines": 500,
+  "legacy_max_lines": {
+    "src/adapters/session.js": 535,
+    "src/projections/word-identity.js": 641
+  }
+}

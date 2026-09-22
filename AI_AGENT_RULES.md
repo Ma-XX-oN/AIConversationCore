@@ -4,7 +4,7 @@ These rules are mandatory for AI-assisted work in this repository.
 
 ## Repository is authoritative
 
-Read `README.md`, `DESIGN.md`, `TESTING.md`, `ROADMAP.md`, `DECISIONS.md`, `NORMALIZATION_RULES.md`, and `BRANCHING.md` before making architectural or behavioural changes. Do not rely on chat history or memory when the repository documents the decision.
+Read `README.md`, `DESIGN.md`, `TESTING.md`, `ROADMAP.md`, `DECISIONS.md`, `NORMALIZATION_RULES.md`, and `BRANCHING.md` before making architectural or behavioural changes. Follow the focused documents cross-referenced by those indexes when the change touches that subsystem. Do not rely on chat history or memory when the repository documents the decision.
 
 ## Preserve proven behaviour
 
@@ -48,13 +48,15 @@ Batch related direct repository edits into as few meaningful commits as practica
 
 ## Source and documentation size
 
-Authoritative production source modules and maintained documentation files should remain below approximately 500 lines. Treat approximately 500 lines as the hard upper boundary for new files and newly split files, not as a target.
+Authoritative production source modules and maintained documentation files must remain at or below 500 logical lines. Treat 500 as a hard upper boundary for new files and newly split files, not as a target.
 
 Split earlier when another responsibility is being added. Split by responsibility and keep explicit cross-references; do not evade the limit by compressing formatting, removing documentation, or moving unrelated material into a catch-all file.
 
 Generated artifacts, fixed fixtures, and golden outputs are separate and may exceed the limit when their generated/evidence role requires it.
 
-Existing authoritative files already above the boundary are legacy debt: do not add substantive responsibility to them. Split the affected responsibility before extending that code/document. Repository policy should reject new oversized authoritative files and prevent legacy oversized files from growing or receiving unrelated responsibility.
+Existing authoritative files already above the boundary are explicit legacy debt only when listed in `.github/file-size-policy.json`. They may not grow beyond the recorded ceiling. Before adding substantive responsibility to such a file, split the affected responsibility first.
+
+`scripts/check-maintained-file-size.mjs` and the permanent CI gate enforce this rule. Do not weaken the gate or increase a legacy ceiling merely to make a change pass.
 
 ## Design/documentation map
 
@@ -87,6 +89,6 @@ Do not rely on ordinary `//` comments as the function-level documentation marker
 
 ## Documentation
 
-Architectural decisions and reversals belong in `DECISIONS.md`. Stable design and invariants belong in `DESIGN.md` and its focused cross-referenced design documents. Current migration sequencing/state belongs in `ROADMAP.md`. Test contracts belong in `TESTING.md`. Durable normalization/rendering-shape rules belong in `NORMALIZATION_RULES.md`. Branch/integration/release-lineage rules belong in `BRANCHING.md`.
+Architectural decisions and reversals belong in the focused decision files indexed by `DECISIONS.md`. Stable design and invariants belong in `DESIGN.md` and its focused cross-referenced design documents. Current migration sequencing/state belongs in `ROADMAP.md`. Test contracts belong in `TESTING.md`. Durable normalization/rendering-shape rules belong in `NORMALIZATION_RULES.md`. Branch/integration/release-lineage rules belong in `BRANCHING.md`.
 
 When a change alters one of those contracts, update the corresponding document in the same logical change.
