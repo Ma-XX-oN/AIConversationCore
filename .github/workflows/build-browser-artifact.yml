@@ -7,21 +7,37 @@ on:
       - 'issue-*'
       - 'feature/**'
     paths:
+      - '.github/workflows/**'
       - package.json
       - scripts/build-browser-bundle.mjs
       - 'src/**'
       - .github/workflows/build-browser-artifact.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: browser-artifact-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-artifact:
+  actions-policy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enforce permanent Actions policy
+        run: node --test tests/actions-policy.test.js
+
+  build-artifact:
+    needs: actions-policy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out exact branch head
         uses: actions/checkout@v4
