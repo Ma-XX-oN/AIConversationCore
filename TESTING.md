@@ -14,26 +14,40 @@ No migration step is accepted on visual inspection alone.
 
 ## Permanent CI gate
 
-The repository keeps a permanent GitHub Actions workflow at
-`.github/workflows/ci.yml`.  It runs on pushes to `main` and pull requests targeting
-`main` and is the standard clean-checkout regression gate for repository changes.
+The repository keeps a permanent request-gated GitHub Actions workflow at
+`.github/workflows/ci.yml`.  A push requests hosted validation by updating
+`.ci/run-ci-request` to the same issue-qualified version as the authoritative
+`package.json`; `workflow_dispatch` is also available.  `scripts/ci_contract.py`
+owns request validation, the repository-defined environment matrix, execution
+records, and result-tag publication.
 
-The CI workflow runs:
+Before the CI contract runs, the workflow executes
+`tests/actions-policy.test.js`.  That regression verifies the maintained Actions
+allow-list and repository-write restrictions.  The CI result-tag finalizer may
+receive `contents: write` only to publish the tested result tag through
+`python scripts/ci_contract.py finalize ... --tag --push`; it must not edit or
+commit project files directly.
 
-- `npm test`;
-- `python tests/validate-phase2-baseline.py`;
-- `python tests/validate-canonical-golden.py`;
-- `python tests/validate-claude-canonical-golden.py`;
-- `python tests/validate-codex-canonical-golden.py`; and
-- `python tests/validate-provider-example-regressions.py`.
+The repository also maintains `.github/workflows/build-browser-artifact.yml`
+for deterministic publication of `dist/aiconversationcore.chatgpt.browser.js`.
+That workflow is triggered by authoritative browser-build inputs and by changes
+to `.github/workflows/**`.  Its read-only policy job must pass before the
+write-capable artifact job may run, and the artifact job must reject any changed
+or staged path other than the generated browser bundle.
 
-Do not replace this maintained workflow with per-change self-deleting verification
-workflows.  When a new mandatory repository-wide regression validator is added,
-update both this section and `.github/workflows/ci.yml` in the same change.
+`npm test` discovers `tests/actions-policy.test.js` as part of the normal test
+suite.  When the permanent workflow set or any write-capable publication
+mechanism changes, update `docs/GITHUB-ACTIONS-POLICY.md`,
+`scripts/check-actions-policy.mjs`, and the policy regression together.
 
-A successful CI run is evidence that the checked-in repository passes this common
-gate on a clean GitHub-hosted environment.  It does not replace consumer-specific
-integration tests that require environments or capabilities unavailable in CI.
+Do not replace maintained workflows with per-change or self-deleting verification
+workflows.  Issue-specific apply, patch, repair, migration, instrumentation, and
+other one-shot workflows are prohibited.
+
+A successful CI result is evidence that the exact requested commit passed the
+repository-owned environment contract.  It does not replace consumer-specific
+integration tests that require environments or capabilities outside that
+contract.
 
 ## Test layers
 

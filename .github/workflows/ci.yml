@@ -26,6 +26,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enforce permanent Actions policy
+        run: node --test tests/actions-policy.test.js
       - name: Verify explicit CI request and clean checkout
         run: python scripts/ci_contract.py preflight
       - name: Record exact tested commit

@@ -28,6 +28,21 @@ Never update golden outputs merely to silence a failing test without first provi
 
 If complete verification cannot be performed, state exactly what was not verified and why.  Do not describe partially verified work as complete.
 
+## GitHub Actions discipline
+
+GitHub Actions are for repository validation and the narrowly documented generated-artifact/result-tag publication paths.  They must not be used as a remote mechanism for applying, repairing, migrating, instrumenting, or otherwise editing authoritative source, tests, or documentation.
+
+Follow `docs/GITHUB-ACTIONS-POLICY.md`.  In particular:
+
+- do not add issue-specific, temporary, patch, repair, migration, or other one-shot workflows;
+- keep the workflow set within the repository-enforced allow-list;
+- keep branch-policy and integration-validation workflows read-only;
+- allow repository writes only for the exact generated browser artifact and result-tag publication mechanisms documented by the policy;
+- run `tests/actions-policy.test.js` whenever workflow definitions or publication mechanics change; and
+- purge obsolete Actions run history separately when it clutters the GitHub Actions registry; deleting run history does not rewrite Git history.
+
+A workflow-policy violation must fail visibly.  Do not weaken the checker merely to make a one-off editing workflow possible.
+
 ## Truthfulness
 
 Distinguish facts established by tests or source inspection from assumptions, hypotheses, heuristics, and incomplete analysis.  Do not present an assumption as a proven conclusion.
