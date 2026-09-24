@@ -1,0 +1,68 @@
+name: Temporary #106 exact-candidate validation
+
+on:
+  push:
+    branches:
+      - tmp/issue-106-exact-validation
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out immutable #106 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 6269168cee1f0b49f8d535d4e71ba0acbd232547
+          fetch-depth: 0
+
+      - name: Assert exact candidate
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "6269168cee1f0b49f8d535d4e71ba0acbd232547"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check maintained source/document size
+        run: node scripts/check-maintained-file-size.mjs
+
+      - name: Check production JSDoc coverage
+        run: node scripts/check-jsdoc.mjs
+
+      - name: Verify browser bundle is deterministic and current
+        run: |
+          node scripts/build-browser-bundle.mjs
+          git diff --exit-code -- package-lock.json dist/aiconversationcore.chatgpt.browser.js
+
+      - name: Run core tests
+        run: npm test
+
+      - name: Run Phase 2 integrity gate
+        run: python tests/validate-phase2-baseline.py
+
+      - name: Validate canonical ChatGPT golden
+        run: python tests/validate-canonical-golden.py
+
+      - name: Validate canonical Claude golden
+        run: python tests/validate-claude-canonical-golden.py
+
+      - name: Validate canonical Codex golden
+        run: python tests/validate-codex-canonical-golden.py
+
+      - name: Validate provider example regressions
+        run: python tests/validate-provider-example-regressions.py
+
+      - name: Validate whitespace and patch integrity
+        run: git diff --check
