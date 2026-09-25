@@ -37,6 +37,33 @@ test('full Codex adapter preserves evidenced messages, reasoning, commentary and
     'I found the relevant section and I am applying a small patch.');
 });
 
+test('Codex source provenance preserves timestamps without inventing Turn IDs', async () => {
+  const records = await loadJsonl(fixtureUrl);
+  const events = adaptCodexRecords(records);
+  const expectedTimestamps = [
+    '2026-01-02T00:00:01.000Z',
+    '2026-01-02T00:00:02.000Z',
+    '2026-01-02T00:00:03.000Z',
+    '2026-01-02T00:00:04.000Z',
+    '2026-01-02T00:00:05.000Z',
+    '2026-01-02T00:00:06.000Z',
+    '2026-01-02T00:00:07.000Z',
+    '2026-01-02T00:00:08.000Z',
+    '2026-01-02T00:00:09.000Z',
+    '2026-01-02T00:00:10.000Z',
+    '2026-01-02T00:00:11.000Z'
+  ];
+
+  assert.deepEqual(events.map(event => event.source.timestamp), expectedTimestamps);
+  assert.deepEqual(events.map(event => event.source.turn_id), Array(11).fill(null));
+  for (const event of events) {
+    for (const block of event.blocks) {
+      assert.equal(block.source.timestamp, event.source.timestamp);
+      assert.equal(block.source.turn_id, null);
+    }
+  }
+});
+
 test('Codex apply_patch keeps explicit file-change semantics and call correlation', async () => {
   const records = await loadJsonl(fixtureUrl);
   const events = adaptCodexRecords(records);
