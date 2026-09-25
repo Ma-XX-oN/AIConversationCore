@@ -1,7 +1,4 @@
-import {
-  formatHeadingRecordNumber,
-  renderHeadingDebugComment
-} from './heading-metadata.js';
+import { formatHeadingRecordNumber, renderHeadingDebugComment } from './heading-metadata.js';
 
 /**
  * Escapes text for safe insertion into generated HTML fragments.
@@ -67,9 +64,8 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.timestamp != null) {
     fields.push(styled(`[${metadata.timestamp}]:`, 'timestamp'));
   }
-  const recordNumber = formatHeadingRecordNumber(metadata);
-  if (recordNumber != null) {
-    fields.push(styled(`${recordNumber}:`, 'record_number'));
+  if (metadata.record_number != null) {
+    fields.push(styled(`${formatHeadingRecordNumber(metadata)}:`, 'record_number'));
   }
   if (metadata.turn_id != null) {
     fields.push(String(metadata.turn_id));
