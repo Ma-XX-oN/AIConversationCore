@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "versionCommand": ["python", "scripts/workflow-version.py"],
+  "repository": {
+    "integrationBranch": "main",
+    "authoritativeRemote": "origin"
+  },
+  "environments": [
+    {
+      "id": "ubuntu-node22-python313",
+      "required": true,
+      "platform": "linux",
+      "capabilities": ["node-22", "python-3.13"],
+      "validationCommand": ["python", "scripts/repoworkflow-validate.py"]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "browser-bundle",
+      "generatorCommand": ["node", "scripts/build-browser-bundle.mjs"],
+      "verifierCommand": ["node", "--test", "tests/browser-bundle.test.js"],
+      "outputs": ["dist/aiconversationcore.chatgpt.browser.js"],
+      "committed": true,
+      "platform": "linux",
+      "capabilities": ["node-22"]
+    }
+  ]
+}
