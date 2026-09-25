@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { buildBrowserBundle } from './build-browser-bundle.mjs';
 import {
   assertBundleVersion,
+  assertPackageLockVersion,
   assertPackageVersion,
   buildReleasePlan,
   parseReleaseVersion
@@ -20,6 +21,8 @@ import {
 
 /** Authoritative package/version source. */
 const PACKAGE_PATH = resolve(RELEASE_ROOT, 'package.json');
+/** npm lock metadata that mirrors the authoritative package version. */
+const PACKAGE_LOCK_PATH = resolve(RELEASE_ROOT, 'package-lock.json');
 /** Committed deterministic browser artifact. */
 const BUNDLE_PATH = resolve(RELEASE_ROOT, 'dist/aiconversationcore.chatgpt.browser.js');
 
@@ -47,7 +50,9 @@ async function publishRelease(requestedVersion) {
   }
 
   const packageText = await readFile(PACKAGE_PATH, 'utf8');
+  const lockText = await readFile(PACKAGE_LOCK_PATH, 'utf8');
   assertPackageVersion(packageText, version);
+  assertPackageLockVersion(lockText, version);
 
   const bundle = await readFile(BUNDLE_PATH, 'utf8');
   assertBundleVersion(bundle, version);
@@ -77,7 +82,7 @@ async function publishRelease(requestedVersion) {
   console.log(`Published ${plan.tag} on merged main commit ${head}.`);
 }
 
-// Plain semantic release version supplied by the command line.
+/** Requested release version supplied on the command line. */
 const requestedVersion = process.argv[2];
 if (!requestedVersion || process.argv.length !== 3) {
   console.error('Usage: npm run release -- <version>');
