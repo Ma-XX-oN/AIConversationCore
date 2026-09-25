@@ -37,6 +37,7 @@ const browserArtifact = 'dist/aiconversationcore.chatgpt.browser.js';
  * Records one Actions-policy failure while allowing all checks to run.
  *
  * @param {string} message - Human-readable policy violation.
+ * @returns {void} Nothing.
  */
 function fail(message) {
   console.error(`Actions policy violation: ${message}`);
@@ -96,6 +97,7 @@ function isCanonicalRepoWorkflow(text) {
  * Validates either the canonical shared CI adapter or the legacy CI fixture.
  *
  * @param {string} text - Complete CI workflow YAML.
+ * @returns {void} Nothing.
  */
 function validateCi(text) {
   if (isCanonicalRepoWorkflow(text)) {
@@ -146,6 +148,7 @@ function validateCi(text) {
  * Validates the temporary legacy browser-artifact publisher during migration.
  *
  * @param {string} text - Complete browser-artifact workflow YAML.
+ * @returns {void} Nothing.
  */
 function validateBrowserArtifact(text) {
   if (!text.includes("- '.github/workflows/**'")) {
