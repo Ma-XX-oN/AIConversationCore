@@ -2,12 +2,15 @@
 // Source modules:
 // - src/adapters/chatgpt-base.js
 // - src/adapters/chatgpt.js
+// - src/projections/style.js
+// - src/projections/heading-metadata.js
 // - src/projections/markdown.js
+// - src/projections/markdown-heading.js
 // Version source: package.json
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.0.0-issue.106.5";
+const VERSION = "1.0.0-issue.106.7";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -1432,6 +1435,349 @@ function adaptChatGPTRecords(records) {
   });
 }
 
+/** Stable semantic style-role names exposed to projection consumers. */
+const STYLE_ROLES = Object.freeze({
+  USER_HEADING: 'user-heading',
+  ASSISTANT_HEADING: 'assistant-heading',
+  TIMESTAMP: 'timestamp',
+  RECORD_NUMBER: 'record-number',
+  TURN_ID: 'turn-id'
+});
+
+/** Immutable default projection theme used as the reset and merge baseline. */
+const DEFAULT_THEME = Object.freeze({
+  ansi: Object.freeze({
+    [STYLE_ROLES.USER_HEADING]: '\u001b[33m',
+    [STYLE_ROLES.ASSISTANT_HEADING]: '\u001b[32m',
+    [STYLE_ROLES.TIMESTAMP]: '\u001b[36m',
+    [STYLE_ROLES.RECORD_NUMBER]: '\u001b[2m',
+    [STYLE_ROLES.TURN_ID]: '\u001b[35m',
+    reset: '\u001b[0m'
+  }),
+  html: Object.freeze({
+    [STYLE_ROLES.USER_HEADING]: 'transcript-user-heading',
+    [STYLE_ROLES.ASSISTANT_HEADING]: 'transcript-assistant-heading',
+    [STYLE_ROLES.TIMESTAMP]: 'transcript-timestamp',
+    [STYLE_ROLES.RECORD_NUMBER]: 'transcript-record-number',
+    [STYLE_ROLES.TURN_ID]: 'transcript-turn-id'
+  })
+});
+
+/** Mutable process-wide projection theme produced by applying consumer overrides to the default. */
+let configuredTheme = cloneTheme(DEFAULT_THEME);
+
+/**
+ * Handles clone theme.
+ *
+ * @param {Object<string, *>} theme - The projection theme containing ANSI and HTML style-role mappings.
+ * @returns {Object<string, *>} A detached projection-theme object containing copied ANSI and HTML role maps.
+ */
+function cloneTheme(theme) {
+  return {
+    ansi: { ...(theme?.ansi ?? {}) },
+    html: { ...(theme?.html ?? {}) }
+  };
+}
+
+/**
+ * Handles merge theme.
+ *
+ * @param {Object<string, *>} base - The base projection theme on which overrides are applied.
+ * @param {Object<string, *>|null} overrides - Optional projection-theme role overrides to merge with the current/base theme.
+ * @returns {Object<string, *>} A new projection theme formed by overlaying the supplied role maps on the base theme.
+ */
+function mergeTheme(base, overrides) {
+  return {
+    ansi: { ...base.ansi, ...(overrides?.ansi ?? {}) },
+    html: { ...base.html, ...(overrides?.html ?? {}) }
+  };
+}
+
+/**
+ * Gets default projection theme.
+ *
+ * @returns {Object<string, *>} A detached copy of the currently configured projection theme.
+ */
+function getDefaultProjectionTheme() {
+  return cloneTheme(configuredTheme);
+}
+
+/**
+ * Configures projection theme.
+ *
+ * @param {Object<string, *>} overrides - Optional projection-theme role overrides to merge with the current/base theme.
+ * @returns {Object<string, *>} A detached copy of the newly configured projection theme.
+ */
+function configureProjectionTheme(overrides = {}) {
+  configuredTheme = mergeTheme(configuredTheme, overrides);
+  return getDefaultProjectionTheme();
+}
+
+/**
+ * Resets projection theme.
+ *
+ * @returns {Object<string, *>} A detached copy of the restored built-in projection theme.
+ */
+function resetProjectionTheme() {
+  configuredTheme = cloneTheme(DEFAULT_THEME);
+  return getDefaultProjectionTheme();
+}
+
+/**
+ * Handles resolve projection theme.
+ *
+ * @param {Object<string, *>|null} overrides - Optional projection-theme role overrides to merge with the current/base theme.
+ * @returns {Object<string, *>} A new effective projection theme combining the configured theme with optional per-call overrides.
+ */
+function resolveProjectionTheme(overrides = null) {
+  return mergeTheme(configuredTheme, overrides);
+}
+
+/** Default heading-presentation policy when a caller supplies no preference. */
+const DEFAULT_HEADING_POLICY = Object.freeze({
+  timestamp: false,
+  recordNumber: false,
+  turnId: false,
+  debugProvenance: false,
+  timeZone: null
+});
+
+/**
+ * Resolves the Core heading-presentation policy from public projection options.
+ *
+ * Callers select visibility/presentation preferences only. Semantic values such
+ * as timestamps, record numbers, source turn IDs, and debug identities are
+ * always derived by Core from canonical source provenance.
+ *
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {Object<string, *>} Normalized heading-presentation policy.
+ */
+function resolveHeadingPolicy(options = {}) {
+  const heading = options?.heading && typeof options.heading === 'object'
+    ? options.heading
+    : {};
+  return {
+    timestamp: heading.timestamp === true,
+    recordNumber: heading.recordNumber === true,
+    turnId: heading.turnId === true,
+    debugProvenance: heading.debugProvenance === true,
+    timeZone: typeof heading.timeZone === 'string' && heading.timeZone.trim()
+      ? heading.timeZone.trim()
+      : DEFAULT_HEADING_POLICY.timeZone
+  };
+}
+
+/**
+ * Converts one provider timestamp retained in canonical source provenance to a Date.
+ *
+ * Numeric provider timestamps are interpreted as Unix seconds unless their
+ * magnitude already indicates milliseconds. ISO/date strings are parsed using
+ * the platform Date implementation. Invalid or absent values yield null.
+ *
+ * @param {*} raw - Canonical source timestamp value.
+ * @returns {Date|null} Parsed source timestamp or null.
+ */
+function sourceDate(raw) {
+  if (raw == null || raw === '') return null;
+  let value = raw;
+  if (typeof raw === 'string' && /^-?\d+(?:\.\d+)?$/.test(raw.trim())) {
+    value = Number(raw);
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const milliseconds = Math.abs(value) < 1e12 ? value * 1000 : value;
+    const date = new Date(milliseconds);
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+/**
+ * Formats one source timestamp using Core's canonical transcript date grammar.
+ *
+ * The grammar is `YYYY-MM-DD HH:MM:SS`. A caller may select an IANA timezone as
+ * presentation policy, but never supplies the formatted timestamp itself.
+ *
+ * @param {*} raw - Canonical source timestamp value.
+ * @param {string|null} timeZone - Optional IANA timezone name.
+ * @returns {string|null} Canonical formatted timestamp or null.
+ */
+function formatHeadingTimestamp(raw, timeZone = null) {
+  const date = sourceDate(raw);
+  if (!date) return null;
+  const offsetMatch = typeof timeZone === 'string'
+    ? timeZone.match(/^([+-])(\d{2}):(\d{2})$/)
+    : null;
+  if (offsetMatch) {
+    const hours = Number(offsetMatch[2]);
+    const minutes = Number(offsetMatch[3]);
+    if (hours > 23 || minutes > 59) {
+      throw new RangeError(`Invalid fixed-offset timezone: ${timeZone}`);
+    }
+    const sign = offsetMatch[1] === '-' ? -1 : 1;
+    const offsetMinutes = sign * ((hours * 60) + minutes);
+    const shifted = new Date(date.getTime() + (offsetMinutes * 60_000));
+    return shifted.toISOString().slice(0, 19).replace('T', ' ');
+  }
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    ...(timeZone ? { timeZone } : {})
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date)
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, part.value])
+  );
+  if (!parts.year || !parts.month || !parts.day ||
+      !parts.hour || !parts.minute || !parts.second) return null;
+  return `${parts.year}-${parts.month}-${parts.day} ` +
+    `${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
+/**
+ * Returns canonical source provenance for heading projection from one event.
+ *
+ * @param {Object<string, *>} event - Canonical event.
+ * @returns {Object<string, *>} Canonical source provenance view.
+ */
+function headingSource(event) {
+  const source = event?.source && typeof event.source === 'object'
+    ? event.source
+    : {};
+  return {
+    provider: event?.provider ?? source.provider ?? null,
+    record_id: source.record_id ?? event?.source_record_id ?? null,
+    record_index: Number.isInteger(source.record_index)
+      ? source.record_index
+      : Number.isInteger(event?.source_index) ? event.source_index : null,
+    turn_id: source.turn_id ?? null,
+    timestamp: source.timestamp ?? source.create_time ?? source.update_time ?? null
+  };
+}
+
+/**
+ * Derives Core-owned semantic heading metadata for one canonical event.
+ *
+ * @param {Object<string, *>} event - Canonical event supplying source provenance.
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {Object<string, *>} Core-owned semantic heading metadata.
+ */
+function deriveHeadingMetadata(event, options = {}) {
+  const policy = resolveHeadingPolicy(options);
+  const source = headingSource(event);
+  const metadata = {};
+
+  if (policy.timestamp) {
+    const timestamp = formatHeadingTimestamp(source.timestamp, policy.timeZone);
+    if (timestamp) metadata.timestamp = timestamp;
+  }
+  if (policy.recordNumber && Number.isInteger(source.record_index)) {
+    metadata.record_number = source.record_index + 1;
+  }
+  if (policy.turnId && typeof source.turn_id === 'string' && source.turn_id) {
+    metadata.turn_id = source.turn_id;
+  }
+  if (policy.debugProvenance) {
+    const debug = {};
+    if (source.record_id != null) debug.record_id = source.record_id;
+    if (Number.isInteger(source.record_index)) debug.record_index = source.record_index;
+    if (Object.keys(debug).length) metadata.debug = debug;
+  }
+  return metadata;
+}
+
+/**
+ * Replaces caller semantic heading projection with Core-derived metadata.
+ *
+ * Generic projection fields remain intact, but callers cannot override semantic
+ * heading values or debug provenance by placing them in `projection`.
+ *
+ * @param {Object<string, *>} event - Canonical event to project.
+ * @param {Object<string, *>} options - Public Core projection options.
+ * @returns {Object<string, *>} Event clone carrying Core-owned heading metadata.
+ */
+function withCoreHeadingMetadata(event, options = {}) {
+  const projection = { ...(event?.projection ?? {}) };
+  delete projection.heading_metadata;
+  delete projection.debug_provenance;
+  projection.heading_metadata = deriveHeadingMetadata(event, options);
+
+  const related = projection.related_sources &&
+      typeof projection.related_sources === 'object'
+    ? { ...projection.related_sources }
+    : {};
+  for (const [name, source] of Object.entries(event?.relationships ?? {})) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    const relatedProjection = {
+      ...(related[name] && typeof related[name] === 'object' ? related[name] : {})
+    };
+    delete relatedProjection.heading_metadata;
+    delete relatedProjection.debug_provenance;
+    relatedProjection.heading_metadata = deriveHeadingMetadata({
+      provider: source.provider ?? event?.provider ?? null,
+      source_record_id: source.record_id ?? null,
+      source_index: Number.isInteger(source.record_index) ? source.record_index : null,
+      source
+    }, options);
+    related[name] = relatedProjection;
+  }
+  if (Object.keys(related).length) projection.related_sources = related;
+  return { ...event, projection };
+}
+
+/**
+ * Builds ordered semantic heading components from Core-owned metadata.
+ *
+ * @param {Object<string, *>} metadata - Core-owned heading metadata.
+ * @returns {Array<Object<string, string>>} Ordered visible metadata components.
+ */
+function headingMetadataComponents(metadata = {}) {
+  const components = [];
+  if (metadata.timestamp != null) {
+    components.push({
+      type: 'timestamp',
+      styleRole: STYLE_ROLES.TIMESTAMP,
+      text: `[${metadata.timestamp}]:`
+    });
+  }
+  if (metadata.record_number != null) {
+    components.push({
+      type: 'record-number',
+      styleRole: STYLE_ROLES.RECORD_NUMBER,
+      text: `${metadata.record_number}:`
+    });
+  }
+  if (metadata.turn_id != null) {
+    components.push({
+      type: 'turn-id',
+      styleRole: STYLE_ROLES.TURN_ID,
+      text: String(metadata.turn_id)
+    });
+  }
+  return components;
+}
+
+/**
+ * Renders Core-owned debug provenance as the canonical Markdown/HTML comment.
+ *
+ * @param {Object<string, *>} metadata - Core-owned heading metadata.
+ * @returns {string} Debug provenance comment or an empty string.
+ */
+function renderHeadingDebugComment(metadata = {}) {
+  const debug = metadata?.debug ?? {};
+  const fields = [];
+  if (debug.record_id != null) fields.push(`record_id=${debug.record_id}`);
+  if (Number.isInteger(debug.record_index)) fields.push(`record_index=${debug.record_index}`);
+  return fields.length ? `<!-- ${fields.join(' ')} -->` : '';
+}
+
 /**
  * Escapes text for safe insertion into generated HTML fragments.
  *
@@ -1471,10 +1817,10 @@ function providerLabel(provider) {
 
 
 /**
- * Renders the optional consumer-supplied metadata suffix for a transcript heading.
+ * Renders the optional metadata suffix for a transcript heading.
  *
  * @param {Object<string, *>} event - The canonical event whose source projection metadata is being used.
- * @returns {string} The consumer-specific ANSI-styled suffix metadata for the heading.
+ * @returns {string} The consumer-specific heading metadata suffix.
  */
 function projectedHeadingMetadataSuffix(event) {
   const projection = event?.projection ?? {};
@@ -1482,11 +1828,11 @@ function projectedHeadingMetadataSuffix(event) {
   const colors = projection.colors ?? {};
   const reset = colors.reset ?? '';
   /**
-   * Applies one configured ANSI colour to projection metadata text.
+   * Applies one configured ANSI colour to heading metadata.
    *
-   * @param {string} text - The metadata text to style.
-   * @param {string} colorName - The projection colour setting to apply.
-   * @returns {string} The styled text, or the original text when no colour is configured.
+   * @param {string} text - Metadata text to style.
+   * @param {string} colorName - Projection colour field name.
+   * @returns {string} Styled text, or the original text when no colour is configured.
    */
   const styled = (text, colorName) => {
     const color = colors[colorName] ?? '';
@@ -1499,19 +1845,18 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.record_number != null) {
     fields.push(styled(`${metadata.record_number}:`, 'record_number'));
   }
-  const turnId = metadata.turn_id ?? event?.source_record_id;
-  if (metadata.show_turn_id && turnId != null) {
-    fields.push(`turn_id=${turnId}`);
+  if (metadata.turn_id != null) {
+    fields.push(String(metadata.turn_id));
   }
   const metadataSuffix = fields.length ? ` ${fields.join(' ')}` : '';
   return `${metadataSuffix}${projection.heading_suffix ?? ''}`;
 }
 
 /**
- * Renders a transcript heading with optional consumer colour and metadata suffixes.
+ * Renders a transcript heading with optional consumer projection styling.
  *
- * @param {Object<string, *>} event - The canonical event whose projection metadata decorates the heading.
- * @param {string} label - The canonical Markdown heading label before consumer decoration.
+ * @param {Object<string, *>} event - The canonical event being headed.
+ * @param {string} label - Canonical Markdown heading label.
  * @returns {string} The consumer-decorated transcript heading.
  */
 function projectedHeading(event, label) {
@@ -1552,6 +1897,11 @@ function projectedThoughtHeading(event, number) {
  */
 function projectedComment(event, quoted = false) {
   const projection = event?.projection ?? {};
+  const coreComment = renderHeadingDebugComment(projection.heading_metadata ?? {});
+  if (coreComment) return quoted ? quoteMarkdown(coreComment) : coreComment;
+
+  // Internal compatibility for old direct-renderer tests. Public Core renderers
+  // strip this caller field and derive debug provenance from canonical source.
   if (!projection.debug_provenance) return '';
   const fields = [];
   if (event?.source_record_id != null) fields.push(`record_id=${event.source_record_id}`);
@@ -1996,13 +2346,44 @@ function renderChatGPTToolEvent(event, events) {
 }
 
 /**
+ * Renders one semantic User-context block as a blockquoted details disclosure.
+ *
+ * @param {Object<string, *>} block - Canonical User-context block.
+ * @returns {string} Blockquoted Markdown/HTML details fragment.
+ */
+function renderUserContextBlock(block) {
+  const summary = htmlEscape(block?.summary ?? '# Context from my IDE setup:');
+  const body = String(block?.text ?? '');
+  return quoteMarkdown(`<details><summary>${summary}</summary>\n\n${body}\n\n</details>`);
+}
+
+/**
  * Renders user.
+ *
+ * Semantic User context is presented before the actual prompt in a blockquoted
+ * details disclosure. The prompt remains outside that blockquote so consumers
+ * can assign context and prompt distinct User speech voices without reparsing
+ * provider-native text. User events without semantic context retain the existing
+ * fully-blockquoted rendering contract.
  *
  * @param {Object<string, *>} event - The canonical event being inspected, normalized, or rendered.
  * @returns {string} The complete User transcript section for the canonical event.
  */
 function renderUser(event) {
-  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
+  const blocks = Array.isArray(event?.blocks) ? event.blocks : [];
+  const contexts = blocks.filter(block => block?.type === 'user_context');
+  if (!contexts.length) {
+    return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${quoteMarkdown(renderMessageBlocks(event))}`);
+  }
+
+  const promptEvent = {
+    ...event,
+    blocks: blocks.filter(block => block?.type !== 'user_context')
+  };
+  const parts = contexts.map(renderUserContextBlock);
+  const prompt = renderMessageBlocks(promptEvent);
+  if (prompt) parts.push(prompt);
+  return projectedSection(event, `${projectedHeading(event, '## User')}\n\n${parts.join('\n\n')}`);
 }
 
 /**
@@ -2089,16 +2470,20 @@ function renderChatGPTAssistantSegment(segment, events) {
   }
   if (!body.length) return [];
   const headingEvent = segment[0];
-  // Consumer response-heading metadata may differ from the first activity event's own heading metadata.
-  const responseHeadingEvent = headingEvent?.projection?.response_heading_suffix != null
+  const finalMessageEvent = [...messages].reverse()[0] ?? null;
+  const semanticHeadingEvent = finalMessageEvent ?? headingEvent;
+  // Generic caller decoration remains compatible, but semantic metadata comes
+  // from the Core-selected final response event rather than an opaque suffix.
+  const responseHeadingSuffix = headingEvent?.projection?.response_heading_suffix;
+  const responseHeadingEvent = responseHeadingSuffix != null
     ? {
-        ...headingEvent,
+        ...semanticHeadingEvent,
         projection: {
-          ...headingEvent.projection,
-          heading_suffix: headingEvent.projection.response_heading_suffix
+          ...(semanticHeadingEvent?.projection ?? {}),
+          heading_suffix: responseHeadingSuffix
         }
       }
-    : headingEvent;
+    : semanticHeadingEvent;
   return [projectedSection(responseHeadingEvent, `${projectedHeading(responseHeadingEvent, '## ChatGPT')}\n\n${body.join('\n\n')}`)];
 }
 
@@ -2501,7 +2886,7 @@ function renderNotice(event) {
  * @param {Array<Object>} events - The ordered canonical events to process.
  * @returns {string} The complete canonical Markdown transcript projection.
  */
-function renderCanonicalMarkdown(events) {
+function renderBaseMarkdown(events) {
   if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
   const sections = [];
   // Per-render mutable numbering state for Codex question sections; it is not shared across render calls.
@@ -2538,6 +2923,23 @@ function renderCanonicalMarkdown(events) {
   }
   flushAssistant();
   return sections.join('\n\n') + '\n\n';
+}
+
+/**
+ * Renders canonical Markdown with Core-owned heading semantics.
+ *
+ * Callers select heading visibility and presentation policy only. Semantic
+ * heading values are derived from canonical source provenance before the
+ * established Markdown renderer is invoked.
+ *
+ * @param {Array<Object<string, *>>} events - Complete ordered canonical event inventory.
+ * @param {Object<string, *>} options - Public projection options.
+ * @returns {string} Canonical Markdown with Core-derived heading metadata.
+ */
+function renderCanonicalMarkdown(events, options = {}) {
+  if (!Array.isArray(events)) throw new TypeError('Canonical events must be an array.');
+  const projected = events.map(event => withCoreHeadingMetadata(event, options));
+  return renderBaseMarkdown(projected);
 }
 
   global.AIConversationCore = Object.freeze({
