@@ -44,11 +44,13 @@ const updated = session.project({ includeRolledBackTurns: false });
 
 ## Incremental append
 
-Codex sessions support append-only growth. `append(newRecords)` assigns the new records their absolute source indexes, normalizes only those records, and updates retained revision state that can affect earlier canonical interactions. The unchanged provider prefix is not passed through the provider adapter again.
+Codex and Claude sessions support append-only growth. `append(newRecords)` assigns the new records their absolute source indexes and normalizes only those records. The unchanged provider prefix is not passed through the provider adapter again.
 
-The retained revision tracker is an implementation detail. Downstream consumers see only canonical state and projection results and must not reproduce Codex rollback interpretation.
+Codex retains revision state that can affect earlier canonical interactions. Claude retains only the cross-record adapter state required by its existing semantics: tool-use ID/name correlation and Agent invocation metadata used by later tool results/subagent completions.
 
-Other providers currently reject incremental append instead of silently falling back to full renormalization. A future provider append implementation must preserve the same no-hidden-full-reparse contract.
+Those retained trackers are implementation details. Downstream consumers see only canonical state and projection results and must not reproduce provider-specific semantics.
+
+Providers without an explicit incremental implementation reject append instead of silently falling back to full renormalization. A future provider append implementation must preserve the same no-hidden-full-reparse contract.
 
 ## Diagnostics
 

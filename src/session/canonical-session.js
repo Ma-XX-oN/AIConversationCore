@@ -1,5 +1,8 @@
 import { adaptChatGPTRecords } from '../adapters/chatgpt.js';
-import { adaptClaudeRecords } from '../adapters/claude-normalized.js';
+import {
+  adaptClaudeRecords,
+  createClaudeIncrementalAdapter
+} from '../adapters/claude-normalized.js';
 import { adaptSpeechSessionRecords } from '../adapters/speech-session-normalized.js';
 import { renderCanonicalHtml } from '../projections/html-visibility.js';
 import { renderCanonicalMarkdown } from '../projections/markdown-visibility.js';
@@ -308,7 +311,12 @@ class CanonicalConversationSession {
     }
     this.provider = provider;
     this.records = [...records];
-    this._events = normalizeInitialEvents(provider, this.records);
+    this._claudeAdapter = provider === 'claude'
+      ? createClaudeIncrementalAdapter()
+      : null;
+    this._events = this._claudeAdapter
+      ? this._claudeAdapter.append(this.records, 0)
+      : normalizeInitialEvents(provider, this.records);
     this._tracker = provider === 'codex'
       ? new CodexRevisionTracker(this.records)
       : null;
@@ -375,9 +383,9 @@ class CanonicalConversationSession {
    * Appends provider records without rereading or renormalizing the unchanged
    * prefix of the session.
    *
-   * Codex append is currently supported because its live rollout is the consumer
-   * requiring retained revision-history updates. Other providers reject append
-   * rather than silently falling back to a full re-normalization.
+   * Codex and Claude append preserve provider-specific retained state. Other
+   * providers reject append rather than silently falling back to a full
+   * re-normalization.
    *
    * @param {Array<Object<string, *>>} records - Newly appended provider records.
    * @returns {void}
@@ -385,11 +393,20 @@ class CanonicalConversationSession {
   append(records) {
     if (!Array.isArray(records)) throw new TypeError('records must be an array.');
     if (!records.length) return;
+
+    const firstSourceIndex = this.records.length;
+    if (this.provider === 'claude' && this._claudeAdapter) {
+      const appendedEvents = this._claudeAdapter.append(records, firstSourceIndex);
+      this.records.push(...records);
+      this._events.push(...appendedEvents);
+      this._appendedRecordsProcessed += records.length;
+      return;
+    }
+
     if (this.provider !== 'codex' || !this._tracker) {
       throw new Error(`Incremental append is not implemented for provider: ${this.provider}`);
     }
 
-    const firstSourceIndex = this.records.length;
     const appendedEvents = normalizeAppendedCodexRecords(firstSourceIndex, records);
     records.forEach((record, offset) => {
       const sourceIndex = firstSourceIndex + offset;
