@@ -3,11 +3,11 @@
   "version": "1.0.0-issue.106.13",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "marked": "18.0.11"
+  },
   "scripts": {
     "build:browser": "node scripts/build-browser-bundle.mjs",
     "test": "node --test"
-  },
-  "dependencies": {
-    "marked": "18.0.11"
   }
 }
