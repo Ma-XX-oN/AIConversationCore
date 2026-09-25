@@ -25,7 +25,16 @@ export {
   renderTurnHeader
 } from './projections/turn-header.js';
 
-export { renderCanonicalMarkdown } from './projections/markdown.js';
+export {
+  deriveHeadingMetadata,
+  formatHeadingTimestamp,
+  headingMetadataComponents,
+  renderHeadingDebugComment,
+  resolveHeadingPolicy,
+  withCoreHeadingMetadata
+} from './projections/heading-metadata.js';
+
+export { renderCanonicalMarkdown } from './projections/markdown-heading.js';
 
 export { deriveTurns } from './derive/turns.js';
 export { adaptChatGPTRecords } from './adapters/chatgpt.js';
