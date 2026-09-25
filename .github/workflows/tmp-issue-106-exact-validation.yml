@@ -15,12 +15,12 @@ jobs:
       - name: Check out immutable #106 candidate
         uses: actions/checkout@v4
         with:
-          ref: 6269168cee1f0b49f8d535d4e71ba0acbd232547
+          ref: 063bc73eedf9a211d05a1916f8914857dcafd355
           fetch-depth: 0
 
       - name: Assert exact candidate
         shell: bash
-        run: test "$(git rev-parse HEAD)" = "6269168cee1f0b49f8d535d4e71ba0acbd232547"
+        run: test "$(git rev-parse HEAD)" = "063bc73eedf9a211d05a1916f8914857dcafd355"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
