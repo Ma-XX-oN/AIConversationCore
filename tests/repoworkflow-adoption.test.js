@@ -46,7 +46,7 @@ test('Core declares the preserved required environment and browser artifact to R
     }],
     artifacts: [{
       id: 'browser-bundle',
-      generatorCommand: ['node', 'scripts/build-browser-bundle.mjs'],
+      generatorCommand: ['python', 'scripts/repoworkflow-build-browser.py'],
       verifierCommand: ['node', '--test', 'tests/browser-bundle.test.js'],
       outputs: ['dist/aiconversationcore.chatgpt.browser.js'],
       committed: true,
@@ -54,6 +54,8 @@ test('Core declares the preserved required environment and browser artifact to R
       capabilities: ['node-22']
     }]
   });
+  await access(path.join(root, 'scripts/repoworkflow-build-browser.py'));
+  assert.match(await readText('.gitignore'), /^node_modules\/$/m);
 });
 
 test('Core uses the canonical RepoWorkflow GitHub adapter and repository-owned hooks', async () => {

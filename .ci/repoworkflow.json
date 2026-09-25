@@ -17,7 +17,7 @@
   "artifacts": [
     {
       "id": "browser-bundle",
-      "generatorCommand": ["node", "scripts/build-browser-bundle.mjs"],
+      "generatorCommand": ["python", "scripts/repoworkflow-build-browser.py"],
       "verifierCommand": ["node", "--test", "tests/browser-bundle.test.js"],
       "outputs": ["dist/aiconversationcore.chatgpt.browser.js"],
       "committed": true,
