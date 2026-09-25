@@ -26,7 +26,6 @@
     "_archive/**"
   ],
   "legacy_max_lines": {
-    "EXISTING_IMPLEMENTATIONS.md": 518,
     "src/adapters/chatgpt-base.js": 867,
     "src/adapters/chatgpt.js": 547,
     "src/adapters/codex.js": 580,
