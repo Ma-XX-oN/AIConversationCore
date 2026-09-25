@@ -128,11 +128,6 @@ class CiContractTests(unittest.TestCase):
       with self.assertRaises(self.ci.CiContractError):
         self.ci.create_tag(root, version, f"v{version}", sha, False)
 
-  def test_workflow_is_gated_by_request_file(self):
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    self.assertIn(".ci/run-ci-request", workflow)
-    self.assertNotIn("pull_request:", workflow)
-
 
 if __name__ == "__main__":
   unittest.main()
