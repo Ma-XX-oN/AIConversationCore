@@ -64,7 +64,7 @@ function multiExportModuleBody(text, {
 } = {}) {
   let result = text;
   for (const importLine of importLines) {
-    result = replaceOnce(result, `${importLine}\n\n`, '', `${importLine} import`);
+    result = replaceOnce(result, `${importLine}\n`, '', `${importLine} import`);
   }
   for (const name of exportedFunctions) {
     result = replaceOnce(

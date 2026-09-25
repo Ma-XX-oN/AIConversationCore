@@ -20,7 +20,9 @@ function source(record, sourceIndex) {
   return {
     provider: 'codex',
     record_id: null,
-    record_index: sourceIndex
+    record_index: sourceIndex,
+    turn_id: null,
+    timestamp: record?.timestamp ?? null
   };
 }
 
