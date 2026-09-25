@@ -9,6 +9,8 @@ const REQUIRED = [
   '*.jsonl text eol=lf',
   '*.md text eol=lf',
   '*.py text eol=lf',
+  '*.yml text eol=lf',
+  '*.yaml text eol=lf',
 ];
 
 test('repository enforces LF checkouts for Core text inputs', async () => {
