@@ -1,0 +1,29 @@
+name: Temporary stable release validation
+
+on:
+  push:
+    branches:
+      - tmp/issue-106-stable-release-validation
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install deterministic dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run complete Node suite
+        run: npm test
+      - name: Verify deterministic browser artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:browser
+          git diff --exit-code -- dist/aiconversationcore.chatgpt.browser.js
+          git diff --check
