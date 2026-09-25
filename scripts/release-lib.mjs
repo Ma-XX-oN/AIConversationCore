@@ -1,4 +1,6 @@
+/** Plain semantic-version form accepted for stable releases. */
 const RELEASE_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+/** Generated bundle VERSION declaration used to verify artifact identity. */
 const BUNDLE_VERSION_PATTERN = /\bconst VERSION = ("(?:\\.|[^"\\])*");/g;
 
 /**
@@ -46,6 +48,7 @@ export function buildPreparePlan(version, branch) {
     commitMessage: `release: prepare v${releaseVersion}`,
     stagedPaths: [
       'package.json',
+      'package-lock.json',
       'dist/aiconversationcore.chatgpt.browser.js'
     ],
     pushArgs: [
@@ -86,24 +89,27 @@ export function buildReleasePlan(version, branch) {
 }
 
 /**
- * Returns package.json text with exactly the requested release version.
+ * Returns JSON metadata text with exactly the requested version while preserving all other fields.
  *
- * @param {string} packageText - Existing package.json source text.
+ * @param {string} jsonText - Existing JSON object source text.
  * @param {string} version - Requested plain semantic release version.
- * @returns {string} Canonically formatted package.json text ending in one newline.
+ * @returns {string} Canonically formatted JSON text ending in one newline.
  */
-export function packageTextWithVersion(packageText, version) {
+export function jsonMetadataWithVersion(jsonText, version) {
   const releaseVersion = parseReleaseVersion(version);
-  const metadata = JSON.parse(packageText);
+  const metadata = JSON.parse(jsonText);
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
-    throw new Error('package.json must contain a JSON object.');
+    throw new Error('Version metadata must contain a JSON object.');
   }
   metadata.version = releaseVersion;
+  if (metadata.packages?.[''] && typeof metadata.packages[''] === 'object') {
+    metadata.packages[''].version = releaseVersion;
+  }
   return `${JSON.stringify(metadata, null, 2)}\n`;
 }
 
 /**
- * Requires package.json to report the requested release version.
+ * Requires package metadata to report the requested release version.
  *
  * @param {string} packageText - package.json source text.
  * @param {string} version - Requested plain semantic release version.
@@ -115,6 +121,26 @@ export function assertPackageVersion(packageText, version) {
   const actual = metadata?.version;
   if (actual !== releaseVersion) {
     throw new Error(`package version ${actual ?? '(missing)'} does not match release version ${releaseVersion}.`);
+  }
+}
+
+/**
+ * Requires package-lock metadata to report the requested release version at both root version fields.
+ *
+ * @param {string} lockText - package-lock.json source text.
+ * @param {string} version - Requested plain semantic release version.
+ * @returns {void}
+ */
+export function assertPackageLockVersion(lockText, version) {
+  const releaseVersion = parseReleaseVersion(version);
+  const metadata = JSON.parse(lockText);
+  const rootVersion = metadata?.version;
+  const packageVersion = metadata?.packages?.['']?.version;
+  if (rootVersion !== releaseVersion || packageVersion !== releaseVersion) {
+    throw new Error(
+      `package-lock versions ${rootVersion ?? '(missing)'}/${packageVersion ?? '(missing)'} ` +
+      `do not match release version ${releaseVersion}.`
+    );
   }
 }
 

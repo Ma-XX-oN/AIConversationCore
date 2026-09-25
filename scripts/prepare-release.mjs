@@ -3,8 +3,9 @@ import { resolve } from 'node:path';
 
 import {
   assertBundleVersion,
+  assertPackageLockVersion,
   buildPreparePlan,
-  packageTextWithVersion,
+  jsonMetadataWithVersion,
   parseReleaseVersion
 } from './release-lib.mjs';
 import {
@@ -20,6 +21,8 @@ import {
 
 /** Authoritative package/version source. */
 const PACKAGE_PATH = resolve(RELEASE_ROOT, 'package.json');
+/** npm lock metadata that mirrors the authoritative package version. */
+const PACKAGE_LOCK_PATH = resolve(RELEASE_ROOT, 'package-lock.json');
 /** Committed deterministic browser artifact. */
 const BUNDLE_PATH = resolve(RELEASE_ROOT, 'dist/aiconversationcore.chatgpt.browser.js');
 
@@ -38,7 +41,10 @@ async function prepareRelease(requestedVersion) {
   assertTagAbsent(`v${version}`);
 
   const packageText = await readFile(PACKAGE_PATH, 'utf8');
-  await writeFile(PACKAGE_PATH, packageTextWithVersion(packageText, version), 'utf8');
+  const lockText = await readFile(PACKAGE_LOCK_PATH, 'utf8');
+  await writeFile(PACKAGE_PATH, jsonMetadataWithVersion(packageText, version), 'utf8');
+  await writeFile(PACKAGE_LOCK_PATH, jsonMetadataWithVersion(lockText, version), 'utf8');
+  assertPackageLockVersion(await readFile(PACKAGE_LOCK_PATH, 'utf8'), version);
 
   run(process.execPath, ['scripts/build-browser-bundle.mjs']);
   const bundle = await readFile(BUNDLE_PATH, 'utf8');
@@ -62,6 +68,7 @@ async function prepareRelease(requestedVersion) {
   console.log(`npm run release -- ${version}`);
 }
 
+/** Requested release version supplied on the command line. */
 const requestedVersion = process.argv[2];
 if (!requestedVersion || process.argv.length !== 3) {
   console.error('Usage: npm run release:prepare -- <version>');
