@@ -1,6 +1,6 @@
 {
   "name": "aiconversationcore",
-  "version": "1.0.0-issue.106.4",
+  "version": "1.0.0-issue.106.5",
   "private": true,
   "type": "module",
   "scripts": {
