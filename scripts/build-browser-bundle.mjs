@@ -80,7 +80,7 @@ function multiExportModuleBody(text, exportedFunctions, importLines = []) {
 }
 
 /**
- * Removes one exact multiline ESM import from a module before classic bundling.
+ * Removes one exact ESM import from a module before classic bundling.
  *
  * @param {string} text - Complete module source.
  * @param {string} importBlock - Exact import declaration without trailing newline.
@@ -184,7 +184,7 @@ export async function buildBrowserBundle() {
   let markdownPrepared = markdownSource;
   markdownPrepared = removeImportBlock(
     markdownPrepared,
-    "import {\n  formatHeadingRecordNumber,\n  renderHeadingDebugComment\n} from './heading-metadata.js';",
+    "import { formatHeadingRecordNumber, renderHeadingDebugComment } from './heading-metadata.js';",
     './heading-metadata.js'
   );
   const markdownBase = moduleBody(markdownPrepared, {
