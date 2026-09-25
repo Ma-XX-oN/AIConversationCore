@@ -17,6 +17,7 @@
       "steps": [
         {"name": "Install deterministic Node dependencies", "kind": "setup", "command": ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"]},
         {"name": "CI contract regression", "kind": "validation", "command": ["python", "-m", "unittest", "tests/test_ci_contract.py"]},
+        {"name": "Maintained file-size policy", "kind": "validation", "command": ["node", "scripts/check-maintained-file-size.mjs"]},
         {"name": "Production JSDoc coverage", "kind": "validation", "command": ["node", "scripts/check-jsdoc.mjs"]},
         {"name": "Core test suite", "kind": "validation", "command": ["npm", "test"]},
         {"name": "Phase 2 integrity gate", "kind": "validation", "command": ["python", "tests/validate-phase2-baseline.py"]},

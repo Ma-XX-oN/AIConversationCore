@@ -1,0 +1,39 @@
+name: Branch policy
+
+on:
+  push:
+    branches:
+      - 'issue-*'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Fetch branch ancestry
+        shell: bash
+        run: git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce declared branch parent and dependency merges
+        env:
+          BRANCH_POLICY_BRANCH: ${{ github.head_ref || github.ref_name }}
+          BRANCH_POLICY_PR_BASE: ${{ github.base_ref }}
+          BRANCH_POLICY_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/check-branch-policy.mjs
