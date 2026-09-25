@@ -174,16 +174,20 @@ export async function buildBrowserBundle() {
       'resolveHeadingPolicy',
       'formatHeadingTimestamp',
       'deriveHeadingMetadata',
+      'formatHeadingRecordNumber',
       'withCoreHeadingMetadata',
       'headingMetadataComponents',
       'renderHeadingDebugComment'
     ],
     ["import { STYLE_ROLES } from './style.js';"]
   );
-  const markdownBase = moduleBody(markdownSource, {
-    importLines: [
-      "import { renderHeadingDebugComment } from './heading-metadata.js';"
-    ],
+  let markdownPrepared = markdownSource;
+  markdownPrepared = removeImportBlock(
+    markdownPrepared,
+    "import {\n  formatHeadingRecordNumber,\n  renderHeadingDebugComment\n} from './heading-metadata.js';",
+    './heading-metadata.js'
+  );
+  const markdownBase = moduleBody(markdownPrepared, {
     exportedFunction: 'renderCanonicalMarkdown',
     localFunction: 'renderBaseMarkdown'
   });
