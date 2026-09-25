@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.0.0-issue.106.18";
+const VERSION = "1.0.0-issue.106.19";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -2074,9 +2074,8 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.timestamp != null) {
     fields.push(styled(`[${metadata.timestamp}]:`, 'timestamp'));
   }
-  const recordNumber = formatHeadingRecordNumber(metadata);
-  if (recordNumber != null) {
-    fields.push(styled(`${recordNumber}:`, 'record_number'));
+  if (metadata.record_number != null) {
+    fields.push(styled(`${formatHeadingRecordNumber(metadata)}:`, 'record_number'));
   }
   if (metadata.turn_id != null) {
     fields.push(String(metadata.turn_id));
