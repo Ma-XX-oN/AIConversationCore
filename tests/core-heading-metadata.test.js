@@ -124,3 +124,44 @@ test('canonical HTML renders Core-owned heading metadata with semantic classes',
   assert.match(html, /<!-- record_id=user-1 record_index=0 -->/);
   assert.match(html, /<!-- record_id=final-1 record_index=1 -->/);
 });
+
+test('record-number width is presentation policy while Core retains numeric source ownership', () => {
+  const events = adaptChatGPTRecords([
+    record('user-1', 'user', 1789318790, 'Question'),
+    record('final-1', 'assistant', 1789318805, 'Answer', 'final', true)
+  ]);
+  const options = {
+    heading: {
+      recordNumber: true,
+      recordNumberWidth: 2
+    }
+  };
+
+  const markdown = renderCanonicalMarkdown(events, options);
+  assert.match(markdown, /^## User  1:$/m);
+  assert.match(markdown, /^## ChatGPT  2:$/m);
+
+  const html = renderCanonicalHtml(events, options);
+  assert.match(html, /transcript-record-number[^>]*> 1:<\/span>/);
+  assert.match(html, /transcript-record-number[^>]*> 2:<\/span>/);
+
+  const presentation = buildCanonicalPresentation(events, options);
+  assert.equal(presentation.turns[0].heading_metadata.record_number, 1);
+  assert.equal(presentation.turns[1].heading_metadata.record_number, 2);
+  assert.equal(presentation.turns[0].heading_metadata.record_number_width, 2);
+  assert.equal(presentation.turns[1].heading_metadata.record_number_width, 2);
+});
+
+test('record numbers remain unpadded when no width policy is supplied', () => {
+  const events = adaptChatGPTRecords([
+    record('user-1', 'user', 1789318790, 'Question'),
+    record('final-1', 'assistant', 1789318805, 'Answer', 'final', true)
+  ]);
+
+  const markdown = renderCanonicalMarkdown(events, {
+    heading: { recordNumber: true }
+  });
+  assert.match(markdown, /^## User 1:$/m);
+  assert.match(markdown, /^## ChatGPT 2:$/m);
+  assert.doesNotMatch(markdown, /^## User  1:$/m);
+});
