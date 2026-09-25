@@ -4,6 +4,7 @@ import { STYLE_ROLES } from './style.js';
 const DEFAULT_HEADING_POLICY = Object.freeze({
   timestamp: false,
   recordNumber: false,
+  recordNumberWidth: null,
   turnId: false,
   debugProvenance: false,
   timeZone: null
@@ -26,6 +27,10 @@ export function resolveHeadingPolicy(options = {}) {
   return {
     timestamp: heading.timestamp === true,
     recordNumber: heading.recordNumber === true,
+    recordNumberWidth: Number.isInteger(heading.recordNumberWidth) &&
+        heading.recordNumberWidth > 0
+      ? heading.recordNumberWidth
+      : DEFAULT_HEADING_POLICY.recordNumberWidth,
     turnId: heading.turnId === true,
     debugProvenance: heading.debugProvenance === true,
     timeZone: typeof heading.timeZone === 'string' && heading.timeZone.trim()
@@ -147,6 +152,9 @@ export function deriveHeadingMetadata(event, options = {}) {
   }
   if (policy.recordNumber && Number.isInteger(source.record_index)) {
     metadata.record_number = source.record_index + 1;
+    if (policy.recordNumberWidth != null) {
+      metadata.record_number_width = policy.recordNumberWidth;
+    }
   }
   if (policy.turnId && typeof source.turn_id === 'string' && source.turn_id) {
     metadata.turn_id = source.turn_id;
@@ -158,6 +166,26 @@ export function deriveHeadingMetadata(event, options = {}) {
     if (Object.keys(debug).length) metadata.debug = debug;
   }
   return metadata;
+}
+
+/**
+ * Formats the Core-derived record number using optional presentation width.
+ *
+ * The numeric record number remains authoritative in `record_number`. Width is
+ * presentation policy only and pads with leading spaces without truncating a
+ * value that is already wider than the requested field.
+ *
+ * @param {Object<string, *>} metadata - Core-owned heading metadata.
+ * @returns {string|null} Display record number, or null when absent.
+ */
+export function formatHeadingRecordNumber(metadata = {}) {
+  if (metadata.record_number == null) return null;
+  const text = String(metadata.record_number);
+  const width = Number.isInteger(metadata.record_number_width) &&
+      metadata.record_number_width > 0
+    ? metadata.record_number_width
+    : 0;
+  return width ? text.padStart(width, ' ') : text;
 }
 
 /**
@@ -214,11 +242,12 @@ export function headingMetadataComponents(metadata = {}) {
       text: `[${metadata.timestamp}]:`
     });
   }
-  if (metadata.record_number != null) {
+  const recordNumber = formatHeadingRecordNumber(metadata);
+  if (recordNumber != null) {
     components.push({
       type: 'record-number',
       styleRole: STYLE_ROLES.RECORD_NUMBER,
-      text: `${metadata.record_number}:`
+      text: `${recordNumber}:`
     });
   }
   if (metadata.turn_id != null) {
