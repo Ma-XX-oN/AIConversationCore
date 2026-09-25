@@ -1914,7 +1914,7 @@ function deriveHeadingMetadata(event, options = {}) {
  * @param {Object<string, *>} metadata - Core-owned heading metadata.
  * @returns {string|null} Display record number, or null when absent.
  */
-export function formatHeadingRecordNumber(metadata = {}) {
+function formatHeadingRecordNumber(metadata = {}) {
   if (metadata.record_number == null) return null;
   const text = String(metadata.record_number);
   const width = Number.isInteger(metadata.record_number_width) &&
@@ -2074,8 +2074,9 @@ function projectedHeadingMetadataSuffix(event) {
   if (metadata.timestamp != null) {
     fields.push(styled(`[${metadata.timestamp}]:`, 'timestamp'));
   }
-  if (metadata.record_number != null) {
-    fields.push(styled(`${metadata.record_number}:`, 'record_number'));
+  const recordNumber = formatHeadingRecordNumber(metadata);
+  if (recordNumber != null) {
+    fields.push(styled(`${recordNumber}:`, 'record_number'));
   }
   if (metadata.turn_id != null) {
     fields.push(String(metadata.turn_id));
