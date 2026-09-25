@@ -62,6 +62,7 @@ async function prepareRelease(requestedVersion) {
   console.log(`npm run release -- ${version}`);
 }
 
+// Plain semantic release version supplied by the command line.
 const requestedVersion = process.argv[2];
 if (!requestedVersion || process.argv.length !== 3) {
   console.error('Usage: npm run release:prepare -- <version>');

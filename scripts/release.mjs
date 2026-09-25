@@ -77,6 +77,7 @@ async function publishRelease(requestedVersion) {
   console.log(`Published ${plan.tag} on merged main commit ${head}.`);
 }
 
+// Plain semantic release version supplied by the command line.
 const requestedVersion = process.argv[2];
 if (!requestedVersion || process.argv.length !== 3) {
   console.error('Usage: npm run release -- <version>');

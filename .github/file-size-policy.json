@@ -1,6 +1,32 @@
 {
+  "schema": 1,
   "max_lines": 500,
+  "include": [
+    "*.md",
+    "*.js",
+    "*.mjs",
+    "*.py",
+    "*.json",
+    "*.yml",
+    "*.yaml",
+    "src/**",
+    "scripts/**",
+    "tests/**",
+    "docs/**",
+    ".github/**"
+  ],
+  "exclude": [
+    "dist/**",
+    "package-lock.json",
+    "testdata/**",
+    "fixtures/**",
+    "docs/sample-current/**",
+    "docs/schemas/**",
+    "reports/**",
+    "_archive/**"
+  ],
   "legacy_max_lines": {
+    "EXISTING_IMPLEMENTATIONS.md": 518,
     "src/adapters/chatgpt-base.js": 867,
     "src/adapters/chatgpt.js": 547,
     "src/adapters/codex.js": 580,

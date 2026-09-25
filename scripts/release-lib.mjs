@@ -1,4 +1,6 @@
+// Plain semantic version accepted for stable releases.
 const RELEASE_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+// Browser-bundle VERSION declaration used for release verification.
 const BUNDLE_VERSION_PATTERN = /\bconst VERSION = ("(?:\\.|[^"\\])*");/g;
 
 /**
