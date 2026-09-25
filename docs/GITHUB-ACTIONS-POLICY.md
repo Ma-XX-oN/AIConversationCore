@@ -1,61 +1,30 @@
 # GitHub Actions Policy
 
-GitHub Actions in AIConversationCore exist to validate repository state and to
-publish narrowly defined generated artifacts or immutable result tags.  They are
-not a remote editor for production source, tests, or documentation.
+GitHub Actions in AIConversationCore exist to execute the pinned RepoWorkflow lifecycle. They are not a remote editor for production source, tests, or documentation.
 
 ## Permanent workflow set
 
-Maintained repository lines may contain only these workflow paths:
+The maintained repository contains exactly one workflow:
 
-- `.github/workflows/ci.yml` — repository validation and result-tag publication.
-- `.github/workflows/build-browser-artifact.yml` — deterministic publication of
-  `dist/aiconversationcore.chatgpt.browser.js` only.
-- `.github/workflows/branch-policy.yml` — read-only branch/dependency validation.
-- `.github/workflows/phase8-validation.yml` — read-only integration validation.
+- `.github/workflows/ci.yml` — the byte-for-byte canonical adapter from the pinned `RepoWorkflow/templates/github/ci.yml`.
 
-`ci.yml` is required.  The other workflows are optional on lineages where their
-specific responsibility exists.
+Additional workflow files are prohibited in steady state. RepoWorkflow's repository-policy gate enforces that invariant before validation or publication.
 
-Issue-specific, temporary, migration, repair, patch, instrumentation, apply, or
-other one-shot workflows are prohibited.  Development changes must be made
-through a normal checked-out working tree or the GitHub repository API/connector,
-not by an Action that rewrites and commits project files.
+## Repository writes
 
-## Repository-write exceptions
+Repository write permission is available only inside the canonical RepoWorkflow adapter for two narrow publication boundaries:
 
-Repository write permission is restricted to two mechanisms:
+1. committing and pushing a declared deterministic generated artifact after its generator and independent verifier pass; and
+2. publishing an immutable development result tag or stable release tag after required result aggregation succeeds.
 
-1. `ci.yml` may publish the tested result tag only through
-   `python scripts/ci_contract.py finalize ... --tag --push`.  It must not run
-   direct `git add`, `git commit`, or `git push` commands.
-2. `build-browser-artifact.yml` may rebuild, stage, commit, and push only
-   `dist/aiconversationcore.chatgpt.browser.js`.  The workflow must reject any
-   other working-tree mutation and verify that the staged path is exactly that
-   generated artifact before committing.
-
-The browser-artifact workflow defaults to read-only permission.  Its policy job
-is read-only, and only the artifact-publication job receives `contents: write`
-after the policy job succeeds.
+Core source, tests, and documentation are never edited by Actions. The committed browser bundle is the only declared generated artifact and its output path is allow-listed in `.ci/repoworkflow.json`.
 
 ## Enforcement
 
-`scripts/check-actions-policy.mjs` enforces the workflow allow-list and the
-write-path restrictions.  `tests/actions-policy.test.js` provides positive and
-negative regression coverage against both synthetic counterexamples and the
-actual checked-out workflow set.
+The pinned RepoWorkflow engine enforces the exact workflow set, canonical adapter bytes, branch/dependency policy, explicit development request semantics, artifact output boundaries, exact candidate identity, required result completeness, and immutable terminal tags.
 
-The browser-artifact workflow is triggered by changes under
-`.github/workflows/**` and runs the policy regression before its write-capable
-job.  The request-gated CI path also runs the policy regression before
-validation.  `npm test` discovers the policy regression as part of the normal
-repository test suite.
+`tests/repoworkflow-adoption.test.js` independently asserts the RepoWorkflow gitlink, Core configuration, canonical adapter identity, single-workflow steady state, and absence of the superseded Core-local generic CI engines and publishers.
 
-An in-repository check cannot prevent GitHub from registering or scheduling a
-new unauthorized workflow from the same commit before another workflow reports
-the policy failure.  The repository guard therefore makes the violation visible
-and blocks the maintained write paths, while review/ruleset controls remain the
-only way to preclude that first scheduling event entirely.
+Repository-specific validation remains owned by Core through `scripts/repoworkflow-validate.py`. The deterministic browser build remains owned by Core through `scripts/repoworkflow-build-browser.py` and is independently verified by `tests/browser-bundle.test.js`.
 
-Historical workflow runs are separate GitHub Actions metadata.  Purging obsolete
-run history does not rewrite Git history or change commit SHAs.
+Historical workflow runs are GitHub Actions metadata only. Removing superseded workflow definitions from the repository does not rewrite Git history or historical run records.

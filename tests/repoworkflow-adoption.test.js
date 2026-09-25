@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,10 @@ async function readText(relativePath) {
 
 async function readJson(relativePath) {
   return JSON.parse(await readText(relativePath));
+}
+
+async function assertMissing(relativePath) {
+  await assert.rejects(access(path.join(root, relativePath)));
 }
 
 test('RepoWorkflow is pinned as the released v0.1.0 submodule', async () => {
@@ -58,10 +62,37 @@ test('Core declares the preserved required environment and browser artifact to R
   assert.match(await readText('.gitignore'), /^node_modules\/$/m);
 });
 
-test('Core uses the canonical RepoWorkflow GitHub adapter and repository-owned hooks', async () => {
+test('Core uses only the canonical RepoWorkflow GitHub adapter', async () => {
   await access(path.join(root, 'scripts/workflow-version.py'));
   await access(path.join(root, 'scripts/repoworkflow-validate.py'));
   const actual = await readText('.github/workflows/ci.yml');
   const canonical = await readText('RepoWorkflow/templates/github/ci.yml');
   assert.equal(actual, canonical);
+  assert.deepEqual((await readdir(path.join(root, '.github', 'workflows'))).sort(), ['ci.yml']);
+  assert.deepEqual(await readJson('.ci/github.json'), {
+    schema: 1,
+    prepareRunner: 'ubuntu-latest',
+    runners: {
+      'ubuntu-node22-python313': 'ubuntu-latest'
+    }
+  });
+});
+
+test('superseded generic Core CI machinery is absent', async () => {
+  for (const relativePath of [
+    '.ci/ci-config.json',
+    '.ci/test-matrix.json',
+    '.github/branch-policy.json',
+    '.github/workflows/branch-policy.yml',
+    '.github/workflows/build-browser-artifact.yml',
+    'scripts/branch-policy-lib.mjs',
+    'scripts/check-actions-policy.mjs',
+    'scripts/check-branch-policy.mjs',
+    'scripts/ci_contract.py',
+    'tests/actions-policy.test.js',
+    'tests/branch-policy.test.js',
+    'tests/test_ci_contract.py'
+  ]) {
+    await assertMissing(relativePath);
+  }
 });

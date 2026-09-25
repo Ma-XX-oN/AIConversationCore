@@ -26,7 +26,6 @@ def run(command: list[str]) -> int:
 def main() -> int:
   commands = [
     ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
-    [sys.executable, "-m", "unittest", "tests/test_ci_contract.py"],
     ["node", "scripts/check-maintained-file-size.mjs"],
     ["node", "scripts/check-jsdoc.mjs"],
     ["npm", "test"],
