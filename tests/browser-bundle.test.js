@@ -163,3 +163,36 @@ test('generated browser bundle matches ESM Core-owned heading metadata', async (
   assert.match(expectedHtml, /transcript-turn-id/);
   assert.doesNotMatch(expectedHtml, />turn_id=/);
 });
+
+test('generated browser bundle matches ESM record-number width presentation policy', async () => {
+  const records = await loadJsonl(fixtureUrl);
+  const bundle = await buildBrowserBundle();
+  const context = vm.createContext({ URL });
+  vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
+
+  const options = {
+    heading: {
+      recordNumber: true,
+      recordNumberWidth: 3
+    }
+  };
+  const esmEvents = adaptChatGPTRecords(records);
+  const browserEvents = context.AIConversationCore.adaptChatGPTRecords(plain(records));
+  const expectedMarkdown = renderCanonicalMarkdown(esmEvents, options);
+  const actualMarkdown = context.AIConversationCore.renderCanonicalMarkdown(
+    browserEvents,
+    plain(options)
+  );
+  const expectedHtml = renderCanonicalHtml(esmEvents, options);
+  const actualHtml = context.AIConversationCore.renderCanonicalHtml(
+    browserEvents,
+    plain(options)
+  );
+
+  assert.equal(actualMarkdown, expectedMarkdown);
+  assert.equal(actualHtml, expectedHtml);
+  assert.match(expectedMarkdown, /^## User   2:$/m);
+  assert.match(expectedMarkdown, /^## ChatGPT  10:$/m);
+  assert.match(expectedHtml, /transcript-record-number[^>]*>  2:<\/span>/);
+  assert.match(expectedHtml, /transcript-record-number[^>]*> 10:<\/span>/);
+});
