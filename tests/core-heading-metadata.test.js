@@ -141,9 +141,15 @@ test('record-number width is presentation policy while Core retains numeric sour
   assert.match(markdown, /^## User  1:$/m);
   assert.match(markdown, /^## ChatGPT  2:$/m);
 
+  const html = renderCanonicalHtml(events, options);
+  assert.match(html, /transcript-record-number[^>]*> 1:<\/span>/);
+  assert.match(html, /transcript-record-number[^>]*> 2:<\/span>/);
+
   const presentation = buildCanonicalPresentation(events, options);
   assert.equal(presentation.turns[0].heading_metadata.record_number, 1);
   assert.equal(presentation.turns[1].heading_metadata.record_number, 2);
+  assert.equal(presentation.turns[0].heading_metadata.record_number_width, 2);
+  assert.equal(presentation.turns[1].heading_metadata.record_number_width, 2);
 });
 
 test('record numbers remain unpadded when no width policy is supplied', () => {
