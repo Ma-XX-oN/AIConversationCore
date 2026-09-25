@@ -1,0 +1,27 @@
+name: Temporary #106 record-number width GREEN
+
+on:
+  push:
+    branches:
+      - tmp/issue-106-record-width-green
+
+permissions:
+  contents: read
+
+jobs:
+  focused-green:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out immutable GREEN candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 59994f844b8a8f2aa603eeb7ddf1003f14fe1d3b
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Assert immutable GREEN candidate
+        run: test "$(git rev-parse HEAD)" = "59994f844b8a8f2aa603eeb7ddf1003f14fe1d3b"
+      - name: Run focused heading regression
+        run: node --test tests/core-heading-metadata.test.js
