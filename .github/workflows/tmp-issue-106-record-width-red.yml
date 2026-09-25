@@ -1,0 +1,27 @@
+name: Temporary #106 record-number width RED
+
+on:
+  push:
+    branches:
+      - tmp/issue-106-record-width-red
+
+permissions:
+  contents: read
+
+jobs:
+  focused-red:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out immutable RED candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 86c5e4e884c73f6b7c703c95c08dd5ec2dd80147
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Assert immutable RED candidate
+        run: test "$(git rev-parse HEAD)" = "86c5e4e884c73f6b7c703c95c08dd5ec2dd80147"
+      - name: Run focused heading regression
+        run: node --test tests/core-heading-metadata.test.js
