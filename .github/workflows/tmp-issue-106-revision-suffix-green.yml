@@ -1,0 +1,33 @@
+name: Temporary #106 revision-suffix GREEN
+
+on:
+  push:
+    branches:
+      - tmp/issue-106-revision-suffix-green
+
+permissions:
+  contents: read
+
+jobs:
+  focused-green:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out immutable GREEN candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 2ee39fde4118da4c7a4742a1c1d50067ba4af262
+          fetch-depth: 0
+
+      - name: Assert immutable GREEN candidate
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "2ee39fde4118da4c7a4742a1c1d50067ba4af262"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run focused revision-heading regression
+        run: node --test tests/codex-revision-heading-metadata.test.js
