@@ -1,4 +1,5 @@
 import { deriveTurns } from '../derive/turns.js';
+import { PluginCanonicalSession } from '../session/plugin-canonical-session.js';
 
 /** Public provider-neutral methods every registered agent instance must expose. */
 const PUBLIC_PI = Object.freeze([
@@ -83,12 +84,13 @@ function validateAgentInstance(instance, descriptor, apiVersion) {
  * Builds the provider creation context with Core-owned canonical services.
  *
  * Caller-supplied `core` members may add services, but cannot replace Core's
- * canonical `deriveTurns` implementation.
+ * canonical turn derivation or canonical-event publication services.
  *
  * @param {Object<string, *>} context - Caller/provider creation context.
+ * @param {PluginCanonicalSession} session - Core-owned canonical session.
  * @returns {Object<string, *>} Creation context passed to the provider factory.
  */
-function creationContext(context) {
+function creationContext(context, session) {
   if (!context || typeof context !== 'object') {
     throw new TypeError('agent plugin creation context must be an object');
   }
@@ -96,7 +98,8 @@ function creationContext(context) {
     ...context,
     core: Object.freeze({
       ...(context.core ?? {}),
-      deriveTurns
+      deriveTurns,
+      publishEvents: events => session.replace(events)
     })
   };
 }
@@ -105,6 +108,7 @@ function creationContext(context) {
 export class AgentPluginRegistry {
   #apiVersion;
   #descriptors = new Map();
+  #sessions = new WeakMap();
 
   /**
    * Creates a registry for one Core plugin API version.
@@ -172,11 +176,24 @@ export class AgentPluginRegistry {
   create(id, context = {}) {
     const descriptor = this.#descriptors.get(id);
     if (!descriptor) throw new Error(`agent plugin ${id} is not registered`);
-    return validateAgentInstance(
-      descriptor.create(creationContext(context)),
+    const session = new PluginCanonicalSession();
+    const instance = validateAgentInstance(
+      descriptor.create(creationContext(context, session)),
       descriptor,
       this.#apiVersion
     );
+    this.#sessions.set(instance, session);
+    return instance;
+  }
+
+  /**
+   * Returns the Core-owned canonical session associated with a created agent.
+   *
+   * @param {Object<string, *>} instance - Agent instance returned by `create()`.
+   * @returns {PluginCanonicalSession|null} Associated canonical session or null.
+   */
+  session(instance) {
+    return this.#sessions.get(instance) ?? null;
   }
 
   /**

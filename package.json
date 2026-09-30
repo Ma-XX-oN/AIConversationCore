@@ -1,10 +1,10 @@
 {
   "name": "aiconversationcore",
-  "version": "1.1.0",
+  "version": "1.1.0-issue.104.8",
   "private": true,
   "type": "module",
   "scripts": {
-    "build:browser": "node scripts/build-browser-bundle.mjs",
+    "build:browser": "node scripts/build-browser-bundle-plugins.mjs",
     "release:prepare": "node scripts/prepare-release.mjs",
     "release": "node scripts/release.mjs",
     "test": "node --test"

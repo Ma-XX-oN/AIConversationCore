@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.0";
+const VERSION = "1.1.0-issue.104.8";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -5872,7 +5872,7 @@ function withRenderProvenance(event) {
  * @param {Array<Object<string, *>>} events - Ordered canonical events.
  * @returns {Object<string, *>} Structured projection.
  */
-function projectCanonicalConversation(events) {
+function projectBaseConversationBrowser(events) {
   if (!Array.isArray(events)) {
     throw new TypeError('projectCanonicalConversation expects an event array');
   }
@@ -5897,12 +5897,402 @@ function projectCanonicalConversation(events) {
       structural_units: collectStructuralUnits(presentation),
       tree: presentation
     },
-    markdown: renderCanonicalMarkdown(events.map(withRenderProvenance))
+    markdown: renderRevisionMarkdown(events.map(withRenderProvenance))
   };
+}
+
+/**
+ * Resolves the effective visibility and revision metadata for one presentation
+ * node.
+ *
+ * @param {Object<string, *>} node - Canonical presentation node or turn.
+ * @param {Map<string, Object<string, *>>} eventsById - Projected events by canonical ID.
+ * @returns {Object<string, *>} Projection metadata for the presentation node.
+ */
+function nodeProjection(node, eventsById) {
+  const sourceEvents = (node?.source ?? [])
+    .map(source => eventsById.get(source?.event_id))
+    .filter(Boolean);
+  const visible = sourceEvents.length === 0 ||
+    sourceEvents.some(event => event?.projection?.visible !== false);
+  const revisionEvent = sourceEvents.find(event =>
+    typeof event?.revision_status === 'string' && event.revision_status.length);
+  return {
+    visible,
+    ...(revisionEvent?.revision_status
+      ? { revision_status: revisionEvent.revision_status }
+      : {}),
+    ...(Number.isInteger(revisionEvent?.revision_depth)
+      ? { revision_depth: revisionEvent.revision_depth }
+      : {})
+  };
+}
+
+/**
+ * Adds visibility metadata to the canonical presentation tree without removing
+ * nodes or changing their IDs/order.
+ *
+ * @param {Object<string, *>} presentation - Structured presentation wrapper.
+ * @param {Array<Object<string, *>>} events - Projected canonical events.
+ * @returns {Object<string, *>} Presentation wrapper with visibility metadata.
+ */
+function annotatePresentation(presentation, events) {
+  if (!events.some(event => event?.projection?.visible === false)) {
+    return presentation;
+  }
+  const eventsById = new Map(events.map(event => [event?.id, event]));
+
+  /**
+   * Clones one presentation node recursively with projection metadata.
+   *
+   * @param {Object<string, *>} node - Presentation node.
+   * @returns {Object<string, *>} Annotated node clone.
+   */
+  const annotateNode = node => ({
+    ...node,
+    projection: {
+      ...(node?.projection ?? {}),
+      ...nodeProjection(node, eventsById)
+    },
+    ...(Array.isArray(node?.children)
+      ? { children: node.children.map(annotateNode) }
+      : {})
+  });
+
+  const tree = presentation?.tree ?? {};
+  return {
+    ...presentation,
+    tree: {
+      ...tree,
+      turns: (tree.turns ?? []).map(annotateNode)
+    }
+  };
+}
+
+/**
+ * Returns the canonical Markdown projection for the current effective
+ * visibility while preserving the base structured renderer's provenance/header
+ * enrichment.
+ *
+ * @param {Array<Object<string, *>>} projectedEvents - Full projected inventory.
+ * @param {Object<string, *>} fullResult - Base projection of the full inventory.
+ * @returns {string} Markdown for effectively visible events.
+ */
+function visibleMarkdown(projectedEvents, fullResult) {
+  const visibleEvents = projectedEvents.filter(event =>
+    event?.projection?.visible !== false);
+  if (visibleEvents.length === projectedEvents.length) return fullResult.markdown;
+  return projectBaseConversationBrowser(visibleEvents).markdown;
+}
+
+/**
+ * Projects a complete canonical event inventory for interactive consumers.
+ *
+ * Visibility changes annotate the same canonical events and presentation nodes;
+ * they never remove or renumber them.  This preserves stable speech, search,
+ * highlighting, and virtualization identities while allowing downstream UI to
+ * hide/show historical revisions cheaply. Markdown remains a serialization of
+ * the effectively visible projection and therefore omits hidden revisions.
+ *
+ * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+ * @param {Object<string, *>} options - Projection options.
+ * @returns {Object<string, *>} Structured canonical projection.
+ */
+function projectVisibleConversation(events, options = {}) {
+  const projectedEvents = projectRevisionVisibility(events, options);
+  const result = projectBaseConversationBrowser(projectedEvents);
+  const hasRevisionProjection = projectedEvents !== events;
+  if (!hasRevisionProjection) return result;
+
+  return {
+    ...result,
+    events: projectedEvents,
+    presentation: annotatePresentation(result.presentation, projectedEvents),
+    projection_options: {
+      include_rolled_back_turns: options?.includeRolledBackTurns === true
+    },
+    markdown: visibleMarkdown(projectedEvents, result)
+  };
+}
+
+/**
+ * Retains canonical events published by one registered provider agent.
+ *
+ * Provider plugins normalize provider-native observations.  Core owns this
+ * retained canonical inventory and all projection/rendering operations over it.
+ */
+class PluginCanonicalSession {
+  #events = [];
+
+  /**
+   * Replaces the retained canonical event inventory.
+   *
+   * @param {Array<Object<string, *>>} events - Complete canonical event inventory.
+   * @returns {void}
+   */
+  replace(events) {
+    if (!Array.isArray(events)) {
+      throw new TypeError('published canonical events must be an array');
+    }
+    this.#events = [...events];
+  }
+
+  /** @returns {Array<Object<string, *>>} Current complete canonical event inventory. */
+  get events() {
+    return this.#events;
+  }
+
+  /**
+   * Projects the retained canonical inventory through Core's shared projection.
+   *
+   * @param {Object<string, *>} [options={}] - Projection options.
+   * @returns {Object<string, *>} Structured canonical projection.
+   */
+  project(options = {}) {
+    return projectVisibleConversation(this.#events, options);
+  }
+
+  /**
+   * Renders the retained canonical inventory through Core's Markdown renderer.
+   *
+   * @param {Object<string, *>} [options={}] - Rendering options.
+   * @returns {string} Canonical Markdown.
+   */
+  renderMarkdown(options = {}) {
+    return renderCanonicalMarkdown(this.#events, options);
+  }
+
+  /**
+   * Renders the retained canonical inventory through Core's HTML renderer.
+   *
+   * @param {Object<string, *>} [options={}] - Rendering options.
+   * @returns {string} Canonical HTML.
+   */
+  renderHtml(options = {}) {
+    return renderCanonicalHtml(this.#events, options);
+  }
+}
+
+/** Public provider-neutral methods every registered agent instance must expose. */
+const PUBLIC_PI = Object.freeze([
+  'sendMessage',
+  'getResponse',
+  'getTurns',
+  'currentState',
+  'observeState',
+  'commTraffic',
+  'version'
+]);
+
+/**
+ * Requires a plugin contract member to be callable.
+ *
+ * @param {*} value - Candidate function value.
+ * @param {string} name - Contract member name used in diagnostics.
+ * @returns {void}
+ */
+function requireFunction(value, name) {
+  if (typeof value !== 'function') {
+    throw new TypeError(`agent plugin ${name} must be a function`);
+  }
+}
+
+/**
+ * Validates one provider plugin descriptor against the Core plugin ABI.
+ *
+ * @param {Object<string, *>} descriptor - Provider plugin descriptor.
+ * @param {number} [apiVersion=1] - Core plugin API version to require.
+ * @returns {Object<string, *>} The validated descriptor.
+ */
+function validateAgentPluginDescriptor(descriptor, apiVersion = 1) {
+  if (!descriptor || typeof descriptor !== 'object') {
+    throw new TypeError('agent plugin descriptor must be an object');
+  }
+  if (typeof descriptor.id !== 'string' || !descriptor.id.trim()) {
+    throw new TypeError('agent plugin descriptor id must be a non-empty string');
+  }
+  if (!Number.isInteger(descriptor.apiVersion)) {
+    throw new TypeError('agent plugin descriptor apiVersion must be an integer');
+  }
+  if (descriptor.apiVersion !== apiVersion) {
+    throw new Error(
+      `agent plugin ${descriptor.id} API version ${descriptor.apiVersion} requires ${apiVersion}`
+    );
+  }
+  requireFunction(descriptor.create, 'create');
+  if (descriptor.recognize != null) requireFunction(descriptor.recognize, 'recognize');
+  return descriptor;
+}
+
+/**
+ * Verifies that one created provider agent satisfies the public Core PI.
+ *
+ * @param {Object<string, *>} instance - Created provider agent instance.
+ * @param {Object<string, *>} descriptor - Descriptor that created the instance.
+ * @param {number} apiVersion - Core plugin API version required by the registry.
+ * @returns {Object<string, *>} The validated agent instance.
+ */
+function validateAgentInstance(instance, descriptor, apiVersion) {
+  if (!instance || typeof instance !== 'object') {
+    throw new TypeError(`agent plugin ${descriptor.id} create() must return an object`);
+  }
+  const missing = PUBLIC_PI.filter(name => typeof instance[name] !== 'function');
+  if (missing.length) {
+    throw new TypeError(
+      `agent plugin ${descriptor.id} is missing public PI: ${missing.join(', ')}`
+    );
+  }
+  const identity = instance.version();
+  if (!identity || typeof identity !== 'object') {
+    throw new TypeError(`agent plugin ${descriptor.id} version() must return an object`);
+  }
+  if (identity.plugin !== descriptor.id || identity.apiVersion !== apiVersion) {
+    throw new Error(`agent plugin ${descriptor.id} identity mismatch`);
+  }
+  return instance;
+}
+
+/**
+ * Builds the provider creation context with Core-owned canonical services.
+ *
+ * Caller-supplied `core` members may add services, but cannot replace Core's
+ * canonical turn derivation or canonical-event publication services.
+ *
+ * @param {Object<string, *>} context - Caller/provider creation context.
+ * @param {PluginCanonicalSession} session - Core-owned canonical session.
+ * @returns {Object<string, *>} Creation context passed to the provider factory.
+ */
+function creationContext(context, session) {
+  if (!context || typeof context !== 'object') {
+    throw new TypeError('agent plugin creation context must be an object');
+  }
+  return {
+    ...context,
+    core: Object.freeze({
+      ...(context.core ?? {}),
+      deriveTurns,
+      publishEvents: events => session.replace(events)
+    })
+  };
+}
+
+/** Registry for provider-neutral agent plugin descriptors and instances. */
+class AgentPluginRegistry {
+  #apiVersion;
+  #descriptors = new Map();
+  #sessions = new WeakMap();
+
+  /**
+   * Creates a registry for one Core plugin API version.
+   *
+   * @param {Object<string, *>} [options={}] - Registry configuration.
+   * @param {number} [options.apiVersion=1] - Supported plugin API version.
+   */
+  constructor({ apiVersion = 1 } = {}) {
+    if (!Number.isInteger(apiVersion) || apiVersion < 1) {
+      throw new TypeError('apiVersion must be a positive integer');
+    }
+    this.#apiVersion = apiVersion;
+  }
+
+  /** @returns {number} Core plugin API version accepted by this registry. */
+  get apiVersion() {
+    return this.#apiVersion;
+  }
+
+  /**
+   * Registers one validated provider descriptor.
+   *
+   * @param {Object<string, *>} descriptor - Provider descriptor to register.
+   * @returns {Object<string, *>} The registered descriptor.
+   */
+  register(descriptor) {
+    const validated = validateAgentPluginDescriptor(descriptor, this.#apiVersion);
+    if (this.#descriptors.has(validated.id)) {
+      throw new Error(`agent plugin ${validated.id} is already registered`);
+    }
+    this.#descriptors.set(validated.id, validated);
+    return validated;
+  }
+
+  /**
+   * Registers the default descriptor exported by an imported plugin module.
+   *
+   * @param {Object<string, *>} module - Imported ESM module namespace.
+   * @returns {Object<string, *>} The registered descriptor.
+   */
+  registerModule(module) {
+    if (!module || typeof module !== 'object' || !module.default) {
+      throw new TypeError('agent plugin module must expose a default descriptor');
+    }
+    return this.register(module.default);
+  }
+
+  /**
+   * Looks up a registered provider descriptor by ID.
+   *
+   * @param {string} id - Provider plugin ID.
+   * @returns {Object<string, *>|null} Registered descriptor or null.
+   */
+  get(id) {
+    return this.#descriptors.get(id) ?? null;
+  }
+
+  /**
+   * Creates and validates one provider agent instance.
+   *
+   * @param {string} id - Registered provider plugin ID.
+   * @param {Object<string, *>} [context={}] - Provider creation context.
+   * @returns {Object<string, *>} Validated provider agent instance.
+   */
+  create(id, context = {}) {
+    const descriptor = this.#descriptors.get(id);
+    if (!descriptor) throw new Error(`agent plugin ${id} is not registered`);
+    const session = new PluginCanonicalSession();
+    const instance = validateAgentInstance(
+      descriptor.create(creationContext(context, session)),
+      descriptor,
+      this.#apiVersion
+    );
+    this.#sessions.set(instance, session);
+    return instance;
+  }
+
+  /**
+   * Returns the Core-owned canonical session associated with a created agent.
+   *
+   * @param {Object<string, *>} instance - Agent instance returned by `create()`.
+   * @returns {PluginCanonicalSession|null} Associated canonical session or null.
+   */
+  session(instance) {
+    return this.#sessions.get(instance) ?? null;
+  }
+
+  /**
+   * Identifies the first registered provider that recognizes unknown input.
+   *
+   * @param {*} input - Unknown provider/source descriptor.
+   * @returns {Object<string, *>|null} Recognizing descriptor or null.
+   */
+  recognize(input) {
+    for (const descriptor of this.#descriptors.values()) {
+      if (typeof descriptor.recognize !== 'function') continue;
+      if (descriptor.recognize(input) === true) return descriptor;
+    }
+    return null;
+  }
+
+  /** @returns {Array<Object<string, *>>} Registered descriptors in insertion order. */
+  list() {
+    return [...this.#descriptors.values()];
+  }
 }
 
   global.AIConversationCore = Object.freeze({
     getVersion,
+    AgentPluginRegistry,
+    PUBLIC_PI,
+    validateAgentPluginDescriptor,
     adaptChatGPTRecords,
     renderCanonicalMarkdown,
     renderCanonicalHtml,
@@ -5910,6 +6300,6 @@ function projectCanonicalConversation(events) {
     locateCanonicalWord,
     projectCanonicalWords,
     buildCanonicalPresentation,
-    projectCanonicalConversation
+    projectCanonicalConversation: projectVisibleConversation
   });
 })(globalThis);

@@ -28,6 +28,30 @@ function descriptor(overrides = {}) {
   };
 }
 
+function canonicalMessage(id, role, text) {
+  return {
+    id,
+    provider: 'fixture',
+    source_record_id: id,
+    source_index: 0,
+    kind: 'message',
+    role,
+    channel: role === 'assistant' ? 'final' : null,
+    visibility: 'visible',
+    content_type: 'text',
+    blocks: [{
+      id: `${id}:part:0`,
+      type: 'text',
+      text,
+      source: { provider: 'fixture', record_id: id, record_index: 0, part_index: 0 }
+    }],
+    citations: [],
+    resources: [],
+    relationships: {},
+    source: { provider: 'fixture', record_id: id, record_index: 0, turn_id: id }
+  };
+}
+
 test('descriptor validation accepts the provider-neutral factory contract', () => {
   assert.equal(validateAgentPluginDescriptor(descriptor(), 1).id, 'fixture-agent');
 });
@@ -119,4 +143,33 @@ test('registry verifies created agent identity against its registered descriptor
     })
   }));
   assert.throws(() => registry.create('fixture-agent'), /identity mismatch/);
+});
+
+test('registry retains provider-published canonical events in a Core-owned session', () => {
+  let receivedCore = null;
+  const registry = new AgentPluginRegistry({ apiVersion: 1 });
+  registry.register(descriptor({
+    create: context => {
+      receivedCore = context.core;
+      return {
+        ...agent(),
+        commTraffic(data) {
+          context.core.publishEvents(data.events);
+        }
+      };
+    }
+  }));
+
+  const instance = registry.create('fixture-agent', {
+    core: { publishEvents: () => { throw new Error('caller override'); } }
+  });
+  assert.equal(typeof receivedCore.publishEvents, 'function');
+
+  const event = canonicalMessage('fixture:user:1', 'user', 'Hello');
+  instance.commTraffic({ events: [event] });
+
+  const session = registry.session(instance);
+  assert.ok(session, 'Core must retain a canonical session for every created agent.');
+  assert.deepEqual(session.events, [event]);
+  assert.deepEqual(session.project().events, [event]);
 });

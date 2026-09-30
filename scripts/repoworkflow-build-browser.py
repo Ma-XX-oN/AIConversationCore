@@ -25,7 +25,7 @@ def main() -> int:
   ])
   if install != 0:
     return install
-  return run(["node", "scripts/build-browser-bundle.mjs"])
+  return run(["node", "scripts/build-browser-bundle-plugins.mjs"])
 
 
 if __name__ == "__main__":
