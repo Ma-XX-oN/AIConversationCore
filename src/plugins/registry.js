@@ -1,3 +1,5 @@
+import { deriveTurns } from '../derive/turns.js';
+
 const PUBLIC_PI = Object.freeze([
   'sendMessage',
   'getResponse',
@@ -54,6 +56,19 @@ function validateAgentInstance(instance, descriptor, apiVersion) {
   return instance;
 }
 
+function creationContext(context) {
+  if (!context || typeof context !== 'object') {
+    throw new TypeError('agent plugin creation context must be an object');
+  }
+  return {
+    ...context,
+    core: Object.freeze({
+      ...(context.core ?? {}),
+      deriveTurns
+    })
+  };
+}
+
 export class AgentPluginRegistry {
   #apiVersion;
   #descriptors = new Map();
@@ -93,7 +108,7 @@ export class AgentPluginRegistry {
     const descriptor = this.#descriptors.get(id);
     if (!descriptor) throw new Error(`agent plugin ${id} is not registered`);
     return validateAgentInstance(
-      descriptor.create(context),
+      descriptor.create(creationContext(context)),
       descriptor,
       this.#apiVersion
     );
