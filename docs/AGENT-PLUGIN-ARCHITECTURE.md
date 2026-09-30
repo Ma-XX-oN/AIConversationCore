@@ -19,7 +19,8 @@ The plugin system must:
 - keep AICC's public agent PI small and provider-neutral;
 - keep provider recognition, normalization, lifecycle interpretation, recovery,
   reconciliation, and diagnostics inside the provider boundary;
-- keep canonical identity, turn derivation, projection, and rendering in Core;
+- keep canonical identity, retained canonical inventory, turn derivation,
+  projection, and rendering in Core;
 - create one mutable provider state per Core/agent instance;
 - expose plugin implementation identity/version for compatibility and diagnostics;
 - allow provider implementations to be distributed independently from Core.
@@ -35,8 +36,8 @@ provider-native observations / provider operations
          provider plugin
                 |
                 v
-          AICC canonical
-       conversation + state
+      canonical events published
+         to Core-owned session
                 |
                 v
        consumers/projections
@@ -46,6 +47,7 @@ AICC owns:
 
 - plugin registration/lookup and plugin API versioning;
 - canonical conversation/event/resource/lifecycle types and invariants;
+- the retained canonical event inventory for each created agent;
 - canonical identity and turn derivation rules;
 - generic session/orchestration infrastructure;
 - shared projections/renderers and consumer-facing APIs;
@@ -55,7 +57,7 @@ A provider plugin owns:
 
 - source/provider recognition;
 - persisted/native record normalization;
-- retained/incremental provider state;
+- retained/incremental provider-native state required to interpret later evidence;
 - provider-native message/turn identity mapping;
 - provider-specific submission/control operations;
 - live lifecycle interpretation;
@@ -97,15 +99,25 @@ plugin API versions are rejected rather than silently replaced or coerced.
 Imported modules may be registered through the same descriptor path.  No provider
 name switch is required in generic Core registration code.
 
-## Core-owned creation services
+## Core-owned creation services and canonical inventory
 
-Provider factories receive a creation context from Core.  Core may expose
+Provider factories receive a creation context from Core.  Core exposes
 provider-neutral canonical services through `context.core`.
 
-`deriveTurns` is currently supplied this way.  The registry owns that service and
-must not allow a caller to replace it with provider-specific turn grouping.  A
-provider plugin may retain its own normalized canonical events, but canonical turn
-derivation remains a Core responsibility.
+`deriveTurns` is supplied this way.  The registry owns that service and does not
+allow a caller to replace it with provider-specific turn grouping.
+
+`publishEvents` is also supplied by the registry.  After provider-native input has
+been normalized or reconciled, the provider publishes its complete current
+canonical event inventory through this service.  Core copies that inventory into a
+Core-owned `PluginCanonicalSession` associated with the created agent.  The
+provider may retain the canonical events internally as working state, but the
+consumer-facing canonical inventory and all projections/renderers are Core-owned.
+Caller-supplied `context.core` members cannot replace either canonical service.
+
+The associated Core session is obtained from the registry with
+`registry.session(agent)`.  This is a Core/registry operation, not a new member of
+the public provider Agent PI.
 
 This establishes the causal path:
 
@@ -113,16 +125,19 @@ This establishes the causal path:
 provider source
     |
     v
-provider normalization
+provider normalization/reconciliation
     |
     v
-canonical events retained by provider instance
+context.core.publishEvents(events)
     |
     v
-Core deriveTurns
-    |
-    v
-shared Core projections/renderers/consumers
+Core-owned PluginCanonicalSession
+    |                         |
+    v                         v
+Core deriveTurns       shared Core projections/renderers
+                              |
+                              v
+                           consumers
 ```
 
 ## Public AICC agent PI
@@ -217,7 +232,9 @@ Provides an event-driven view of the same authoritative state returned by
 Feeds provider-native communication observations into the provider plugin.
 Acquisition remains separate from interpretation: request/response/stream/control
 observations are forwarded as provider evidence and the provider plugin decides
-what those observations mean.
+what those observations mean.  When such evidence changes the normalized
+canonical inventory, the plugin publishes that complete inventory through Core's
+internal `publishEvents` creation service.
 
 ### `version()`
 
@@ -251,7 +268,9 @@ commTraffic(data) -> provider reducer/state
 ```
 
 `getTurns()` reads canonical turn data derived from normalized provider events
-through Core-owned turn derivation.
+through Core-owned turn derivation.  Complete canonical event inventories are
+published separately to the Core-owned session so non-turn events, resources,
+tools, provenance, and hidden events are not reconstructed from turn descriptors.
 
 Transport completion is not automatically an exchange outcome.  For example,
 stream completion, `[DONE]`-equivalent transport markers, and stop requests are
@@ -261,7 +280,9 @@ not generic Core success/cancel rules.
 ## Instance lifetime
 
 Mutable provider/session state is created per Core/agent instance.  The module
-itself is a descriptor/factory, not a mutable provider singleton.
+itself is a descriptor/factory, not a mutable provider singleton.  A separate
+Core-owned canonical session is associated with each successfully created agent
+instance and is not shared between instances.
 
 Distribution and module-source caching may be shared by a host environment, but a
 live provider instance belongs to the Core/agent instance that created it.  See
@@ -288,7 +309,9 @@ The provider-neutral contract is not complete until tests cover at least:
 - complete public PI validation on created instances;
 - created-instance identity matching its descriptor;
 - Core canonical service injection without caller override;
-- separate mutable provider state per created instance;
+- provider publication into a per-agent Core-owned canonical session;
+- shared Core projection/rendering directly from that published inventory;
+- separate mutable provider state and separate canonical sessions per instance;
 - `sendMessage()` success/refusal semantics;
 - positive/negative `getTurns()` cursor semantics;
 - `currentState()`/`observeState()` consistency;
@@ -308,10 +331,11 @@ Loader/distribution verification requirements are maintained separately in
 3. Private plugin source/artifacts are not embedded in public AICC artifacts.
 4. Symbolic refs are authoritative selectors; opaque SHAs are not required merely
    for immutability.
-5. Core owns canonical identity, turn derivation, projection, and rendering.
+5. Core owns canonical identity, retained canonical inventory, turn derivation,
+   projection, and rendering.
 6. Provider interpretation remains behind the plugin boundary.
-7. Canonical state is the single authority for `currentState()`, `observeState()`,
-   and `getResponse()`.
+7. Canonical lifecycle state is the single authority for `currentState()`,
+   `observeState()`, and `getResponse()`.
 8. Hosts forward provider-native communication evidence through `commTraffic()`.
 9. Failed/invalid plugins do not silently fall back to another implementation.
 10. Provider implementation detail must not leak into generic Core consumers.
