@@ -50,6 +50,26 @@ test('registry registers a descriptor and creates a complete public agent PI', (
   });
 });
 
+test('Core canonical services are injected without allowing caller override', () => {
+  let received = null;
+  const registry = new AgentPluginRegistry({ apiVersion: 1 });
+  registry.register(descriptor({
+    create: context => {
+      received = context;
+      return agent();
+    }
+  }));
+  registry.create('fixture-agent', {
+    core: { deriveTurns: () => ['caller'] },
+    nativeOperation: 'preserved'
+  });
+
+  assert.equal(received.nativeOperation, 'preserved');
+  assert.equal(typeof received.core.deriveTurns, 'function');
+  assert.notDeepEqual(received.core.deriveTurns([]), ['caller']);
+  assert.deepEqual(received.core.deriveTurns([]), []);
+});
+
 test('registry can register an imported module default descriptor', () => {
   const registry = new AgentPluginRegistry({ apiVersion: 1 });
   registry.registerModule({ default: descriptor() });
