@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 import { adaptChatGPTRecords, getVersion, renderCanonicalMarkdown } from '../src/index.js';
-import { buildBrowserBundle } from '../scripts/build-browser-bundle.mjs';
+import { buildBrowserBundle } from '../scripts/build-browser-bundle-plugins.mjs';
 
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', import.meta.url);
 const bundleUrl = new URL('../dist/aiconversationcore.chatgpt.browser.js', import.meta.url);
@@ -35,6 +35,8 @@ test('generated classic browser bundle exposes the required DownloadConversation
   assert.equal(context.AIConversationCore.getVersion(), getVersion());
   assert.equal(typeof context.AIConversationCore.adaptChatGPTRecords, 'function');
   assert.equal(typeof context.AIConversationCore.renderCanonicalMarkdown, 'function');
+  assert.equal(typeof context.AIConversationCore.AgentPluginRegistry, 'function');
+  assert.equal(typeof context.AIConversationCore.validateAgentPluginDescriptor, 'function');
 });
 
 test('generated browser bundle matches ESM ChatGPT normalization and Markdown rendering', async () => {
