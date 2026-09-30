@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import { buildBrowserBundle } from './build-browser-bundle.mjs';
+import { buildBrowserBundle } from './build-browser-bundle-plugins.mjs';
 import {
   assertBundleVersion,
   assertPackageLockVersion,
