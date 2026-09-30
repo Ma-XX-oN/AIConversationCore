@@ -20,6 +20,27 @@ function removeImport(text, declaration, label) {
   return replaceOnce(text, `${declaration}\n`, '', `import ${label}`);
 }
 
+function structuredVisibilityBody(source) {
+  let result = source;
+  result = removeImport(
+    result,
+    "import { projectRevisionVisibility } from './revision-visibility.js';",
+    'projectRevisionVisibility'
+  );
+  result = removeImport(
+    result,
+    "import { projectCanonicalConversation as projectBaseConversation } from './structured.js';",
+    'projectBaseConversation'
+  );
+  result = result.replaceAll('projectBaseConversation', 'projectCanonicalConversation');
+  return replaceOnce(
+    result,
+    'export function projectCanonicalConversation',
+    'function projectVisibleConversation',
+    'structured visibility projection export'
+  ).trim();
+}
+
 function pluginSessionBody(source) {
   let result = source;
   result = removeImport(
@@ -36,6 +57,12 @@ function pluginSessionBody(source) {
     result,
     "import { projectCanonicalConversation } from '../projections/structured-visibility.js';",
     'projectCanonicalConversation'
+  );
+  result = replaceOnce(
+    result,
+    'return projectCanonicalConversation(this.#events, options);',
+    'return projectVisibleConversation(this.#events, options);',
+    'plugin session projection call'
   );
   return replaceOnce(
     result,
@@ -74,18 +101,20 @@ function registryBody(source) {
 }
 
 export async function buildBrowserBundle() {
-  const [base, sessionSource, registrySource] = await Promise.all([
+  const [base, structuredVisibilitySource, sessionSource, registrySource] = await Promise.all([
     buildBaseBrowserBundle(),
+    readFile(resolve(ROOT, 'src/projections/structured-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/session/plugin-canonical-session.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8')
   ]);
+  const structuredVisibility = structuredVisibilityBody(structuredVisibilitySource);
   const session = pluginSessionBody(sessionSource);
   const registry = registryBody(registrySource);
   const objectMarker = '  global.AIConversationCore = Object.freeze({\n';
   let result = replaceOnce(
     base,
     objectMarker,
-    `${session}\n\n${registry}\n\n${objectMarker}`,
+    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${objectMarker}`,
     'AIConversationCore browser export object'
   );
   result = replaceOnce(
@@ -93,6 +122,12 @@ export async function buildBrowserBundle() {
     '    getVersion,\n',
     '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n',
     'browser getVersion export'
+  );
+  result = replaceOnce(
+    result,
+    '    projectCanonicalConversation\n',
+    '    projectCanonicalConversation: projectVisibleConversation\n',
+    'browser structured projection export'
   );
   return result;
 }
