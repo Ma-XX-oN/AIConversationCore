@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def run(command: list[str]) -> int:
   environment = os.environ.copy()
   environment["PYTHONDONTWRITEBYTECODE"] = "1"
+  environment["AICC_REPOWORKFLOW_VALIDATION"] = "1"
   try:
     return subprocess.run(
       command,
