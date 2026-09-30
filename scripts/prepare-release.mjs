@@ -46,7 +46,7 @@ async function prepareRelease(requestedVersion) {
   await writeFile(PACKAGE_LOCK_PATH, jsonMetadataWithVersion(lockText, version), 'utf8');
   assertPackageLockVersion(await readFile(PACKAGE_LOCK_PATH, 'utf8'), version);
 
-  run(process.execPath, ['scripts/build-browser-bundle.mjs']);
+  run(process.execPath, ['scripts/build-browser-bundle-plugins.mjs']);
   const bundle = await readFile(BUNDLE_PATH, 'utf8');
   assertBundleVersion(bundle, version);
 
