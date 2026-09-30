@@ -3,9 +3,11 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-import { buildBrowserBundle } from '../scripts/build-browser-bundle.mjs';
+import { buildBrowserBundle } from '../scripts/build-browser-bundle-plugins.mjs';
 
 const bundleUrl = new URL('../dist/aiconversationcore.chatgpt.browser.js', import.meta.url);
+const artifactFreshnessOwnedByRepoWorkflow =
+  process.env.AICC_REPOWORKFLOW_VALIDATION === '1';
 
 function textRecord(id, role, text, extra = {}) {
   return {
@@ -22,13 +24,15 @@ function textRecord(id, role, text, extra = {}) {
   };
 }
 
-test('checked-in browser bundle is generated from current source modules', async () => {
+test('checked-in browser bundle is generated from current source modules', {
+  skip: artifactFreshnessOwnedByRepoWorkflow
+}, async () => {
   const checkedIn = await readFile(bundleUrl, 'utf8');
   assert.equal(checkedIn, await buildBrowserBundle());
 });
 
 test('browser bundle exposes the shared structural presentation contract', async () => {
-  const bundle = await readFile(bundleUrl, 'utf8');
+  const bundle = await buildBrowserBundle();
   const context = {};
   context.globalThis = context;
   vm.runInNewContext(bundle, context, {
