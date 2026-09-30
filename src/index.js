@@ -13,6 +13,12 @@ export function getVersion() {
 }
 
 export {
+  AgentPluginRegistry,
+  PUBLIC_PI,
+  validateAgentPluginDescriptor
+} from './plugins/registry.js';
+
+export {
   STYLE_ROLES,
   configureProjectionTheme,
   getDefaultProjectionTheme,
