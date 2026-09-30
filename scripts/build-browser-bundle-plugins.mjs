@@ -4,9 +4,20 @@ import { fileURLToPath } from 'node:url';
 
 import { buildBrowserBundle as buildBaseBrowserBundle } from './build-browser-bundle.mjs';
 
+/** Repository root used to resolve source modules and the generated browser bundle. */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/** Generated classic-script browser artifact consumed by browser integrations. */
 const OUTPUT = resolve(ROOT, 'dist/aiconversationcore.chatgpt.browser.js');
 
+/**
+ * Replaces exactly one expected source fragment.
+ *
+ * @param {string} text - Complete source text.
+ * @param {string} search - Exact fragment that must occur once.
+ * @param {string} replacement - Replacement fragment.
+ * @param {string} label - Human-readable diagnostic label.
+ * @returns {string} Source with the required replacement applied.
+ */
 function replaceOnce(text, search, replacement, label) {
   const index = text.indexOf(search);
   if (index < 0) throw new Error(`Plugin browser build could not find ${label}.`);
@@ -16,10 +27,24 @@ function replaceOnce(text, search, replacement, label) {
   return text.slice(0, index) + replacement + text.slice(index + search.length);
 }
 
+/**
+ * Removes one exact ESM import before embedding a module in the classic bundle.
+ *
+ * @param {string} text - Complete source text.
+ * @param {string} declaration - Import declaration without trailing newline.
+ * @param {string} label - Human-readable imported-symbol label.
+ * @returns {string} Source without the requested import.
+ */
 function removeImport(text, declaration, label) {
   return replaceOnce(text, `${declaration}\n`, '', `import ${label}`);
 }
 
+/**
+ * Rewrites Core's visibility-aware structured projection for classic-script use.
+ *
+ * @param {string} source - ESM structured-visibility source.
+ * @returns {string} Classic-script local-function source.
+ */
 function structuredVisibilityBody(source) {
   let result = source;
   result = removeImport(
@@ -32,7 +57,7 @@ function structuredVisibilityBody(source) {
     "import { projectCanonicalConversation as projectBaseConversation } from './structured.js';",
     'projectBaseConversation'
   );
-  result = result.replaceAll('projectBaseConversation', 'projectCanonicalConversation');
+  result = result.replaceAll('projectBaseConversation', 'projectBaseConversationBrowser');
   return replaceOnce(
     result,
     'export function projectCanonicalConversation',
@@ -41,6 +66,12 @@ function structuredVisibilityBody(source) {
   ).trim();
 }
 
+/**
+ * Rewrites the Core-owned plugin canonical session for classic-script use.
+ *
+ * @param {string} source - ESM plugin-session source.
+ * @returns {string} Classic-script local-class source.
+ */
 function pluginSessionBody(source) {
   let result = source;
   result = removeImport(
@@ -72,6 +103,12 @@ function pluginSessionBody(source) {
   ).trim();
 }
 
+/**
+ * Rewrites the provider-neutral plugin registry for classic-script use.
+ *
+ * @param {string} source - ESM registry source.
+ * @returns {string} Classic-script local-class/function source.
+ */
 function registryBody(source) {
   let result = source;
   result = removeImport(
@@ -100,13 +137,32 @@ function registryBody(source) {
   return result.trim();
 }
 
+/**
+ * Builds the browser artifact with the provider-neutral plugin registry/session.
+ *
+ * @returns {Promise<string>} Complete deterministic classic-script bundle source.
+ */
 export async function buildBrowserBundle() {
-  const [base, structuredVisibilitySource, sessionSource, registrySource] = await Promise.all([
+  const [baseSource, structuredVisibilitySource, sessionSource, registrySource] = await Promise.all([
     buildBaseBrowserBundle(),
     readFile(resolve(ROOT, 'src/projections/structured-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/session/plugin-canonical-session.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8')
   ]);
+
+  let base = replaceOnce(
+    baseSource,
+    'function projectCanonicalConversation(events) {',
+    'function projectBaseConversationBrowser(events) {',
+    'base structured projection function'
+  );
+  base = replaceOnce(
+    base,
+    'markdown: renderCanonicalMarkdown(events.map(withRenderProvenance))',
+    'markdown: renderRevisionMarkdown(events.map(withRenderProvenance))',
+    'base structured Markdown renderer'
+  );
+
   const structuredVisibility = structuredVisibilityBody(structuredVisibilitySource);
   const session = pluginSessionBody(sessionSource);
   const registry = registryBody(registrySource);
