@@ -2,32 +2,27 @@
 
 ## Status
 
-This document records the current design for loading agent/provider plugins into
-`AIConversationCore` (AICC).  It is an architecture contract and implementation
-plan, not a claim that all described runtime behaviour is implemented yet.
+This document records the provider-neutral agent/plugin architecture for
+`AIConversationCore` (AICC).  Runtime repository access, authentication, cache,
+artifact verification, browser Blob loading, and local-loader behaviour are split
+into `AGENT-PLUGIN-LOADING.md`.
 
 The first concrete provider is ChatGPT Web, with `Chat-Gpt-Plugin-2` as the
-provider-owned implementation.  The same AICC boundary is intended to support
-Claude Web, Claude Code, Codex, and future agents without provider-specific logic
-leaking into canonical Core semantics or consumers.
+provider-owned implementation.  The same boundary is intended to support Claude
+Web, Claude Code, Codex, and future agents without provider-specific logic leaking
+into canonical Core semantics or consumers.
 
 ## Goals
 
 The plugin system must:
 
-- keep AICC's public agent API small and provider-neutral;
-- allow a provider plugin repository to be public or private;
-- avoid embedding private plugin source or artifacts in AICC source or public
-  AICC artifacts;
-- load a provider artifact at runtime from its repository;
-- support browser/Tampermonkey and local AICC environments;
-- avoid one authentication prompt per AICC instance;
-- allow multiple browser tabs/windows to share authorization and cached plugin
-  source while keeping each page's live module/plugin state local;
-- pin plugins by readable symbolic refs rather than opaque commit SHAs;
-- make plugin identity/version observable to tests and diagnostics;
-- keep provider-specific recognition, normalization, lifecycle interpretation,
-  recovery, reconciliation, and diagnostics inside the plugin boundary.
+- keep AICC's public agent PI small and provider-neutral;
+- keep provider recognition, normalization, lifecycle interpretation, recovery,
+  reconciliation, and diagnostics inside the provider boundary;
+- keep canonical identity, turn derivation, projection, and rendering in Core;
+- create one mutable provider state per Core/agent instance;
+- expose plugin implementation identity/version for compatibility and diagnostics;
+- allow provider implementations to be distributed independently from Core.
 
 ## Responsibility boundary
 
@@ -47,236 +42,92 @@ provider-native observations / provider operations
        consumers/projections
 ```
 
-AICC owns the plugin registry/loader, canonical conversation and lifecycle types,
-canonical invariants, public consumer API, plugin compatibility validation, and
-shared rendering/projection behaviour.
+AICC owns:
 
-A provider plugin owns provider-specific interpretation and operations.  It must
-not force downstream consumers to understand provider endpoints, transport
-markers, recovery rules, or provider-native record shapes.
+- plugin registration/lookup and plugin API versioning;
+- canonical conversation/event/resource/lifecycle types and invariants;
+- canonical identity and turn derivation rules;
+- generic session/orchestration infrastructure;
+- shared projections/renderers and consumer-facing APIs;
+- validation of plugin descriptors and created agent instances.
 
-## Plugin repositories and artifacts
+A provider plugin owns:
 
-Each agent/provider implementation may live in a separate repository, for example:
+- source/provider recognition;
+- persisted/native record normalization;
+- retained/incremental provider state;
+- provider-native message/turn identity mapping;
+- provider-specific submission/control operations;
+- live lifecycle interpretation;
+- recovery/reconciliation;
+- duplicate, stale, reordered, and concurrent observation handling;
+- provider-specific tool/reasoning/resource provenance;
+- provider diagnostics.
 
-```text
-Chat-Gpt-Plugin-2
-Claude-Web-Plugin
-Claude-Code-Plugin
-Codex-Plugin
+Consumers call Core rather than provider plugins directly for canonical rendering
+and application semantics.
+
+## Plugin descriptor and registration
+
+A runtime plugin module exposes a default descriptor.  The descriptor identifies
+the provider implementation, declares the plugin API version, optionally exposes a
+recognizer, and creates one mutable agent instance per Core/agent instance.
+
+Representative shape:
+
+```js
+export default {
+  id: "chatgpt-web",
+  apiVersion: 1,
+  recognize(input) {
+    return Boolean(input);
+  },
+  create(context) {
+    return new ChatGPTAgent(context);
+  }
+};
 ```
 
-A repository may be public or private.  Privacy is an access-control property and
-does not change the plugin ABI.
+`recognize()` is identification only.  It does not normalize a conversation,
+create canonical state, or replace an explicitly supplied provider/plugin ID.
 
-A provider repository may use many source modules internally, but it should
-produce one self-contained ESM runtime artifact, for example:
+Core validates descriptors before registration.  Duplicate IDs and incompatible
+plugin API versions are rejected rather than silently replaced or coerced.
 
-```text
-dist/chatgpt-plugin.mjs
-```
+Imported modules may be registered through the same descriptor path.  No provider
+name switch is required in generic Core registration code.
 
-The artifact may itself be public or private.  A private artifact remains only in
-the private repository and is fetched by authorized users at runtime.  It is not
-copied into the AICC repository or public AICC build output.
+## Core-owned creation services
 
-The single-file ESM artifact avoids runtime relative-module graph rewriting while
-still allowing the plugin source repository to use normal modular source code.
+Provider factories receive a creation context from Core.  Core may expose
+provider-neutral canonical services through `context.core`.
 
-## Browser/Tampermonkey runtime loading
+`deriveTurns` is currently supplied this way.  The registry owns that service and
+must not allow a caller to replace it with provider-specific turn grouping.  A
+provider plugin may retain its own normalized canonical events, but canonical turn
+derivation remains a Core responsibility.
 
-A normal Tampermonkey userscript is not treated as an ESM entry point, but a
-classic userscript can use the `import()` expression to load a module from a
-`blob:` URL.
-
-This was verified in the target environment on 2026-09-30:
+This establishes the causal path:
 
 ```text
-Chrome 154 + Tampermonkey 5.5.0 + chatgpt.com
-
-dynamic import(data:)                         FAIL
-dynamic import(blob:)                         PASS
-injected inline <script type="module">        FAIL
-injected blob <script type="module">         PASS
+provider source
+    |
+    v
+provider normalization
+    |
+    v
+canonical events retained by provider instance
+    |
+    v
+Core deriveTurns
+    |
+    v
+shared Core projections/renderers/consumers
 ```
-
-The preferred browser loader therefore is:
-
-```text
-authenticated/public fetch
-        |
-        v
-plugin source bytes
-        |
-        v
-      Blob
-        |
-        v
-URL.createObjectURL()
-        |
-        v
- import(blobUrl)
-        |
-        v
-provider module/plugin
-```
-
-The preferred path does not insert plugin source into the DOM.
-
-The `Blob`/module instance is local to the page/JavaScript realm.  What is shared
-between pages is the verified plugin source/cache and authorization state, not the
-live JavaScript object.
-
-## Shared browser cache and cross-tab/domain use
-
-For Tampermonkey-hosted AICC use, userscript storage is the preferred shared
-storage boundary because it can be shared by instances of the same userscript
-across tabs and supported AI-agent domains.
-
-The shared record should include at least:
-
-```text
-plugin ID
-symbolic ref
-plugin version/API metadata
-verified artifact source/bytes
-integrity metadata
-retrieval/update metadata
-authorization state/metadata as appropriate
-```
-
-The first page needing a missing artifact may authenticate, fetch, verify, and
-store it.  Other pages retrieve the verified source and create/import their own
-local Blob/module instance.
-
-Do not attempt to serialize or pass the live imported plugin object between tabs.
-Functions and closures are realm-local and are not a suitable Tampermonkey storage
-payload.  A permanent broker-tab RPC design is intentionally avoided because tab
-closure/reload and callback routing would create unnecessary fragility.
-
-Concurrent first-use tabs must coordinate so that only one performs the initial
-authorization/download.  A shared lock/state plus Tampermonkey value-change
-notification is sufficient; `BroadcastChannel` or Web Locks may be used where
-appropriate but are not required as the cross-domain storage authority.
-
-## Local runtime
-
-Local AICC use, including plugins for Claude Code or Codex, uses the same plugin
-ABI and artifact format but has its own local authorization/cache implementation.
-The local loader must not require browser/Tampermonkey APIs.
-
-## Repository authentication
-
-Public plugin artifacts require no repository authentication.
-
-Private plugin artifacts should use a GitHub OAuth/GitHub App authorization flow
-rather than requesting a password or asking every AICC instance for a personal
-access token.
-
-Authorization is owned by the shared loader/cache environment, not by individual
-AICC instances.  In the Tampermonkey case, supported browser pages should reuse
-that shared authorization/cache state.  Local AICC has one corresponding local
-authorization/cache.
-
-The plugin itself does not receive or own repository credentials merely because
-it was fetched from a private repository.
-
-## Plugin selection and updates
-
-AICC selects a plugin through a readable symbolic ref, not an opaque commit SHA.
-Examples include:
-
-```text
-main
-develop
-release/0.4
-test/current
-issue-104-agent-plugin-architecture
-```
-
-The ref may intentionally be mutable.  The loader must therefore revalidate the
-ref/cache according to update policy rather than assuming that a previously seen
-ref is immutable.
-
-AICC's plugin descriptor should identify at least:
-
-```text
-plugin ID
-repository
-symbolic ref
-artifact path
-required plugin API version
-```
-
-Optional integrity/version fields may also be present.
-
-Testing can deliberately attach an AICC build to a named plugin branch/channel.
-This is preferred over forcing a test to update an opaque SHA after every plugin
-commit.
-
-A plugin also exposes its own version information through the public `version()`
-PI so tests/logs can confirm what implementation was actually loaded.
-
-## Artifact verification
-
-Before execution, AICC must validate the fetched artifact against the selected
-plugin descriptor and plugin ABI.  Validation should include the applicable
-subset of:
-
-- plugin ID;
-- repository/ref/artifact path;
-- plugin API version;
-- plugin implementation version;
-- integrity hash or equivalent artifact-integrity metadata when configured.
-
-A plugin artifact may carry a manifest, but an artifact must not be allowed to
-silently redefine what plugin/ref AICC requested.
-
-If integrity or compatibility validation fails, the artifact must not execute or
-register.
-
-## Plugin availability and loader failures
-
-Plugin loading is an explicit state machine rather than an unstructured fetch
-exception.  Representative states include:
-
-```text
-UNINITIALIZED
-AUTH_REQUIRED
-AUTHENTICATING
-FETCHING
-VERIFYING
-READY
-UNAVAILABLE
-```
-
-Representative failure reasons include:
-
-```text
-AUTH_DENIED
-AUTH_FAILED
-ACCESS_DENIED
-NETWORK_ERROR
-NOT_FOUND
-ARTIFACT_INVALID
-API_INCOMPATIBLE
-```
-
-Required behaviour:
-
-- authentication cancellation/denial leaves the plugin unavailable and must not
-  cause a repeated login loop;
-- access denial is reported explicitly;
-- network failure must not cause a tight retry loop;
-- invalid/incompatible artifacts are refused before execution;
-- AICC may continue to exist while a specific provider plugin is unavailable;
-- use of a previously verified cached artifact while the repository is
-  temporarily unreachable is a policy decision and must not become an implicit
-  fallback.
 
 ## Public AICC agent PI
 
-The current public agent interface is:
+The public provider-independent interface is:
 
 ```text
 sendMessage(text, timeout?, options?)
@@ -288,17 +139,13 @@ commTraffic(data)
 version()
 ```
 
-These are public provider-independent interaction points.  Provider-specific
-helper methods remain internal unless a demonstrated cross-provider requirement
-requires a new public PI.
+Provider-specific helper methods remain internal unless a demonstrated
+cross-provider requirement requires a new public PI.
 
 ### `sendMessage(text, timeout?, options?)`
 
-Submits a message through the provider-specific mechanism.
-
-It returns a Promise resolving to a structured submission result.  Provider or
-application outcomes are normal results, not exceptions merely because the
-provider refused the operation.
+Submits a message through the provider-specific mechanism and returns a Promise
+resolving to a structured submission result.
 
 Example success:
 
@@ -319,44 +166,26 @@ Example refusal:
 ```
 
 `ok: true` means the provider accepted/committed the message, not merely that AICC
-attempted to submit it.  This is particularly important for follow-up/steer cases
-where the provider is not currently accepting a follow-up.
-
-Promise rejection is reserved for failures where AICC/plugin execution itself
-cannot reliably perform or interpret the requested operation, such as a contract
-or invariant failure.  A caller may use either `await` or normal Promise
-`.then(...).catch(...)` syntax.
+attempted submission.  Provider/application refusals are normal results.  Promise
+rejection is reserved for failures where Core/plugin execution cannot reliably
+perform or interpret the operation.
 
 ### `getResponse(timeout?)`
 
-Waits for the relevant response/outcome.  It should derive completion from the
-same authoritative canonical lifecycle/state used by `currentState()` and
-`observeState()` rather than maintain an independent response-completion detector.
-
-Where practical this PI should be implemented as a convenience over canonical
-state observation.
+Waits for the relevant response/outcome.  It derives completion from the same
+authoritative lifecycle state used by `currentState()` and `observeState()` rather
+than maintaining an independent completion detector.
 
 ### `getTurns(query)`
 
-Retrieves arbitrary canonical turns without requiring the caller to know the exact
-turn ID beforehand.
+Retrieves canonical turns without requiring the caller to know an exact turn ID in
+advance.
 
-Two cursor forms are supported conceptually:
-
-```js
-getTurns({
-  cursor: turnId,
-  get: -20
-})
-```
-
-or:
+Supported cursor forms are:
 
 ```js
-getTurns({
-  cursor_index: -1,
-  get: -20
-})
+getTurns({ cursor: turnId, get: -20 })
+getTurns({ cursor_index: -1, get: -20 })
 ```
 
 Exactly one of `cursor` or `cursor_index` is supplied.
@@ -367,78 +196,35 @@ Semantics:
 - `get < 0` walks backward;
 - `abs(get)` is the requested number of turns;
 - the cursor turn is included;
-- `cursor_index` uses Python-style indexing: `0` is the first turn, `-1` the
-  last turn, `-2` the second-last, and so on.
+- `cursor_index` uses Python-style indexing;
+- returned turns remain in chronological order.
 
-Examples:
-
-```js
-getTurns({ cursor_index: 0, get: 20 })
-```
-
-returns the first 20 turns including turn 0.
-
-```js
-getTurns({ cursor_index: -1, get: -20 })
-```
-
-returns the last 20 turns including the last turn.
-
-```js
-getTurns({ cursor: turnId, get: -20 })
-```
-
-returns that turn plus the 19 preceding turns.
-
-Provider plugins translate this canonical retrieval operation onto the provider's
-native history model.  A provider such as a stateless API may satisfy it from
-AICC/client-held canonical history rather than from a hosted server-side
-conversation endpoint.
+Provider plugins translate history acquisition onto their native model but do not
+redefine canonical turn grouping.
 
 ### `currentState()`
 
 Returns the current authoritative canonical agent/exchange state immediately.
-The exact lifecycle taxonomy is defined separately from this PI and must be based
-on evidence rather than presentation heuristics.
+Lifecycle taxonomy is based on evidence rather than presentation heuristics.
 
 ### `observeState(callback)`
 
-Event-driven view of the same authoritative state returned by `currentState()`.
-It must not independently infer provider lifecycle state.
-
-Conceptually:
-
-```text
-commTraffic(data)
-      |
-      v
-provider-specific interpretation
-      |
-      v
-canonical state
-   |        |
-   v        v
-currentState()   observeState(callback)
-```
+Provides an event-driven view of the same authoritative state returned by
+`currentState()`.  It must not independently infer provider lifecycle state.
 
 ### `commTraffic(data)`
 
-Feeds provider communication observations into the provider plugin so that it can
-interpret/update canonical state.
-
-The input is provider-native evidence, not caller-normalized lifecycle meaning.
-For example, a ChatGPT host may forward request/response/stream/WebSocket/control
-observations while the ChatGPT plugin decides what those observations mean.
-
-This keeps acquisition separate from interpretation and prevents host/consumer
-code from duplicating provider semantics.
+Feeds provider-native communication observations into the provider plugin.
+Acquisition remains separate from interpretation: request/response/stream/control
+observations are forwarded as provider evidence and the provider plugin decides
+what those observations mean.
 
 ### `version()`
 
 Returns side-effect-free plugin identity/version information for compatibility,
 testing, diagnostics, and logs.
 
-A representative result is:
+Representative result:
 
 ```js
 {
@@ -449,142 +235,83 @@ A representative result is:
 }
 ```
 
-The exact field names may be refined with the plugin ABI, but the PI requirement is
-that AICC/tests can query the implementation identity they are attached to.
-
-The symbolic `ref` is intentionally human-readable and may be mutable.  The plugin
-implementation version and API version tell the caller what was actually loaded
-and whether the plugin is compatible with the current Core contract.
-
-## Internal provider-plugin responsibilities
-
-The public PI above is intentionally smaller than the provider plugin's internal
-responsibilities.
-
-Provider-owned responsibilities include, as applicable:
-
-- source/provider recognition;
-- persisted-record normalization;
-- retained/incremental provider state;
-- provider-native message/turn identity mapping;
-- provider-specific submission/control operations;
-- live lifecycle interpretation;
-- recovery/reconciliation;
-- duplicate, stale, reordered, and concurrent observation handling;
-- provider-specific tool/reasoning/resource provenance;
-- provider diagnostics.
-
-These capabilities do not automatically become additional public AICC methods.
-They exist so the provider plugin can correctly implement the small public PI and
-produce canonical Core semantics.
-
-For example, ChatGPT may expose provider-native observations such as conversation
-requests, steer/follow-up requests, stream status, resume/polling behaviour,
-transport-completion markers, explicit success/error/cancel results, stop/control
-operations, or late/reordered observations.  Consumers must not interpret those
-markers themselves.  The ChatGPT plugin interprets them and updates canonical
-Core state.
+The symbolic ref is human-readable and may be mutable.  The implementation version
+and API version identify what was actually loaded and whether it is compatible
+with Core.
 
 ## State and response authority
 
-The following APIs must project one authoritative canonical state rather than
-creating parallel detectors:
+The public state/response APIs project one authoritative provider-owned reducer:
 
 ```text
-commTraffic(data) -> internal provider reducer/state
+commTraffic(data) -> provider reducer/state
                        |          |          |
                        v          v          v
                  currentState  observeState  getResponse
 ```
 
-`getTurns()` reads canonical conversation/turn data derived from the same provider
-interpretation path.
+`getTurns()` reads canonical turn data derived from normalized provider events
+through Core-owned turn derivation.
 
-## Module instance lifetime
+Transport completion is not automatically an exchange outcome.  For example,
+stream completion, `[DONE]`-equivalent transport markers, and stop requests are
+evidence that provider plugins interpret according to provider semantics; they are
+not generic Core success/cancel rules.
 
-Authorization and verified artifact source may be shared across tabs/pages, but
-each page imports its own module instance from a local Blob URL.
+## Instance lifetime
 
-Within one page, repeated AICC instances should avoid redundant downloads/imports.
-A page-level module Promise/cache may be shared.  Mutable provider/session state
-should normally be created per Core/agent instance rather than stored in a single
-module-global singleton.
+Mutable provider/session state is created per Core/agent instance.  The module
+itself is a descriptor/factory, not a mutable provider singleton.
 
-A likely module shape is therefore a factory/descriptor rather than one mutable
-provider session object, for example:
+Distribution and module-source caching may be shared by a host environment, but a
+live provider instance belongs to the Core/agent instance that created it.  See
+`AGENT-PLUGIN-LOADING.md` for browser/local module and cache lifetime.
 
-```js
-export default {
-  id: "chatgpt-web",
-  create(context) {
-    return new ChatGPTAgent(context);
-  }
-};
-```
+## Runtime distribution
 
-The exact module ABI remains part of the AICC plugin-contract work; this example
-records the ownership/lifetime direction rather than freezing method names that
-have not yet been implemented.
+Provider repositories produce self-contained ESM runtime artifacts.  AICC selects
+artifacts through readable symbolic refs and validates identity/API compatibility
+before registration.
 
-## Update/cache behaviour
+Browser/Tampermonkey and local loading use the same plugin ABI.  Authentication,
+shared source caching, Blob import, cache revalidation, loader failure states, and
+artifact-integrity policy are specified in `AGENT-PLUGIN-LOADING.md`.
 
-The cache is keyed by plugin identity plus the selected symbolic ref and enough
-resolved metadata to determine freshness.
+## Required contract verification
 
-Because refs may move, the loader revalidates a cached ref according to policy.
-If the selected ref resolves to unchanged artifact metadata, the verified cache is
-reused.  If it changed, the new artifact is fetched and verified before use.
+The provider-neutral contract is not complete until tests cover at least:
 
-Older cached revisions may coexist temporarily so different AICC versions/test
-branches do not overwrite each other's selected plugin source.
-
-Do not rely solely on ordinary browser HTTP caching for correctness.
-
-## Required verification
-
-The implementation is not complete until tests cover at least:
-
-- first authorization and authorization cancellation/denial;
-- public artifact loading without authorization;
-- private repository access denied;
-- first artifact download;
-- simultaneous pages causing only one initial authorization/download;
-- another tab/domain obtaining the shared verified artifact source;
-- verified cache reuse;
-- mutable symbolic-ref revalidation/update;
-- invalid artifact/integrity rejection;
-- wrong plugin identity rejection;
-- incompatible plugin API version rejection;
-- Blob ESM import in the target Tampermonkey/browser environment;
-- multiple AICC instances in one page without redundant artifact downloads;
-- separate per-instance mutable provider state;
-- local loader use of the same plugin ABI;
-- `sendMessage()` success/refusal semantics, including follow-up refusal;
-- `getTurns()` positive/negative cursor and Python-style index semantics;
+- descriptor registration and duplicate-ID rejection;
+- incompatible plugin API rejection;
+- imported-module default descriptor registration;
+- recognition without constructing provider state;
+- complete public PI validation on created instances;
+- created-instance identity matching its descriptor;
+- Core canonical service injection without caller override;
+- separate mutable provider state per created instance;
+- `sendMessage()` success/refusal semantics;
+- positive/negative `getTurns()` cursor semantics;
 - `currentState()`/`observeState()` consistency;
-- `getResponse()` using the canonical state authority;
-- `commTraffic()` preserving provider-native evidence until plugin
-  interpretation;
-- `version()` reporting the actually loaded plugin implementation/ref/API;
-- no provider-name conditionals leaking into generic AICC rendering/consumer
-  paths.
+- `getResponse()` using the same canonical state authority;
+- provider-native `commTraffic()` interpretation staying inside the provider;
+- `version()` reporting the loaded implementation/ref/API;
+- no provider-name conditionals in generic Core render/consumer paths.
+
+Loader/distribution verification requirements are maintained separately in
+`AGENT-PLUGIN-LOADING.md`.
 
 ## Design constraints
 
-1. Provider plugins are genuine runtime plugins, not merely provider strategy
-   classes compiled permanently into AICC.
-2. A plugin may be public or private; AICC's ABI is the same either way.
-3. Private source/artifacts are not embedded in public AICC artifacts.
-4. Symbolic refs are authoritative selectors.  Do not require opaque SHAs merely
+1. Provider plugins are genuine runtime plugins, not provider strategy classes
+   permanently compiled into Core.
+2. Public and private plugins use the same ABI.
+3. Private plugin source/artifacts are not embedded in public AICC artifacts.
+4. Symbolic refs are authoritative selectors; opaque SHAs are not required merely
    for immutability.
-5. Share verified artifact source/cache, not live plugin objects, between browser
-   pages.
-6. Canonical state is single-source-of-truth for `currentState()`,
-   `observeState()`, and `getResponse()`.
-7. Hosts forward provider-native communication evidence through `commTraffic()`;
-   provider interpretation stays in the plugin.
-8. No silent fallback from a failed/invalid plugin to a different implementation.
-9. Authentication/downloading must not be repeated per AICC instance when a
-   shared authorized/cache environment is available.
-10. Provider implementation detail remains behind the plugin boundary even when
-    the public AICC PI is deliberately small.
+5. Core owns canonical identity, turn derivation, projection, and rendering.
+6. Provider interpretation remains behind the plugin boundary.
+7. Canonical state is the single authority for `currentState()`, `observeState()`,
+   and `getResponse()`.
+8. Hosts forward provider-native communication evidence through `commTraffic()`.
+9. Failed/invalid plugins do not silently fall back to another implementation.
+10. Provider implementation detail must not leak into generic Core consumers.
