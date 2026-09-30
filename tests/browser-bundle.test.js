@@ -14,6 +14,8 @@ import { buildBrowserBundle } from '../scripts/build-browser-bundle-plugins.mjs'
 const fixtureUrl = new URL('./fixtures/chatgpt/chatgpt-direct.jsonl', import.meta.url);
 const bundleUrl = new URL('../dist/aiconversationcore.chatgpt.browser.js', import.meta.url);
 const packageUrl = new URL('../package.json', import.meta.url);
+const artifactFreshnessOwnedByRepoWorkflow =
+  process.env.AICC_REPOWORKFLOW_VALIDATION === '1';
 
 async function loadJsonl(url) {
   const text = await readFile(url, 'utf8');
@@ -24,7 +26,9 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test('committed browser artifact exactly matches the deterministic generator', async () => {
+test('committed browser artifact exactly matches the deterministic generator', {
+  skip: artifactFreshnessOwnedByRepoWorkflow
+}, async () => {
   assert.equal(await readFile(bundleUrl, 'utf8'), await buildBrowserBundle());
 });
 
