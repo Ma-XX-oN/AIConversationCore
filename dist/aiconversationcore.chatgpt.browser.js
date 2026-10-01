@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.0-issue.104.10";
+const VERSION = "1.1.0-issue.104.11";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -6288,6 +6288,7 @@ class AgentPluginRegistry {
   }
 }
 
+/** Core-owned catalogue of configured agent-plugin artifact identities. */
 const AGENT_PLUGIN_CATALOG = Object.freeze({
   'chatgpt-web': Object.freeze({
     id: 'chatgpt-web',
