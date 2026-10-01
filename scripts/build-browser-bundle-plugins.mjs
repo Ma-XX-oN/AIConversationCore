@@ -138,16 +138,56 @@ function registryBody(source) {
 }
 
 /**
- * Builds the browser artifact with the provider-neutral plugin registry/session.
+ * Rewrites Core-owned agent plugin catalogue/loading for classic-script use.
+ *
+ * @param {string} source - ESM loading source.
+ * @returns {string} Classic-script local-function source.
+ */
+function loadingBody(source) {
+  let result = removeImport(
+    source,
+    "import { AgentPluginRegistry } from './registry.js';",
+    'AgentPluginRegistry'
+  );
+  result = replaceOnce(
+    result,
+    'export function getAgentPluginArtifact',
+    'function getAgentPluginArtifact',
+    'getAgentPluginArtifact export'
+  );
+  result = replaceOnce(
+    result,
+    'export async function loadAgent',
+    'async function loadAgent',
+    'loadAgent export'
+  );
+  result = replaceOnce(
+    result,
+    '\nexport { AGENT_PLUGIN_CATALOG };\n',
+    '\n',
+    'AGENT_PLUGIN_CATALOG export'
+  );
+  return result.trim();
+}
+
+/**
+ * Builds the browser artifact with provider-neutral plugin registry/session/loading.
  *
  * @returns {Promise<string>} Complete deterministic classic-script bundle source.
  */
 export async function buildBrowserBundle() {
-  const [baseSource, structuredVisibilitySource, sessionSource, registrySource] = await Promise.all([
+  const [
+    baseSource,
+    structuredVisibilitySource,
+    sessionSource,
+    registrySource,
+    loadingSource
+  ] = await Promise.all([
     buildBaseBrowserBundle(),
     readFile(resolve(ROOT, 'src/projections/structured-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/session/plugin-canonical-session.js'), 'utf8'),
-    readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8')
+    readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/plugins/loading.js'), 'utf8')
   ]);
 
   let base = replaceOnce(
@@ -166,17 +206,18 @@ export async function buildBrowserBundle() {
   const structuredVisibility = structuredVisibilityBody(structuredVisibilitySource);
   const session = pluginSessionBody(sessionSource);
   const registry = registryBody(registrySource);
+  const loading = loadingBody(loadingSource);
   const objectMarker = '  global.AIConversationCore = Object.freeze({\n';
   let result = replaceOnce(
     base,
     objectMarker,
-    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${objectMarker}`,
+    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${loading}\n\n${objectMarker}`,
     'AIConversationCore browser export object'
   );
   result = replaceOnce(
     result,
     '    getVersion,\n',
-    '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n',
+    '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n',
     'browser getVersion export'
   );
   result = replaceOnce(

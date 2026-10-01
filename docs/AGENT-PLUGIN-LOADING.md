@@ -7,6 +7,42 @@ and browser/local deployment concerns for AICC agent plugins.  The provider-neut
 agent contract and Core/plugin responsibility boundary remain in
 `AGENT-PLUGIN-ARCHITECTURE.md`.
 
+## Ownership boundary
+
+AIConversationCore owns plugin selection and identity.  A downstream consumer must
+not contain provider-plugin repository, ref, implementation-version, artifact-path,
+or integrity-hash metadata, and must not register provider modules itself.
+
+The Core catalogue resolves an agent ID such as `chatgpt-web` to the selected
+plugin artifact.  The Core `loadAgent()` operation then owns descriptor selection,
+module registration, plugin-API validation, agent creation, canonical-session
+association, and loaded-identity verification.
+
+A host environment may still own transport mechanics that Core cannot perform
+itself.  For example, a browser userscript may need to use the browser's existing
+authenticated GitHub session to obtain a private artifact.  That host supplies a
+generic `loadModule(artifact)` callback.  Core passes its selected artifact
+descriptor to the callback; the callback retrieves/verifies/imports those supplied
+bytes and returns the module namespace.  The host does not independently select or
+pin the provider plugin.
+
+The resulting dependency boundary is therefore:
+
+```text
+consumer -> AIConversationCore -> provider plugin
+```
+
+For DownloadConversation specifically:
+
+```text
+DownloadConversation -> AIConversationCore -> Chat-Gpt-Plugin-2
+```
+
+DownloadConversation may implement generic authenticated browser artifact
+transport, but it must not know that the selected `chatgpt-web` implementation is
+stored in Chat-Gpt-Plugin-2 except through the opaque artifact descriptor supplied
+by AICC at runtime.
+
 ## Plugin repositories and artifacts
 
 Each agent/provider implementation may live in a separate repository, for example:
@@ -55,7 +91,10 @@ injected blob <script type="module">         PASS
 The preferred browser loader therefore is:
 
 ```text
-authenticated/public fetch
+AICC-selected artifact descriptor
+        |
+        v
+generic host transport/authentication
         |
         v
 plugin source bytes
@@ -70,7 +109,7 @@ URL.createObjectURL()
  import(blobUrl)
         |
         v
-provider module/plugin
+provider module returned to AICC
 ```
 
 The preferred path does not insert plugin source into the DOM.
@@ -160,7 +199,9 @@ artifact path
 required plugin API version
 ```
 
-Optional integrity/version fields may also be present.
+Optional resolved commit/integrity/version fields may also be present for exact
+build reproducibility.  Those resolved fields are Core-owned implementation
+metadata and do not make the opaque commit the human-facing selection mechanism.
 
 Testing can deliberately attach an AICC build to a named plugin branch/channel.
 This is preferred over forcing a test to update an opaque SHA after every plugin
@@ -171,8 +212,9 @@ tests and logs can confirm what implementation was actually loaded.
 
 ## Artifact verification
 
-Before execution, AICC must validate the fetched artifact against the selected
-plugin descriptor and plugin ABI.  Validation should include the applicable
+Before execution, the host transport must validate bytes against the artifact
+identity selected by AICC, and AICC must validate the loaded module/agent against
+the plugin ABI and selected identity.  Validation should include the applicable
 subset of:
 
 - plugin ID;
@@ -250,6 +292,10 @@ on ordinary browser HTTP caching for correctness.
 
 Loading implementation is not complete until tests cover at least:
 
+- Core owns provider-plugin selection metadata and downstream consumers do not;
+- Core passes the selected descriptor to a generic host transport callback;
+- Core performs module registration, agent creation, session association, and
+  loaded identity verification;
 - first authorization and authorization cancellation/denial;
 - public artifact loading without authorization;
 - private repository access denied;

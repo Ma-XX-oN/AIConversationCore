@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 import {
   adaptChatGPTRecords,
+  getAgentPluginArtifact,
   getVersion,
   projectCanonicalConversation,
   renderCanonicalMarkdown
@@ -46,6 +47,12 @@ test('generated classic browser bundle exposes the required DownloadConversation
   assert.equal(typeof context.AIConversationCore.renderCanonicalMarkdown, 'function');
   assert.equal(typeof context.AIConversationCore.AgentPluginRegistry, 'function');
   assert.equal(typeof context.AIConversationCore.validateAgentPluginDescriptor, 'function');
+  assert.equal(typeof context.AIConversationCore.getAgentPluginArtifact, 'function');
+  assert.equal(typeof context.AIConversationCore.loadAgent, 'function');
+  assert.deepEqual(
+    plain(context.AIConversationCore.getAgentPluginArtifact('chatgpt-web')),
+    plain(getAgentPluginArtifact('chatgpt-web'))
+  );
 });
 
 test('generated browser bundle matches ESM ChatGPT normalization and Markdown rendering', async () => {
