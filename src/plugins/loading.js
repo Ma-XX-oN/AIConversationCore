@@ -1,5 +1,6 @@
 import { AgentPluginRegistry } from './registry.js';
 
+/** Core-owned catalogue of configured agent-plugin artifact identities. */
 const AGENT_PLUGIN_CATALOG = Object.freeze({
   'chatgpt-web': Object.freeze({
     id: 'chatgpt-web',
