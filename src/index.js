@@ -17,6 +17,11 @@ export {
   PUBLIC_PI,
   validateAgentPluginDescriptor
 } from './plugins/registry.js';
+export {
+  AGENT_PLUGIN_CATALOG,
+  getAgentPluginArtifact,
+  loadAgent
+} from './plugins/loading.js';
 
 export {
   STYLE_ROLES,
