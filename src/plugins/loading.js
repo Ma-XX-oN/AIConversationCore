@@ -5,7 +5,7 @@ const AGENT_PLUGIN_CATALOG = Object.freeze({
   'chatgpt-web': Object.freeze({
     id: 'chatgpt-web',
     repository: 'Ma-XX-oN/Chat-Gpt-Plugin-2',
-    ref: 'issue-125-subject-observer-v1',
+    ref: 'v0.1.0-issue.1.11',
     commit: '6b41cc22f8a1b06cf9d753fe5271119f51d35994',
     version: '0.1.0-issue.1.11',
     apiVersion: 1,
