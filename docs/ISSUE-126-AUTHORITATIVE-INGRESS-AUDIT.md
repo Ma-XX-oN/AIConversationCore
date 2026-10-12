@@ -77,3 +77,9 @@ The provider implementation remains fail-closed if `gizmo_id` is absent. Never m
 The exploratory standalone test workflow did run actual hosted tests, but RepoWorkflow policy rejected the additional workflow file. The temporary file was removed; the policy failure is repaired. Do not treat green policy-only CI as hosted functional proof.
 
 Next owner action: obtain a privacy-redacted live `/backend-api/conversations/{id}` response with `conversation_id`, `title`, `gizmo_id`; for a project chat, obtain the `/backend-api/gizmos/{id}` response containing `gizmo.id` and `gizmo.display.name`. Exclude authentication headers, cookies, message bodies, owner identities and files. Then wire the existing network ingress to the provider helpers, coordinate merge resolution only at #127, and run exact-candidate functional/browser tests.
+
+## Fixture-byte qualification (2026-10-12 19:43 EDT)
+
+Subsequent independent `git hash-object` verification against GitHub `fetch_file` blob SHAs identified differences in four of six isolated local fixture files: source mapper and three test files. Only the immutable accumulator source and ingress source matched GitHub exact blob SHAs. The local 15/15 test result therefore demonstrates the isolated fixture's behaviour, **not** a byte-identical run on final provider revision `7799901667737c5ccd4a8ef506826d369a325c83`. Treat exact-final functional validation INCOMPLETE. This qualification supersedes any earlier phrasing implying that the full local fixture was identical to the committed source.
+
+A canonical development-mode push trigger was committed at provider `5a0819df5176f00415914f31cef9562a143c3b1a` by changing `.ci/run-ci-request`. Connected workflow lookup surfaced PR policy-only run `38323433686` (success), but no observable push-mode validation evidence; no final-candidate hosted functional pass is claimed.
