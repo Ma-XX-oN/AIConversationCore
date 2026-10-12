@@ -5,13 +5,13 @@ const AGENT_PLUGIN_CATALOG = Object.freeze({
   'chatgpt-web': Object.freeze({
     id: 'chatgpt-web',
     repository: 'Ma-XX-oN/Chat-Gpt-Plugin-2',
-    ref: 'v0.1.0-issue.1.11',
-    commit: '6b41cc22f8a1b06cf9d753fe5271119f51d35994',
-    version: '0.1.0-issue.1.11',
+    ref: 'v0.1.0-issue.1.15',
+    commit: 'ae9ae8b6c8154f6777b3e2c190d738760c3a5d59',
+    version: '0.1.0-issue.1.15',
     apiVersion: 1,
     path: 'dist/chatgpt-plugin.mjs',
-    url: 'https://raw.githubusercontent.com/Ma-XX-oN/Chat-Gpt-Plugin-2/6b41cc22f8a1b06cf9d753fe5271119f51d35994/dist/chatgpt-plugin.mjs',
-    gitBlobSha1: 'c44391e7329dd8783f8e640ca6afd3048154a221',
+    url: 'https://raw.githubusercontent.com/Ma-XX-oN/Chat-Gpt-Plugin-2/ae9ae8b6c8154f6777b3e2c190d738760c3a5d59/dist/chatgpt-plugin.mjs',
+    gitBlobSha1: '3a454172529874c42273b959405ea5931c0677dc',
     byteLength: 54041
   })
 });
