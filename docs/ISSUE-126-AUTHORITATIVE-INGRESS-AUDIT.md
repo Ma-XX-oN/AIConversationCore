@@ -57,3 +57,23 @@ explicit `gizmo_id: null` -> standalone, pending exact current-provider confirma
 `gizmo.id` and `gizmo.display.name` -> confirmed project identifier/name.
 
 The provider implementation remains fail-closed if `gizmo_id` is absent. Never mistake public reverse-engineering documentation for proof that the user's running ChatGPT version emits these fields, nor an inferred project ID for an authenticated project-name response. No new periodic network polling is authorized.
+
+## V1 acceptance ledger — 12 October 2026, 19:39 EDT
+
+| Gate | Exact evidence | Status |
+| --- | --- | --- |
+| #124 frozen contract available | AICC `fbf9fa9da323c8d189cf397ec23acf8e9e065a57` | PASS as input; #124 separate issue disposition |
+| Backend field research | GPTSpy 2026-10-10 + independent project API captures linked above | PASS as external field research, NOT local live proof |
+| Isolated snapshot normalization | Chat-Gpt-Plugin-2 `7799901667737c5ccd4a8ef506826d369a325c83` | PASS in local isolated fixture, 15/15 |
+| Stale generation and request sequence | Same source, A→B→A and same-generation late-response tests | PASS in isolated fixture |
+| Historical hosted functional validation | Provider `1e4dd5f9029773f116a2c7f7393afc0d311de4f4`, run `38323058718` `npm test` and `npm run validate` | PASS at historical 14-test revision only |
+| Latest candidate canonical policy | Provider `7799901667737c5ccd4a8ef506826d369a325c83`, run `38323194384` | PASS policy only; functional stages skipped |
+| Latest candidate hosted functional tests | No exact-hosted run after final 15th regression test | INCOMPLETE |
+| Authenticated live browser source response | No exact response fixture from the user's running ChatGPT | INCOMPLETE |
+| Actual network event ingress and project metadata trigger | DC existing network seam known, no #126 producer wire in production | INCOMPLETE |
+| Source → #125 observer/Core notification | #125 separately owns agent observer; integration not assembled | INCOMPLETE |
+| Browser artifact alignment and #127 certification | No assembled exact candidate | INCOMPLETE |
+
+The exploratory standalone test workflow did run actual hosted tests, but RepoWorkflow policy rejected the additional workflow file. The temporary file was removed; the policy failure is repaired. Do not treat green policy-only CI as hosted functional proof.
+
+Next owner action: obtain a privacy-redacted live `/backend-api/conversations/{id}` response with `conversation_id`, `title`, `gizmo_id`; for a project chat, obtain the `/backend-api/gizmos/{id}` response containing `gizmo.id` and `gizmo.display.name`. Exclude authentication headers, cookies, message bodies, owner identities and files. Then wire the existing network ingress to the provider helpers, coordinate merge resolution only at #127, and run exact-candidate functional/browser tests.
