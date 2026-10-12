@@ -41,3 +41,19 @@ Problem: DC currently displays DOM-derived names despite the requirement for bac
 Hypothesis: the existing same-origin network capture seam can pass verified metadata to the plugin without DOM polling.
 Action: inspected frozen Core contract, plugin observer and bridge, and DC network interception/identity-summary sources.
 Learning: a suitable observation seam exists but authoritative project fields, source trigger, live fixture, and acceptance tests remain unverified. Implement only after provider response evidence fixes the schema.
+
+## Independent publicly recorded provider response evidence (not local live certification)
+
+The following external response investigations establish plausible, concrete provider field paths, but do **not** replace exact-revision live browser evidence in this repository:
+
+- GPTSpy (observed through 10 October 2026): `GET /backend-api/conversations/{id}?include_has_versions=true&num_turns=100`, response top-level `conversation_id`, `title`, `gizmo_id`, `conversation_template_id`, `messages`, `page_info`. Source: https://gptspy.alinr.com/knowledge/endpoint/backend-api-conversations-id/
+- ChatGPT-Web2API live capture (2 June 2026): top-level standalone conversation example includes `conversation_id`, `title`, `gizmo_id: null`; project detail `GET /backend-api/gizmos/{id}` includes `gizmo.id` and `gizmo.display.name`. Source: https://github.com/Octo-Lex/ChatGPT-Web2API/blob/master/docs/protocol-reference.md
+- An independent project conversation listing documents `GET /backend-api/gizmos/{gizmo_id}/conversations`, `items[].id`, `items[].title`, `items[].gizmo_id`. Source: https://github.com/brianjlacy/export-chatgpt/blob/main/_docs/PROJECTS_FILES_RESEARCH.md
+
+Cross-source field mapping for isolated producer fixture tests:
+`conversation_id` -> conversation.id; `title` -> conversation.name;
+`gizmo_id` -> project.id (only identified when a valid project ID is explicitly present);
+explicit `gizmo_id: null` -> standalone, pending exact current-provider confirmation;
+`gizmo.id` and `gizmo.display.name` -> confirmed project identifier/name.
+
+The provider implementation remains fail-closed if `gizmo_id` is absent. Never mistake public reverse-engineering documentation for proof that the user's running ChatGPT version emits these fields, nor an inferred project ID for an authenticated project-name response. No new periodic network polling is authorized.
