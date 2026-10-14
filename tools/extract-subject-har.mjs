@@ -33,6 +33,14 @@ for (const record of har.log.entries) {
   const matchProject = url.pathname.match(
     /^\/backend-api\/gizmos\/(g-p-[^/]+)$/);
   if (!matchConversation && !matchProject) continue;
+  let decodedConversationId;
+  let decodedProjectId;
+  try {
+    decodedConversationId = matchConversation
+      ? decodeURIComponent(matchConversation[1]) : null;
+    decodedProjectId = matchProject
+      ? decodeURIComponent(matchProject[1]) : null;
+  } catch { continue; }
   const content = record.response?.content;
   if (typeof content?.text !== 'string') {
     missingPayloads++;
@@ -51,7 +59,7 @@ for (const record of har.log.entries) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) continue;
   if (matchConversation) {
     if (typeof data.conversation_id !== 'string' ||
-        data.conversation_id !== decodeURIComponent(matchConversation[1]))
+        data.conversation_id !== decodedConversationId)
       continue;
     const id = pseudonym(conversationIds, data.conversation_id, 'C');
     const body = { conversation_id: id };
@@ -78,7 +86,7 @@ for (const record of har.log.entries) {
   }
   const gizmo = data?.gizmo;
   if (typeof gizmo?.id !== 'string' ||
-      gizmo.id !== decodeURIComponent(matchProject[1]) ||
+      gizmo.id !== decodedProjectId ||
       typeof gizmo?.display?.name !== 'string') continue;
   const id = pseudonym(projectIds, gizmo.id, 'g-p-P');
   entries.push({

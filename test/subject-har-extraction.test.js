@@ -24,6 +24,8 @@ test('HAR extractor preserves affirmative standalone and excludes secrets', () =
         conversation),
       entry('https://chatgpt.com/backend-api/gizmos/g-p-private', project),
       entry('https://example.com/backend-api/conversations/secret-cid',
+        conversation),
+      entry('https://chatgpt.com/backend-api/conversations/%ZZ',
         conversation)
     ] } }));
     const result = spawnSync(process.execPath,
