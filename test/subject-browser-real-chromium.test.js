@@ -1,18 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync, copyFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, copyFileSync, readdirSync, existsSync } from 'node:fs';
+import { tmpdir, homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 function browserExecutable() {
-  for (const name of [process.env.CHROME_BIN, 'google-chrome', 'chromium', 'chromium-browser']
-    .filter(Boolean)) {
-    const probe = spawnSync(name, ['--version'], { encoding: 'utf8', timeout: 3000 });
+  const candidates = [process.env.CHROME_BIN, 'google-chrome',
+    'google-chrome-stable', 'chromium', 'chromium-browser'].filter(Boolean);
+  const cache = join(homedir(), '.cache', 'ms-playwright');
+  const findCached = () => {
+    if (!existsSync(cache)) return [];
+    const results = [];
+    for (const item of readdirSync(cache)) {
+      if (!item.startsWith('chromium')) continue;
+      for (const candidate of [
+        join(cache, item, 'chrome-linux64', 'chrome'),
+        join(cache, item, 'chrome-linux', 'chrome'),
+        join(cache, item, 'chrome-headless-shell-linux64', 'chrome-headless-shell'),
+        join(cache, item, 'chrome-linux', 'headless_shell')
+      ]) if (existsSync(candidate)) results.push(candidate);
+    }
+    return results;
+  };
+  for (const name of [...candidates, ...findCached()]) {
+    const probe = spawnSync(name, ['--version'],
+      { encoding: 'utf8', timeout: 3000 });
     if (!probe.error && probe.status === 0) return name;
   }
-  throw new Error('Chrome/Chromium executable required for #127 real-browser gate');
+  // Exact pinned tooling on the ephemeral hosted CI VM; no production changes.
+  const install = spawnSync('npx', [
+    '--yes', 'playwright@1.56.1', 'install', 'chromium'
+  ], { encoding: 'utf8', timeout: 240000, maxBuffer: 4 * 1024 * 1024 });
+  assert.equal(install.status, 0, 'pinned Playwright Chromium install failed: ' +
+    (install.stderr || install.error?.message || '').slice(-1400));
+  for (const name of findCached()) {
+    const probe = spawnSync(name, ['--version'],
+      { encoding: 'utf8', timeout: 3000 });
+    if (!probe.error && probe.status === 0) return name;
+  }
+  throw new Error('Pinned Chromium install succeeded but binary was not found');
 }
 
 test('actual Chrome executes immutable Core and plugin browser host observer flow', () => {
@@ -83,7 +111,7 @@ test('actual Chrome executes immutable Core and plugin browser host observer flo
       '--user-data-dir=' + join(root, 'profile'),
       '--virtual-time-budget=12000', '--dump-dom',
       pathToFileURL(join(root, 'index.html')).href
-    ], { encoding: 'utf8', timeout: 60000, maxBuffer: 1024 * 1024 });
+    ], { encoding: 'utf8', timeout: 90000, maxBuffer: 1024 * 1024 });
     assert.equal(result.status, 0, (result.stderr || '').slice(-1800) ||
       result.error?.message);
     assert.match(result.stdout, /AICC127_BROWSER_PASS/);
