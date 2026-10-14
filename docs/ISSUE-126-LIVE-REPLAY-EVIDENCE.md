@@ -78,3 +78,42 @@ A later exact-candidate request commit e21320305a0463276b2988446ec4d2645d1ac2a3
 has PR run 38595891912 with the same policy-only result.
 The connector only exposes PR-triggered runs; no push-mode hosted
 functional PASS is claimed.
+
+## 14 October continuation: deterministic browser bundle repair
+
+Before this continuation, the provider `scripts/build-plugin.mjs` only
+bundled the old four modules and entirely omitted the #126 identity
+source modules.  This concrete artifact defect has been corrected on
+the existing provider PR #4, without changing #125's agent observer.
+
+Current generator adds reducer, mapper, ingress and network ingress in
+dependency order.  The self-contained artifact now exports the new
+identity adapter.  Its source-derived build output was compared
+character-for-character to the committed artifact: exact equality
+(62,106 chars at initial repair; subsequently regenerated for a
+malformed-percent-encoded URL fail-closed fix).  Browser execution tests
+and source/artifact parity assertions were added to the repository.
+
+The host handoff itself is **not yet live-wired**.  The adapter exposes
+`begin(conversationId)`, `request(method,url)` and
+`response(observation,status,parsedJson)`, but DC must provide the
+observed traffic from its existing fetch/XHR network seams and pair it
+with the #125 observer.  Simply exporting an adapter does not prove
+the browser data path was assembled.
+
+The latest visible GitHub PR run for the 14 October candidate was
+`38606012599`: policy SUCCESS, prepare/validate/finalize SKIPPED.
+The `.ci/run-ci-request` push trigger was updated, but available
+GitHub connected workflow lookup is PR-triggered only, so no hosted
+functional PASS is asserted.
+
+| Additional check | Classification |
+| --- | --- |
+| Generated artifact includes identity adapter | PASS, exact build parity |
+| Artifact runtime parity tests committed | PASS implementation, execution pending |
+| Malformed encoded URL handling | PASS source correction, final isolated replay pending |
+| Full hosted tests on exact latest candidate | INCOMPLETE |
+| Real browser host → provider event delivery | INCOMPLETE |
+| #125 assembled observer / #127 pinned artifact | INCOMPLETE |
+
+No merge and no closure.
