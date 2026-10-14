@@ -261,3 +261,53 @@ Current status:
 
 Never claim full user-facing subject-identity integration, merge, or
 issue closure from the provider's isolated/hosted green result alone.
+
+## Direct request-sequence replay and integration truth
+
+The October 12 `.mlog.zst` archives were reprocessed **independently**
+to reconstruct existing host event tuples by
+`(session_id, network_sequence)`, joining
+`communication_fetch_request`,
+`communication_fetch_response` and assembled
+`communication_response_chunk` ordered by chunk ordinal.  Sensitive
+headers and message bodies were excluded from the temporary replay
+fixture; only ID/title/membership/project display fields were retained.
+
+Later archive: three authentic successful backend request/response pairs,
+with project-detail request/response preceding two conversation-detail
+responses (those two completed out of request order).  Earlier archive:
+one authenticated conversation metadata pair, no project detail.
+The exact current GitHub blob for `ChatGPTSubjectHostTraffic`
+(`28fc5651a500cc347289637ff06c58317e617770`)
+and all four exact source dependencies replayed both groups using
+Node 22: **2/2 recorded-traffic host-sequence assertions PASS**.
+The larger local minimal fixture reports 39/39 PASS.
+These are local evidence-replay tests, not a live browser certification.
+
+Current Core `main` catalogue evidence is decisive: file
+`src/plugins/loading.js`, blob
+`ad567d2eecbf7fa8404403e5c0350f3345ad7550`,
+pins provider `chatgpt-web` commit
+`6805ea7240c38160386a591cf3a72439226ab675`,
+version `0.1.0-issue.1.9`, artifact blob
+`f29805c7f8d0393f588aacf22661f667b11f8cfa`.
+The older artifact does not contain #125's subject observer or
+#126's host ingress.  The separately hosted green #126 .17 artifact
+also still contains pre-#125 agent blob
+`6d03e8be62c509cbaa9d1a1b8481d5c028e73b1a`,
+which does not implement `publishSubjectIdentity`.
+The observer exists on independently owned #125 agent blob
+`e91930e67adabfe314a8c6278934ee0ffd241fa1`.
+
+Therefore Core-loaded live subject notifications are **not** certified:
+#127 must assemble an immutable final artifact from the two sibling
+owners, test Core loader/registry/observer, pin the exact version,
+commit/blob hash/byte count and run browser capture end-to-end;
+DC #270 then consumes that observer.  No source code was copied
+between sibling PRs or merged without authorization.
+
+Another earlier Library archive was checked as an alternate standalone
+evidence source, but the Files byte materializer returned an
+unauthorized raw-byte path; the smaller `.md.zst` registered a new
+mount but the path remained absent in the active container.  No claim
+of directly witnessed standalone `gizmo_id:null` is made.
