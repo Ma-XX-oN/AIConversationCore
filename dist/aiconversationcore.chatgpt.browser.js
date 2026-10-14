@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.0-issue.104.11";
+const VERSION = "1.1.0-issue.127.18";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -6293,14 +6293,14 @@ const AGENT_PLUGIN_CATALOG = Object.freeze({
   'chatgpt-web': Object.freeze({
     id: 'chatgpt-web',
     repository: 'Ma-XX-oN/Chat-Gpt-Plugin-2',
-    ref: 'main',
-    commit: '6805ea7240c38160386a591cf3a72439226ab675',
-    version: '0.1.0-issue.1.9',
+    ref: 'cf521202e78dede9152840193dc5ca140703b240',
+    commit: 'cf521202e78dede9152840193dc5ca140703b240',
+    version: '0.1.0-issue.1.21',
     apiVersion: 1,
     path: 'dist/chatgpt-plugin.mjs',
-    url: 'https://raw.githubusercontent.com/Ma-XX-oN/Chat-Gpt-Plugin-2/6805ea7240c38160386a591cf3a72439226ab675/dist/chatgpt-plugin.mjs',
-    gitBlobSha1: 'f29805c7f8d0393f588aacf22661f667b11f8cfa',
-    byteLength: 50204
+    url: 'https://raw.githubusercontent.com/Ma-XX-oN/Chat-Gpt-Plugin-2/cf521202e78dede9152840193dc5ca140703b240/dist/chatgpt-plugin.mjs',
+    gitBlobSha1: '32182498480ba061367ce60dbb4104c0c0d55fe7',
+    byteLength: 69824
   })
 });
 
