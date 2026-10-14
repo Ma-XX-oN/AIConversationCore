@@ -76,3 +76,22 @@ Publish redacted witness metadata and the reproducible replay result to #127.
 Close #127 and unlock DC #270 only after both live-browser and affirmative
 standalone gates are independently certified.  Do not merge either staged PR
 without the user's explicit authorization.
+
+## Existing HAR recovery
+
+When an authorized, raw-byte HAR archive becomes readable, decompress it
+locally using `zstd` (never send credentials or an unredacted HAR to GitHub):
+
+```sh
+zstd -d --stdout chatgpt.com2.har.zst > chatgpt.com2.har
+node tools/extract-subject-har.mjs chatgpt.com2.har > candidates.json
+```
+
+The extractor reads only successful same-origin GET identity endpoints and
+prints pseudonymized conversation/project IDs and names.  It never prints
+headers or unrelated messages.  An affirmative standalone count is based
+on an actual HAR response body's explicit `gizmo_id: null`; absent response
+bodies are counted separately.  The HAR alone has no observer trace or trusted
+runtime hook correlation, so its output is **candidate backend evidence**,
+not a full #127 browser/live certificate.  Review the source and provenance
+before upgrading its evidence class.  Keep originals local and private.
