@@ -49,3 +49,32 @@ live host-to-Core integration certification.
 
 No merge and no issue closure. The 12 October audit ledger remains
 historical evidence, superseded only as to the source-response gap.
+
+## Exact local source-and-test replay update
+
+At 2026-10-14 12:15 EDT, a local minimal provider fixture contains
+four production source modules with exact Git blob hashes:
+
+- subject-identity.js: 60c5d63be0b6fac8c95a705dc8f5e3dee18733cd
+- chatgpt-subject-source.js: 00a8a9fd404f25b85df4d304f12b473ff99ec073
+- chatgpt-subject-ingress.js: b5b7e0df959b5d7d36dd37a642da5aa35803d5bd
+- chatgpt-subject-network-ingress.js: 423095d008b201cd1229715dbc311a48a2775125
+
+The original three provider test files also exactly match GitHub blobs
+968aba6b37c2250e76a7299c84c30a31449ebb31,
+65a472965b0042127c2a9e19d777cf5ff2ffdb21 and
+8dce7c860b69c53a41c7367b03f98d08cbd48186.
+
+Executed Node `--test` on this minimal fixture: 23/23 PASS.
+The 15 pre-existing assertions are byte-identical test copies.
+The eight new adapter assertions are equivalent local test logic,
+not an exact Git blob copy. This does not prove a full repository test,
+hosted CI, browser artifact or actual Core/observer integration pass.
+
+The most recent PR workflow found for provider source commit
+cbaf41c7141e3643beaccc4b38fb2d111666b112 was run
+38595507247: policy SUCCESS, validate/prepare/finalize SKIPPED.
+A later exact-candidate request commit e21320305a0463276b2988446ec4d2645d1ac2a3
+has PR run 38595891912 with the same policy-only result.
+The connector only exposes PR-triggered runs; no push-mode hosted
+functional PASS is claimed.
