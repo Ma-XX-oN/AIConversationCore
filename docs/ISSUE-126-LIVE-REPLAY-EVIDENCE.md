@@ -208,3 +208,56 @@ Latest classification:
 
 No merge, issue closure or production activation.  DC #270 subscription
 remains gated on independent #127 integration certification.
+
+## 14 October .17 hosted provider handoff checkpoint
+
+The .16 immutable tagged candidate is preserved.  The producer owner
+subsequently added a transport-agnostic host-traffic correlation bridge,
+`ChatGPTSubjectHostTraffic`, in provider PR #4.  It accepts
+`begin(conversationId)`, request observations with
+`network_sequence`, `method` and `request_url`, and a matching
+completed response with `network_sequence`, `status` and parsed JSON
+`body`.  Correlation is generation-cleared and bounded to 256 pending
+observations; response bodies are not retained and no polling occurs.
+
+An exact browser-bundle build now includes both the canonical
+`ChatGPTSubjectNetworkIngress` and the host-correlation bridge, with
+source-versus-bundle tests for project-first ordering, stale navigation,
+wrong origin/status/sequence, bounded pending requests, and notification
+semantics.  The host's *actual delivery* of those events remains external
+to the provider repository and requires a separate assembled browser
+integration.  Do not conflate publication of the bridge with live wiring.
+
+The development version advanced to `0.1.0-issue.1.17`, an unused
+terminal iteration.  Authenticated hosted push-run:
+https://github.com/Ma-XX-oN/Chat-Gpt-Plugin-2/actions/runs/38612210758
+
+All four jobs completed successfully (policy, prepare, portable-node22
+validation, finalize).  Downloaded authoritative workflow result artifacts
+show exact candidate `813fa85eb2cb40de8f0aebe03ad45a2e822ef915`,
+Node `22.23.3`, Python `3.13.16`, `node scripts/validate.mjs`,
+TAP **68/68 PASS, zero failures, zero skipped**, and generated-artifact
+verification **PASS, changedFiles=[]** (no materialization changes).
+The immutable annotated development tag `v0.1.0-issue.1.17`
+(tag object `a49ab22d7d784c2be657ac3129c106158b81f9da`)
+was independently dereferenced to the exact tested candidate
+`813fa85eb2cb40de8f0aebe03ad45a2e822ef915`.
+Provider PR #4 remains OPEN/DRAFT/UNMERGED.
+
+Current status:
+
+| Criterion | Result |
+| --- | --- |
+| Recorded authoritative backend identity fields | PASS for project chat |
+| Producer normalization + stale-response protections | PASS |
+| Bounded host traffic correlation implementation | PASS |
+| Current self-contained browser artifact parity | PASS hosted |
+| Exact-candidate hosted functional validation | PASS 68/68 |
+| Development immutable annotated tag provenance | PASS |
+| #125 isolated source interoperability | PASS smoke only |
+| Actual host→provider production event delivery | INCOMPLETE |
+| Core-loaded observer/pinned assembled browser end-to-end | INCOMPLETE, #127 |
+| Live standalone-chat backend witness | INCOMPLETE |
+
+Never claim full user-facing subject-identity integration, merge, or
+issue closure from the provider's isolated/hosted green result alone.
