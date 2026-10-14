@@ -311,3 +311,65 @@ evidence source, but the Files byte materializer returned an
 unauthorized raw-byte path; the smaller `.md.zst` registered a new
 mount but the path remained absent in the active container.  No claim
 of directly witnessed standalone `gizmo_id:null` is made.
+
+## 14 October .19 final producer test lane
+
+The existing producer PR #4 was advanced to immutable development iteration
+`0.1.0-issue.1.19` to include two further producer-owned safeguards:
+
+1. `connectChatGPTSubjectHost({agent,origin,conversationId})` binds the
+   existing host event-correlation ingress directly to the separately owned
+   #125 publication API and rejects a missing `publishSubjectIdentity`
+   method at connection time.  It does **not** modify or duplicate #125.
+2. Both the project-request sequence map and pre-membership project-name
+   cache are bounded to 256 keys; oldest identities expire fail-closed.
+   The existing 256-pending host-event bound remains intact.
+
+Hosted CI invocation `f2d747e51ead3e5366cc95907d1ba4112c70a7a5`:
+https://github.com/Ma-XX-oN/Chat-Gpt-Plugin-2/actions/runs/38617033464
+
+- All four jobs SUCCESS: policy, prepare, Node22 validation, finalize.
+- Exact generated and tested SHA:
+  `519f124e1206058305a52e5fb0ed048b5cf7952a`.
+- Downloaded hosted `portable-node22.json` verifies `node
+  scripts/validate.mjs`, **72/72 tests PASS, 0 failed, 0 skipped**.
+- Hosted artifact result PASS; `changedFiles=[dist/chatgpt-plugin.mjs]`,
+  generated and committed before validation.  Full source and version are
+  identical between invocation and final tested candidate.
+- Annotated terminal tag `v0.1.0-issue.1.19`, tag-object SHA
+  `ef111df788ff6b6a1a96d8dd2cc1156820a51dca`, dereferences to the
+  exact tested candidate SHA above.
+
+Further independent checks, without changing source:
+
+- Exact #126 source module Git blobs
+  `chatgpt-subject-network-ingress.js`
+  `39e4e3abba2f523ac6c9c1e799c3f283019b8b78` and
+  `chatgpt-subject-host-traffic.js`
+  `2ae606c81b8705d6d2d7effb84f2e0f7473bf719`
+  were reconstructed locally, with `git hash-object` equality.
+- Chromium 144 via Playwright at `about:blank` executed the exact
+  provider modules: **320 assertions PASS** for request/response event
+  processing, navigation, project-first ordering, standalone null
+  membership, hostile origin/method rejection and cache bounds.
+- Browser `fetch()`-wrapper fixture (mock backend responses, not live
+  ChatGPT) exercised host network event correlation and generated two
+  valid canonical publications with both correct names.
+- A Core registry/source compatibility fixture executed exact current
+  AICC `src/plugins/registry.js` blob
+  `f0fc2a2da143dc64afca2d7c26f73dde434e9042`,
+  exact #125 agent blob
+  `e91930e67adabfe314a8c6278934ee0ffd241fa1`,
+  and exact #126 producer source; 14 API and lifecycle assertions PASS.
+  Registry imports `deriveTurns` and `PluginCanonicalSession` were
+  stubbed: **not** live Core loader or catalogue-pin certification.
+
+**Remaining integration authority, not claimed PASS:** Core still pins the
+pre-#125/#126 agent artifact on main; #127 owns combined immutable artifact,
+Core loader pin and independent convergence tests; DC #270 owns browser
+subscription.  The live authenticated ChatGPT browser (and standalone
+`gizmo_id:null` witness) was not accessible.  Chromium navigation to
+`https://chatgpt.com` was denied `ERR_BLOCKED_BY_ADMINISTRATOR`
+even with a mocked Playwright route, so no claim of live-site proof.
+
+#126 PR #4 and audit PR #129 remain OPEN/DRAFT/UNMERGED.
