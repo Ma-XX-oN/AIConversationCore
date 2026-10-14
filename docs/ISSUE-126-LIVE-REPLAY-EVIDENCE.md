@@ -117,3 +117,35 @@ functional PASS is asserted.
 | #125 assembled observer / #127 pinned artifact | INCOMPLETE |
 
 No merge and no closure.
+
+## 14 October exact-candidate RED→GREEN verification
+
+A new malformed-percent-encoding regression failed against the then-published
+provider adapter.  `request('GET', '/backend-api/gizmos/g-p-%E0%A4%A')`
+produced an observation whose expected project ID was null rather than
+rejecting the request.  The local Node fixture recorded **11 PASS, 1 FAIL**.
+After the added post-decode null guard, all 12 extended cases passed.
+
+The exact final four source files and original four test files were copied
+from GitHub and every `git hash-object` verified against the corresponding
+published blob SHA, including latest adapter:
+`b287a93603be440638638584135edb9db591695c`.
+The final minimal isolated fixture ran **36/36 Node tests PASS** (24 exact
+committed test files + 12 additional source-evidence/negative tests).
+This is now exact-source isolated execution, unlike the earlier
+non-byte-identical V1 fixture.  It is not full-repository or hosted proof.
+
+The regenerated browser artifact blob is
+`42f4812e791acb242ad1eef47985d562f4e4581e`;
+generation and source/artefact parity were separately inspected, while
+hosted executable artifact validation is still outstanding.
+
+Latest observed provider PR workflow `38607233904` for CI request commit
+`fa08926bdd251178720f4b2d0bd4e42bc4028ff3` reported
+policy SUCCESS, validate/prepare/finalize SKIPPED.  The connection's
+commit-run lookup excludes push-triggered runs; do not infer their result.
+
+The separate #125 observer PR #3 remains open/draft/unmerged; #127 is an
+independent convergence gate and DC #270 explicitly depends on #127.
+Actual DC host/observer assembly must not be falsely claimed from the
+producer's isolated tests.  No merges authorised.
