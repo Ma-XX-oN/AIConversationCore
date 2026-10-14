@@ -114,8 +114,8 @@ test('actual Chrome executes immutable Core and plugin browser host observer flo
     ], { encoding: 'utf8', timeout: 90000, maxBuffer: 1024 * 1024 });
     assert.equal(result.status, 0, (result.stderr || '').slice(-1800) ||
       result.error?.message);
-    assert.match(result.stdout, /AICC127_BROWSER_PASS/);
-    assert.doesNotMatch(result.stdout, /AICC127_BROWSER_FAIL/);
+    assert.match(result.stdout, /<div id="status">AICC127_BROWSER_PASS<\\/div>/);
+    assert.doesNotMatch(result.stdout, /<div id="status">AICC127_BROWSER_FAIL/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
