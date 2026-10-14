@@ -388,3 +388,75 @@ executed in Node.  Historical and current TAP files retained locally.
 This supplements, not replaces, full hosted 72/72 and Chromium 320/320
 acceptance.  Full live-site/Core pin and standalone witness are still
 INCOMPLETE.
+
+## 14 October 2026: .20 X→Y→X epoch correction and certification
+
+A previously untested **same-navigation** scenario exposed a real stale
+backend identity leak.  With membership X, request project X's detail,
+switch conversation membership to Y, then switch back to X without a
+fresh project-detail request.  The prior exact source could accept
+the now-old X response because its project ID matched again.
+
+Historical network source blob
+`39e4e3abba2f523ac6c9c1e799c3f283019b8b78`
+and corrected source blob
+`7c16257365e89b4b5a4994d3ed437353f5ad736c`
+were independently reconstructed and `git hash-object` verified.
+Against the *same* executable regression:
+- Historical source: FAIL (old X identity incorrectly accepted).
+- Corrected source: PASS.  Additional explicit guard cases verify that
+  an early project-detail request can still complete immediately after
+  first proven membership, while a request surviving X→Y→X cannot.
+- Both original privacy-reduced October 12 real recorded-traffic
+  replay cases remain PASS on the corrected bytes.
+- Independent headless Chromium 144 `about:blank` page-realm execution:
+  **322/322 assertions PASS** on exact corrected source.
+- Independent Chromium mocked `fetch()` interception replay:
+  PASS, two sequence-matched notifications and correct backend names.
+  Neither is an authenticated live ChatGPT site.
+
+Exact hosted candidate: provider development iteration
+`0.1.0-issue.1.20`, tested commit
+`fcd2107a9b0dc95b7ba84505d656e121b39cdc11`.
+[GitHub Actions 38621461635](https://github.com/Ma-XX-oN/Chat-Gpt-Plugin-2/actions/runs/38621461635):
+policy PASS, prepare PASS, portable Node22 validation PASS, finalize
+PASS.  Downloaded authentic environment-result JSON:
+**75/75 TAP PASS, zero failures**, version .20 and exact SHA above.
+Downloaded artifact-result JSON: PASS; materialized
+`dist/chatgpt-plugin.mjs` before the test.  Final browser artifact
+Git blob `8c505406d7035d3fee1e639a73bf0c2dd4025031`,
+**65,988 bytes**, dereferenced from exact tagged commit tree.
+Immutable annotated development tag
+`v0.1.0-issue.1.20` (tag-object SHA
+`63fc4707fcab1156a59fa89c91e0bb8ca932f55d`)
+points to the exact tested candidate.
+
+A first correctly formatted `.20` request update persisted on GitHub
+but emitted no discoverable push-run event.  A later whitespace-only
+re-emission of that exact version produced the full hosted run above.
+The source was not modified between these two requests; policy-only
+pushes were not called functional certification.
+
+No raw conversation messages or tokens have been added to either PR.
+An additional search for historical standalone records found candidate
+Library archives, but their raw-byte materialization was rejected by
+the Files service; no fake live standalone witness is claimed.
+
+| Acceptance criterion | Current classification |
+| --- | --- |
+| Authoritative project chat backend fields and temporal ordering | PASS |
+| Initial, late names, rename, navigation, reload, no-project contract simulation | PASS |
+| X→Y→X membership stale-response negative | PASS (historical RED→GREEN) |
+| Real-recorded ingress replay after .20 change | PASS 2/2 |
+| Real Chromium runtime + fetch-wrapper mock | PASS 322/322 + wrapper |
+| Hosted exact-source functional and generated artifact | PASS 75/75 |
+| Annotated immutable development tag and pinned source SHA | PASS |
+| Live authenticated ChatGPT host/Core observer assembly | INCOMPLETE, #127 |
+| Direct standalone backend response with explicit null membership | INCOMPLETE |
+| DC #270 consumer subscription and saved filenames | DEFERRED, separate owner |
+
+Provider PR #4 and AICC evidence PR #129 intentionally remain DRAFT
+and UNMERGED; #126 remains OPEN pending the issue's remaining
+cross-boundary acceptance.  #125 owns its observer, #127 convergence,
+DC #270 downstream subscription. No unauthorized merge or ownership
+transfer.
