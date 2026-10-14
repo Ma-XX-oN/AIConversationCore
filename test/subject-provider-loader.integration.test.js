@@ -15,7 +15,7 @@ test('pinned #127 provider blob loads through real Core and emits backend identi
   const bytes = Buffer.from(await response.arrayBuffer());
   assert.equal(bytes.length, artifact.byteLength, 'exact artifact byte count');
   const gitBlob = createHash('sha1')
-    .update(Buffer.from('blob ' + bytes.length + '\\0'))
+    .update(Buffer.from('blob ' + bytes.length + String.fromCharCode(0)))
     .update(bytes).digest('hex');
   assert.equal(gitBlob, artifact.gitBlobSha1, 'exact Git blob identity');
   const provider = await import('data:text/javascript;base64,' +
