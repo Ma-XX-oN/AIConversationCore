@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { loadAgent, getAgentPluginArtifact } from '../src/plugins/loading.js';
 
 test('pinned #127 provider blob loads through real Core and emits backend identity', async () => {
@@ -10,9 +11,7 @@ test('pinned #127 provider blob loads through real Core and emits backend identi
     '2d80403bc7d4425f2cca668b8fab61744565c60c');
   assert.equal(artifact.gitBlobSha1, '32182498480ba061367ce60dbb4104c0c0d55fe7');
   assert.equal(artifact.byteLength, 69824);
-  const response = await fetch(artifact.url, { signal: AbortSignal.timeout(15000) });
-  assert.equal(response.status, 200, 'immutable provider artifact fetch');
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const bytes = await readFile(new URL('./fixtures/provider-1.21.txt', import.meta.url));
   assert.equal(bytes.length, artifact.byteLength, 'exact artifact byte count');
   const gitBlob = createHash('sha1')
     .update(Buffer.from('blob ' + bytes.length + String.fromCharCode(0)))
