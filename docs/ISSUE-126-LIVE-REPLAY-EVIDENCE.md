@@ -149,3 +149,62 @@ The separate #125 observer PR #3 remains open/draft/unmerged; #127 is an
 independent convergence gate and DC #270 explicitly depends on #127.
 Actual DC host/observer assembly must not be falsely claimed from the
 producer's isolated tests.  No merges authorised.
+
+
+## 14 October: real hosted CI certification, source candidate and remaining gates
+
+The earlier "hosted functional INCOMPLETE" evidence above has been
+superseded by an authenticated, full push-mode GitHub Actions run.
+
+Previous forced hosted invocations failed in RepoWorkflow prepare with
+"invalid CI request version: issue=126".  The pinned RepoWorkflow guard
+requires that .ci/run-ci-request contain only a matching development
+version.  The previous development version 0.1.0-issue.1.9 was already
+terminal-tagged and could not be reused.  Repaired the version contract
+instead of disabling any CI guard.
+
+The provider package and runtime version were advanced together to unused
+0.1.0-issue.1.16; the committed browser artifact was regenerated; the
+CI request contained exactly that one version string.  Invocation:
+91e1f10a137d4b46ff485786961bab497b0b7b69.
+
+Run: https://github.com/Ma-XX-oN/Chat-Gpt-Plugin-2/actions/runs/38610861050
+All four hosted jobs PASS: policy, prepare, portable-node22 validation,
+finalize.  Prep created one artifact-only materialization commit:
+293e00dcaff507ada0893f8c6d992388d6dfdd91, removing one extra
+blank line in dist/chatgpt-plugin.mjs.  The test artifact JSON names
+that exact source commit and version 0.1.0-issue.1.16, with
+node scripts/validate.mjs: 63/63 TAP tests PASS, zero failures.
+Generated-artifact verification also PASS.
+
+CI finalizer recorded PASS and created immutable annotated development
+tag v0.1.0-issue.1.16, whose tag-object SHA is
+ae4c4a6240a1cfd12ff7d546600dda2cd46fc452, pointing at the
+exact materialized and tested SHA 293e00dcaff507ada0893f8c6d992388d6dfdd91.
+Provider PR #4 remains OPEN, DRAFT, UNMERGED.
+
+Additional independently reproduced RED→GREEN: early cached project
+name could leak after the conversation established *another* project
+membership then switched back.  Original source: 36 PASS/1 FAIL in
+an isolated fixture.  Corrected project membership invalidates all
+pre-membership name cache entries; updated isolated source: 37/37 PASS.
+The exact hosted candidate includes this fix.
+
+An independently assembled source-level cross-lane harness using the
+exact #125 observer class source SHA
+e91930e67adabfe314a8c6278934ee0ffd241fa1 and the exact four #126
+source modules passed 11 interface assertions.  The harness used a
+minimal URL shim; this is not an authenticated live browser/Core run.
+
+Latest classification:
+- Project-conversation backend evidence: PASS
+- RED-to-GREEN source regression and local tests: PASS
+- Full hosted Node22 suite: PASS 63/63
+- Generated browser-artifact provenance and annotated terminal tag: PASS
+- #125/#126 interface smoke: PASS isolated, not live
+- Actual host network event wiring into the provider: INCOMPLETE
+- Core catalogue pin and browser observer convergence: INCOMPLETE (#127)
+- Authenticated standalone-chat absence-of-project trace: INCOMPLETE
+
+No merge, issue closure or production activation.  DC #270 subscription
+remains gated on independent #127 integration certification.
