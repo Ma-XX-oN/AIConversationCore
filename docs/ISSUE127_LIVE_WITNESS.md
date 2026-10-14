@@ -4,7 +4,8 @@
 
 This is the outstanding browser acceptance gate after the exact provider and
 Core hosted tests have passed.  This procedure does not authorize a merge or
-substitute fixtures for live evidence.  The witness must originate in a signed-in
+substitute fixtures for live evidence.  The witness must originate in a
+signed-in
 ChatGPT browser with the exact staged Core and provider integration artifacts.
 
 Provider version: `0.1.0-issue.1.21`
