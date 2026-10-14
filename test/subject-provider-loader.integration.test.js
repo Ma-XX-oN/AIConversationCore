@@ -9,7 +9,7 @@ test('pinned #127 provider blob loads through real Core and emits backend identi
   const artifact = getAgentPluginArtifact('chatgpt-web');
   assert.equal(artifact.version, '0.1.0-issue.1.21');
   assert.equal(artifact.commit,
-    '2d80403bc7d4425f2cca668b8fab61744565c60c');
+    'cf521202e78dede9152840193dc5ca140703b240');
   assert.equal(artifact.gitBlobSha1, '32182498480ba061367ce60dbb4104c0c0d55fe7');
   assert.equal(artifact.byteLength, 69824);
   const bytes = await readFile(new URL('./fixtures/provider-1.21.txt', import.meta.url));

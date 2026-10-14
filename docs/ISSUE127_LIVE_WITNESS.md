@@ -9,7 +9,7 @@ signed-in
 ChatGPT browser with the exact staged Core and provider integration artifacts.
 
 Provider version: `0.1.0-issue.1.21`
-Provider commit: `2d80403bc7d4425f2cca668b8fab61744565c60c`
+Provider commit: `cf521202e78dede9152840193dc5ca140703b240`
 Provider blob: `32182498480ba061367ce60dbb4104c0c0d55fe7`
 Core PR: #131.  Provider PR: #5.  AICC issue: #127.
 
