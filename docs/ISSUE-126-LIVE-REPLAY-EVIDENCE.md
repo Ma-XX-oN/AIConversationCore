@@ -373,3 +373,18 @@ subscription.  The live authenticated ChatGPT browser (and standalone
 even with a mocked Playwright route, so no claim of live-site proof.
 
 #126 PR #4 and audit PR #129 remain OPEN/DRAFT/UNMERGED.
+
+### Bounded cache historical RED→GREEN (exact Git blobs)
+
+A 300-distinct-project metadata request test delivered an old cached
+project response before authoritative conversation membership arrived.
+Historical exact network ingress blob
+`776dcc1631d76d619bb65ace5bdb2b82e98073a4` failed: it
+published the stale old project name rather than null.  The identical
+test against current exact Git blob
+`39e4e3abba2f523ac6c9c1e799c3f283019b8b78` passed.  Both
+fixtures were reconstructed from verified source bytes and independently
+executed in Node.  Historical and current TAP files retained locally.
+This supplements, not replaces, full hosted 72/72 and Chromium 320/320
+acceptance.  Full live-site/Core pin and standalone witness are still
+INCOMPLETE.
