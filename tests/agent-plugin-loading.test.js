@@ -31,18 +31,18 @@ function chatGPTModule(artifact) {
   };
 }
 
-test('Core owns the ChatGPT plugin artifact identity at the CGP2 main head', () => {
+test('Core owns the immutable #127 provider artifact identity', () => {
   const artifact = getAgentPluginArtifact('chatgpt-web');
 
   assert.equal(artifact.id, 'chatgpt-web');
   assert.equal(artifact.repository, 'Ma-XX-oN/Chat-Gpt-Plugin-2');
-  assert.equal(artifact.ref, 'main');
-  assert.equal(artifact.commit, '6805ea7240c38160386a591cf3a72439226ab675');
-  assert.equal(artifact.version, '0.1.0-issue.1.9');
+  assert.equal(artifact.ref, 'db7e3450aac94eb2990fba0de54d090e377dafa3');
+  assert.equal(artifact.commit, 'db7e3450aac94eb2990fba0de54d090e377dafa3');
+  assert.equal(artifact.version, '0.1.0-issue.1.29');
   assert.equal(artifact.apiVersion, 1);
   assert.equal(artifact.path, 'dist/chatgpt-plugin.mjs');
-  assert.equal(artifact.gitBlobSha1, 'f29805c7f8d0393f588aacf22661f667b11f8cfa');
-  assert.equal(artifact.byteLength, 50204);
+  assert.equal(artifact.gitBlobSha1, 'c731721005aefbc14a61bfc97270d7270aa80ea0');
+  assert.equal(artifact.byteLength, 73131);
 });
 
 test('Core loads, registers and creates an agent while the host only transports an artifact', async () => {
@@ -58,7 +58,7 @@ test('Core loads, registers and creates an agent while the host only transports 
   assert.equal(transported, getAgentPluginArtifact('chatgpt-web'));
   assert.equal(result.artifact, transported);
   assert.equal(result.agent.version().plugin, 'chatgpt-web');
-  assert.equal(result.agent.version().ref, 'main');
+  assert.equal(result.agent.version().ref, 'db7e3450aac94eb2990fba0de54d090e377dafa3');
   assert.ok(result.session, 'Core must return its canonical session with the agent.');
 
   const event = {
@@ -84,4 +84,35 @@ test('Core loads, registers and creates an agent while the host only transports 
 test('Core refuses unknown agents and missing host transport explicitly', async () => {
   assert.throws(() => getAgentPluginArtifact('missing-agent'), /not configured/);
   await assert.rejects(() => loadAgent('chatgpt-web'), /loadModule/);
+});
+
+test('Core refuses stale provider identity instead of substituting old .1.21', async () => {
+  const current = getAgentPluginArtifact('chatgpt-web');
+  for (const mismatch of [
+    { version: '0.1.0-issue.1.21' },
+    { ref: 'cf521202e78dede9152840193dc5ca140703b240' },
+    { apiVersion: 2 }
+  ]) {
+    await assert.rejects(
+      () => loadAgent('chatgpt-web', {
+        loadModule: async () => {
+          const module = chatGPTModule(current);
+          const create = module.default.create;
+          module.default.create = context => {
+            const agent = create(context);
+            agent.version = () => ({
+              plugin: current.id,
+              version: current.version,
+              ref: current.ref,
+              apiVersion: current.apiVersion,
+              ...mismatch
+            });
+            return agent;
+          };
+          return module;
+        }
+      }),
+      /artifact identity mismatch|API version|agent plugin chatgpt-web identity mismatch/
+    );
+  }
 });
