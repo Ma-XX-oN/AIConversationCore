@@ -112,7 +112,7 @@ test('Core refuses stale provider identity instead of substituting old .1.21', a
           return module;
         }
       }),
-      /artifact identity mismatch|API version/
+      /artifact identity mismatch|API version|agent plugin chatgpt-web identity mismatch/
     );
   }
 });
