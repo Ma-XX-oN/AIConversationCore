@@ -36,13 +36,13 @@ test('Core owns the immutable #127 provider artifact identity', () => {
 
   assert.equal(artifact.id, 'chatgpt-web');
   assert.equal(artifact.repository, 'Ma-XX-oN/Chat-Gpt-Plugin-2');
-  assert.equal(artifact.ref, 'cf521202e78dede9152840193dc5ca140703b240');
-  assert.equal(artifact.commit, 'cf521202e78dede9152840193dc5ca140703b240');
-  assert.equal(artifact.version, '0.1.0-issue.1.21');
+  assert.equal(artifact.ref, 'db7e3450aac94eb2990fba0de54d090e377dafa3');
+  assert.equal(artifact.commit, 'db7e3450aac94eb2990fba0de54d090e377dafa3');
+  assert.equal(artifact.version, '0.1.0-issue.1.29');
   assert.equal(artifact.apiVersion, 1);
   assert.equal(artifact.path, 'dist/chatgpt-plugin.mjs');
-  assert.equal(artifact.gitBlobSha1, '32182498480ba061367ce60dbb4104c0c0d55fe7');
-  assert.equal(artifact.byteLength, 69824);
+  assert.equal(artifact.gitBlobSha1, 'c731721005aefbc14a61bfc97270d7270aa80ea0');
+  assert.equal(artifact.byteLength, 73131);
 });
 
 test('Core loads, registers and creates an agent while the host only transports an artifact', async () => {
@@ -58,7 +58,7 @@ test('Core loads, registers and creates an agent while the host only transports 
   assert.equal(transported, getAgentPluginArtifact('chatgpt-web'));
   assert.equal(result.artifact, transported);
   assert.equal(result.agent.version().plugin, 'chatgpt-web');
-  assert.equal(result.agent.version().ref, 'cf521202e78dede9152840193dc5ca140703b240');
+  assert.equal(result.agent.version().ref, 'db7e3450aac94eb2990fba0de54d090e377dafa3');
   assert.ok(result.session, 'Core must return its canonical session with the agent.');
 
   const event = {
