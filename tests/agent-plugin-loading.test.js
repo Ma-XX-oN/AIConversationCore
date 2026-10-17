@@ -85,3 +85,34 @@ test('Core refuses unknown agents and missing host transport explicitly', async 
   assert.throws(() => getAgentPluginArtifact('missing-agent'), /not configured/);
   await assert.rejects(() => loadAgent('chatgpt-web'), /loadModule/);
 });
+
+test('Core refuses stale provider identity instead of substituting old .1.21', async () => {
+  const current = getAgentPluginArtifact('chatgpt-web');
+  for (const mismatch of [
+    { version: '0.1.0-issue.1.21' },
+    { ref: 'cf521202e78dede9152840193dc5ca140703b240' },
+    { apiVersion: 2 }
+  ]) {
+    await assert.rejects(
+      () => loadAgent('chatgpt-web', {
+        loadModule: async () => {
+          const module = chatGPTModule(current);
+          const create = module.default.create;
+          module.default.create = context => {
+            const agent = create(context);
+            agent.version = () => ({
+              plugin: current.id,
+              version: current.version,
+              ref: current.ref,
+              apiVersion: current.apiVersion,
+              ...mismatch
+            });
+            return agent;
+          };
+          return module;
+        }
+      }),
+      /artifact identity mismatch|API version/
+    );
+  }
+});
