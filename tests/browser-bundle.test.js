@@ -83,3 +83,43 @@ test('browser structured projection preserves ESM revision visibility semantics'
   const esm = projectCanonicalConversation(events);
   assert.deepEqual(plain(browser), plain(esm));
 });
+
+test('classic browser loader publishes and observes retained activity like ESM Core', async () => {
+  const bundle = await buildBrowserBundle();
+  const context = vm.createContext({ URL });
+  vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
+  assert.equal(context.AIConversationCore.RETAINED_ACTIVITY_API_VERSION, 1);
+  const { AgentPluginRegistry } = context.AIConversationCore;
+  const registry = new AgentPluginRegistry();
+  let producer;
+  registry.register({
+    id: 'legacy', apiVersion: 1,
+    create(creation) {
+      producer = creation.core;
+      return {
+        sendMessage: async () => ({}), getResponse: async () => ({}),
+        getTurns: () => [], currentState: () => ({}),
+        observeState: () => () => {}, commTraffic: () => {},
+        version: () => ({ plugin: 'legacy', apiVersion: 1 })
+      };
+    }
+  });
+  const agent = registry.create('legacy');
+  const snapshots = [];
+  const unsubscribe = registry.observeActivity(agent, state => snapshots.push(plain(state)));
+  assert.deepEqual(snapshots[0], {
+    apiVersion: 1,
+    clockDomain: 'unix-epoch-ms',
+    latestIncomingAtMs: null
+  });
+  const receiptTime = Date.now() - 1000;
+  assert.equal(producer.publishActivityTimestamp(receiptTime), true);
+  assert.deepEqual(snapshots[1], {
+    apiVersion: 1,
+    clockDomain: 'unix-epoch-ms',
+    latestIncomingAtMs: receiptTime
+  });
+  unsubscribe();
+  registry.disposeActivity(agent);
+  assert.equal(producer.publishActivityTimestamp(receiptTime + 1), false);
+});
