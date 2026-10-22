@@ -76,3 +76,103 @@ test('Core registry exposes separate activity without breaking a legacy agent PI
   assert.equal(producer.publishActivityTimestamp(200), false);
   assert.equal(registry.activityState(agent), null);
 });
+
+test('duplicate callback registrations have independent cancellation', () => {
+  const observer = new RetainedActivityObserver({ now: () => 10000 });
+  const stamps = [];
+  const listener = state => stamps.push(state.latestIncomingAtMs);
+  const first = observer.subscribe(listener);
+  const second = observer.subscribe(listener);
+  assert.deepEqual(stamps, [null, null]);
+  first();
+  observer.publish(1234);
+  assert.deepEqual(stamps, [null, null, 1234]);
+  second();
+  observer.publish(1235);
+  assert.deepEqual(stamps, [null, null, 1234]);
+});
+
+test('reentrant notifications are serialized and never delivered in reverse order', () => {
+  const observer = new RetainedActivityObserver({ now: () => 10000 });
+  const seen = [];
+  observer.subscribe(state => {
+    if (state.latestIncomingAtMs === 100) observer.publish(200);
+  });
+  observer.subscribe(state => seen.push(state.latestIncomingAtMs));
+  observer.publish(100);
+  assert.deepEqual(seen, [null, 100, 200]);
+  assert.equal(observer.snapshot().latestIncomingAtMs, 200);
+});
+
+test('concurrent subscribers, listener failures and unsubscribe during delivery', () => {
+  const observer = new RetainedActivityObserver({ now: () => 10000 });
+  const seen = [];
+  let stop = () => {};
+  observer.subscribe(state => {
+    if (state.latestIncomingAtMs !== null) stop();
+  });
+  stop = observer.subscribe(state => seen.push(['retired', state.latestIncomingAtMs]));
+  observer.subscribe(state => seen.push(['active', state.latestIncomingAtMs]));
+  observer.publish(100);
+  assert.deepEqual(seen, [
+    ['retired', null], ['active', null], ['active', 100]
+  ]);
+});
+
+test('high-rate incoming stream updates only retained state, with no provider-state reads', () => {
+  const observer = new RetainedActivityObserver({ now: () => 30000 });
+  let notifications = 0;
+  observer.subscribe(() => { notifications += 1; });
+  const inaccessibleLegacyState = new Proxy({}, {
+    get() { throw new Error('Core must not read unrelated provider state'); }
+  });
+  assert.ok(inaccessibleLegacyState);
+  for (let timestampMs = 1; timestampMs <= 20000; timestampMs += 1) {
+    assert.equal(observer.publish(timestampMs), true);
+  }
+  assert.equal(notifications, 20001);
+  assert.equal(observer.snapshot().latestIncomingAtMs, 20000);
+});
+
+test('two agents have isolated activity state and replacement is a clean null replay', () => {
+  const registry = new AgentPluginRegistry();
+  const producers = [];
+  registry.register({
+    id: 'fixture', apiVersion: 1,
+    create(context) {
+      producers.push(context.core);
+      return {
+        sendMessage: async () => ({}), getResponse: async () => ({}),
+        getTurns: () => [], currentState: () => ({}),
+        observeState: () => () => {}, commTraffic: () => {},
+        version: () => ({ plugin: 'fixture', apiVersion: 1 })
+      };
+    }
+  });
+  const oldAgent = registry.create('fixture');
+  const oldProducer = producers[0];
+  const oldStates = [];
+  const unsubscribe = registry.observeActivity(oldAgent, s => {
+    oldStates.push(s.latestIncomingAtMs);
+  });
+  oldProducer.publishActivityTimestamp(100);
+  unsubscribe();
+  registry.disposeActivity(oldAgent);
+  const newAgent = registry.create('fixture');
+  const newStates = [];
+  registry.observeActivity(newAgent, s => newStates.push(s.latestIncomingAtMs));
+  assert.deepEqual(newStates, [null]);
+  assert.equal(oldProducer.publishActivityTimestamp(200), false);
+  assert.deepEqual(oldStates, [null, 100]);
+  producers[1].publishActivityTimestamp(300);
+  assert.deepEqual(newStates, [null, 300]);
+  assert.equal(registry.activityState(oldAgent), null);
+});
+
+test('unknown registry agent and invalid observer registration fail visibly', () => {
+  const registry = new AgentPluginRegistry();
+  assert.equal(registry.activityState({}), null);
+  assert.throws(() => registry.observeActivity({}, () => {}), /unknown agent/);
+  const observer = new RetainedActivityObserver();
+  assert.throws(() => observer.subscribe(123), /listener must be a function/);
+});
