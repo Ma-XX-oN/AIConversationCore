@@ -17,7 +17,7 @@ export class RetainedActivityObserver {
     clockDomain: 'unix-epoch-ms',
     latestIncomingAtMs: null
   });
-  /** @type {Set<function(Object<string, *>): void>} Active consumers. */
+  /** @type {Set<{callback: function(Object<string, *>): void}>} Active subscriptions. */
   #listeners = new Set();
   /** @type {boolean} Whether this per-agent observer was retired. */
   #disposed = false;
@@ -75,11 +75,11 @@ export class RetainedActivityObserver {
       while (this.#pending && !this.#disposed) {
         this.#pending = false;
         const current = this.#state;
-        for (const listener of [...this.#listeners]) {
+        for (const subscription of [...this.#listeners]) {
           if (this.#disposed) break;
-          if (!this.#listeners.has(listener)) continue;
+          if (!this.#listeners.has(subscription)) continue;
           try {
-            listener(current);
+            subscription.callback(current);
           } catch {
             // One consumer cannot break delivery or provider receipt handling.
           }
@@ -102,7 +102,9 @@ export class RetainedActivityObserver {
     if (typeof callback !== 'function') {
       throw new TypeError('activity listener must be a function');
     }
-    this.#listeners.add(callback);
+    // Identity belongs to the subscription, not to a possibly reused callback.
+    const subscription = { callback };
+    this.#listeners.add(subscription);
     const snapshot = this.#state;
     try {
       callback(snapshot);
@@ -110,7 +112,7 @@ export class RetainedActivityObserver {
       // Initial replay has the same listener isolation as live publication.
     }
     return () => {
-      this.#listeners.delete(callback);
+      this.#listeners.delete(subscription);
     };
   }
 
