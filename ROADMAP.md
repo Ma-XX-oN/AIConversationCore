@@ -401,3 +401,11 @@ integration cannot manage it reliably. Use:
 If GitHub Projects is adopted later, it may provide views/status fields, but it
 must not replace the durable architectural and testing documentation kept in this
 repository.
+
+## AICC #134 — Provider registration staging
+
+Provider-neutral public registration and diagnostic APIs are staged independently
+under DC #364.  CGP2 #38 and DC #366 consume the verified interface handoff;
+DC #367 certifies the pinned cross-repository candidate and final legacy-path
+retirement.  Shared logging and selector UI remain deferred to DC #365.
+No other in-flight observer branch is imported or superseded.

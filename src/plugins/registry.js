@@ -107,6 +107,7 @@ function creationContext(context, session) {
 /** Registry for provider-neutral agent plugin descriptors and instances. */
 export class AgentPluginRegistry {
   #apiVersion;
+  #requireMetadata;
   #descriptors = new Map();
   #sessions = new WeakMap();
 
@@ -115,12 +116,14 @@ export class AgentPluginRegistry {
    *
    * @param {Object<string, *>} [options={}] - Registry configuration.
    * @param {number} [options.apiVersion=1] - Supported plugin API version.
+   * @param {boolean} [options.requireMetadata=false] - Require public name/icon metadata.
    */
-  constructor({ apiVersion = 1 } = {}) {
+  constructor({ apiVersion = 1, requireMetadata = false } = {}) {
     if (!Number.isInteger(apiVersion) || apiVersion < 1) {
       throw new TypeError('apiVersion must be a positive integer');
     }
     this.#apiVersion = apiVersion;
+    this.#requireMetadata = requireMetadata;
   }
 
   /** @returns {number} Core plugin API version accepted by this registry. */
@@ -135,7 +138,30 @@ export class AgentPluginRegistry {
    * @returns {Object<string, *>} The registered descriptor.
    */
   register(descriptor) {
-    const validated = validateAgentPluginDescriptor(descriptor, this.#apiVersion);
+    // Capture data properties before validation so accessors cannot mutate registry state.
+    if (!descriptor || typeof descriptor !== 'object') {
+      throw new TypeError('agent plugin descriptor must be an object');
+    }
+    const properties = Object.getOwnPropertyDescriptors(descriptor);
+    const captured = {};
+    for (const key of ['id', 'name', 'iconUrl', 'apiVersion', 'create', 'recognize']) {
+      const property = properties[key];
+      if (!property) continue;
+      if (!Object.hasOwn(property, 'value')) {
+        throw new TypeError(`agent plugin descriptor ${key} must be a data property`);
+      }
+      captured[key] = property.value;
+    }
+    if (this.#requireMetadata) {
+      for (const key of ['name', 'iconUrl']) {
+        if (typeof captured[key] !== 'string' || !captured[key].trim()) {
+          throw new TypeError(`agent plugin descriptor ${key} must be a non-empty string`);
+        }
+      }
+    }
+    const validated = Object.freeze(
+      validateAgentPluginDescriptor(captured, this.#apiVersion)
+    );
     if (this.#descriptors.has(validated.id)) {
       throw new Error(`agent plugin ${validated.id} is already registered`);
     }
@@ -182,6 +208,9 @@ export class AgentPluginRegistry {
       descriptor,
       this.#apiVersion
     );
+    if (this.#sessions.has(instance)) {
+      throw new Error(`agent plugin ${id} reused an existing agent instance`);
+    }
     this.#sessions.set(instance, session);
     return instance;
   }

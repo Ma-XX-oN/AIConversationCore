@@ -134,3 +134,70 @@ test('classic shared-world public API works in both startup orders without catal
     assert.equal(core.listAgentPlugins().length, 2);
   }
 });
+
+test('all descriptor fields are captured as own data and prior snapshots stay unchanged', () => {
+  const { service } = harness();
+  for (const invalid of [null, 42, {}, Object.create(fixture()), fixture('alpha', { apiVersion: 1.5 }),
+    fixture('alpha', { iconUrl: null }), fixture('alpha', { name: undefined })]) {
+    assert.throws(() => service.register(invalid));
+    assert.equal(service.list().length, 0);
+  }
+  for (const key of ['name', 'iconUrl', 'apiVersion', 'create', 'recognize']) {
+    const descriptor = fixture();
+    Object.defineProperty(descriptor, key, { get() { assert.fail('accessor invoked'); } });
+    assert.throws(() => service.register(descriptor), /data property/);
+  }
+  service.register(fixture());
+  const previous = service.state();
+  service.register(fixture('beta'));
+  assert.equal(previous.plugins.length, 1);
+  assert.ok(Object.isFrozen(previous));
+  assert.throws(() => { previous.plugins.push(fixture()); }, TypeError);
+  assert.throws(() => { previous.plugins[0].name = 'replacement'; }, TypeError);
+});
+
+test('agent identity and factory failures preserve inventory and existing session associations', () => {
+  const { service } = harness();
+  service.register(fixture('missing-pi', { create: () => ({}) }));
+  service.register(fixture('wrong-identity', { create: fixture('different').create }));
+  service.register(fixture('throwing', { create: () => { throw new Error('factory failed'); } }));
+  assert.throws(() => service.create('missing-pi'), /missing public PI/);
+  assert.throws(() => service.create('wrong-identity'), /identity mismatch/);
+  assert.throws(() => service.create('throwing'), /factory failed/);
+  let shared;
+  let canonical;
+  service.register(fixture('reused', { create: context => {
+    if (!shared) { canonical = context.core; shared = fixture('reused').create(context); }
+    return shared;
+  } }));
+  const first = service.create('reused', {
+    core: { deriveTurns: () => ['invalid'], publishEvents: () => assert.fail('override used') }
+  });
+  assert.deepEqual(first.agent.getTurns(), []);
+  assert.throws(() => service.create('reused'), /reused an existing agent/);
+  canonical.publishEvents([{ id: 'retained' }]);
+  assert.deepEqual(first.session.events, [{ id: 'retained' }]);
+  assert.equal(service.list().length, 4);
+});
+
+test('shared public startup diagnostic logs visibly, recovers and never reschedules', async () => {
+  const callbacks = [];
+  const errors = []; const infos = []; const events = [];
+  const context = vm.createContext({
+    console: { error: (...args) => errors.push(args), info: (...args) => infos.push(args) },
+    setTimeout: (cb, ms) => { callbacks.push({ cb, ms }); return 1; }, clearTimeout: () => {}
+  });
+  vm.runInContext(await buildBrowserBundle(), context);
+  const core = context.AIConversationCore;
+  core.observePluginRegistrationDiagnostics(event => events.push(event));
+  assert.equal(callbacks.length, 1); assert.equal(callbacks[0].ms, 15000);
+  assert.equal(core.getPluginRegistrationState().missingPluginError, false);
+  callbacks[0].cb();
+  assert.equal(errors.length, 1);
+  assert.equal(core.getPluginRegistrationState().missingPluginError, true);
+  core.registerAgentPlugin(fixture());
+  assert.equal(infos.length, 1);
+  assert.equal(core.getPluginRegistrationState().missingPluginError, false);
+  assert.deepEqual(events.map(x => x.code), ['no-plugins', 'registration-recovered']);
+  assert.equal(callbacks.length, 1);
+});

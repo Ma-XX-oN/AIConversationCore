@@ -146,3 +146,12 @@ The purpose of this sequence is to make any regression attributable to a small c
 ## Completion gate
 
 A code task affecting behaviour is incomplete if the relevant tests were not run successfully.  If a required test cannot be run, that limitation must be stated explicitly and the task must not be described as fully verified.
+
+## Public registration gate
+
+`tests/plugin-registration.test.js` tests the AICC #134 public contract with two
+independent providers, both startup orders, frozen descriptor capture, atomic
+invalid/duplicate rejection, canonical session ownership, a controlled 15-second
+boundary, early cancellation, late recovery and isolated diagnostic observers.
+The complete Core validation hook remains mandatory.  VM tests do not replace
+DC #367 installed-script and signed-in provider certification.
