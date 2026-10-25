@@ -1,0 +1,38 @@
+name: Isolated AICC127 registration rebase regression
+on:
+  push:
+    branches:
+      - verify-rebase-aicc127-20261024
+permissions:
+  contents: read
+jobs:
+  identity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Current stable Core baseline ancestry
+        run: |
+          git rev-parse HEAD
+          git merge-base --is-ancestor 629c86284b7db5fb412bb083178eaee8c06f796c HEAD
+          node -p "require('./package.json').version"
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Rebased identity loader and extraction regressions
+        run: node --test tests/agent-plugin-loading.test.js test/subject-har-extraction.test.js
+      - name: Registered plugin contract tests
+        if: always()
+        run: node --test tests/plugin-registration.test.js tests/browser-structured-projection.test.js
+      - name: Full current Core Node suite
+        if: always()
+        run: node --test
+      - name: Rebuild current browser bundle and verify regenerated source
+        if: always()
+        run: |
+          npm run build:browser
+          node --test tests/browser-bundle.test.js
