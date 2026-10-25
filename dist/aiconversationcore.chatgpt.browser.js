@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.2-issue.132.2";
+const VERSION = "1.1.2-issue.132.3";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -6559,6 +6559,7 @@ class PluginRegistration {
   #cancel;
   #report;
   #listeners = new Set();
+  #registeredListeners = new Set();
 
   /**
    * Starts the one-shot diagnostic when the subsystem is constructed.
@@ -6621,7 +6622,32 @@ class PluginRegistration {
       this.#missing = false;
       this.#emit('registration-recovered', 'info', 'Agent plugin registration recovered.');
     }
+    for (const listener of [...this.#registeredListeners]) {
+      try { listener(captured); } catch (error) {
+        console.error('[AIConversationCore] registration observer error', error);
+      }
+    }
     return captured;
+  }
+
+  /**
+   * Replays registered descriptors and observes future successful registrations.
+   * No polling and no provider-specific knowledge; notification is after commit.
+   * @param {function(Object<string, *>): void} listener - Provider listener.
+   * @returns {function(): void} Independent idempotent unsubscribe function.
+   */
+  observeRegistrations(listener) {
+    if (typeof listener !== 'function') {
+      throw new TypeError('registration observer must be a function');
+    }
+    const wrapped = descriptor => { listener(descriptor); };
+    this.#registeredListeners.add(wrapped);
+    for (const descriptor of this.#registry.list()) {
+      try { wrapped(descriptor); } catch (error) {
+        console.error('[AIConversationCore] registration replay error', error);
+      }
+    }
+    return () => { this.#registeredListeners.delete(wrapped); };
   }
 
   /**
@@ -6754,6 +6780,15 @@ function observeActivity(agent, listener) {
 /** @returns {boolean} Whether activity was disposed. */
 function disposeActivity(agent) { return pluginRegistration.disposeActivity(agent); }
 
+/**
+ * Observes successful generic provider registrations, replaying current inventory.
+ * @param {function(Object<string, *>): void} listener - Provider listener.
+ * @returns {function(): void} Independent unsubscribe.
+ */
+function observeAgentPluginRegistration(listener) {
+  return pluginRegistration.observeRegistrations(listener);
+}
+
 
   global.AIConversationCore = Object.freeze({
     getVersion,
@@ -6772,6 +6807,7 @@ function disposeActivity(agent) { return pluginRegistration.disposeActivity(agen
     createAgent,
     getPluginRegistrationState,
     observePluginRegistrationDiagnostics,
+    observeAgentPluginRegistration,
     activityState,
     observeActivity,
     disposeActivity,
