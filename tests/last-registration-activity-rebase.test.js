@@ -25,3 +25,24 @@ test('registered agent retains activity and disposes without catalogue loader', 
   assert.equal(activityState(agent), null);
   assert.equal(publish(ts + 1), false);
 });
+
+test('registration observation replays and reports success without polling', async () => {
+  const { PluginRegistration } = await import('../src/plugins/registration.js');
+  const registry = new PluginRegistration({
+    schedule: () => 1, cancel: () => {}, report: () => {}
+  });
+  const seen = [];
+  const off = registry.observeRegistrations(descriptor => seen.push(descriptor.id));
+  registry.register({ id: 'first', name: 'First', iconUrl: 'https://example.test/a.png',
+    apiVersion: 1, create: () => ({}) });
+  assert.deepEqual(seen, ['first']);
+  const replay = [];
+  const stop = registry.observeRegistrations(descriptor => replay.push(descriptor.id));
+  assert.deepEqual(replay, ['first']);
+  off();
+  registry.register({ id: 'second', name: 'Second', iconUrl: 'https://example.test/b.png',
+    apiVersion: 1, create: () => ({}) });
+  assert.deepEqual(seen, ['first']);
+  assert.deepEqual(replay, ['first', 'second']);
+  stop();
+});

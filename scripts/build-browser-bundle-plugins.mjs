@@ -239,7 +239,7 @@ export async function buildBrowserBundle() {
   result = replaceOnce(
     result,
     '    getVersion,\n',
-    '    getVersion,\n    RETAINED_ACTIVITY_API_VERSION,\n    RetainedActivityObserver,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n    PluginRegistration,\n    registerAgentPlugin,\n    getAgentPlugin,\n    listAgentPlugins,\n    recognizeAgentPlugin,\n    createAgent,\n    getPluginRegistrationState,\n    observePluginRegistrationDiagnostics,\n    activityState,\n    observeActivity,\n    disposeActivity,\n',
+    '    getVersion,\n    RETAINED_ACTIVITY_API_VERSION,\n    RetainedActivityObserver,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n    PluginRegistration,\n    registerAgentPlugin,\n    getAgentPlugin,\n    listAgentPlugins,\n    recognizeAgentPlugin,\n    createAgent,\n    getPluginRegistrationState,\n    observePluginRegistrationDiagnostics,\n    observeAgentPluginRegistration,\n    activityState,\n    observeActivity,\n    disposeActivity,\n',
     'browser getVersion export'
   );
   result = replaceOnce(

@@ -81,6 +81,7 @@ export {
   createAgent,
   getPluginRegistrationState,
   observePluginRegistrationDiagnostics,
+  observeAgentPluginRegistration,
   activityState,
   observeActivity,
   disposeActivity
