@@ -1,4 +1,4 @@
-name: Isolated AICC127 registration rebase regression
+name: AICC127 independent rebase acceptance matrix
 on:
   push:
     branches:
@@ -6,8 +6,17 @@ on:
 permissions:
   contents: read
 jobs:
-  identity-contract:
+  test:
+    name: matrix-${{ matrix.label }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: loader, command: 'npm ci && node --test tests/agent-plugin-loading.test.js test/subject-har-extraction.test.js' }
+          - { label: registration, command: 'npm ci && node --test tests/plugin-registration.test.js tests/browser-structured-projection.test.js' }
+          - { label: full, command: 'npm ci && node --test' }
+          - { label: bundle, command: 'npm ci && npm run build:browser && node --test tests/browser-bundle.test.js' }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -16,23 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Current stable Core baseline ancestry
-        run: |
-          git rev-parse HEAD
-          git merge-base --is-ancestor 629c86284b7db5fb412bb083178eaee8c06f796c HEAD
-          node -p "require('./package.json').version"
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Rebased identity loader and extraction regressions
-        run: node --test tests/agent-plugin-loading.test.js test/subject-har-extraction.test.js
-      - name: Registered plugin contract tests
-        if: always()
-        run: node --test tests/plugin-registration.test.js tests/browser-structured-projection.test.js
-      - name: Full current Core Node suite
-        if: always()
-        run: node --test
-      - name: Rebuild current browser bundle and verify regenerated source
-        if: always()
-        run: |
-          npm run build:browser
-          node --test tests/browser-bundle.test.js
+      - name: Establish exact stable-1.1.1 ancestry
+        run: git merge-base --is-ancestor 629c86284b7db5fb412bb083178eaee8c06f796c HEAD
+      - name: Run ${{ matrix.label }} acceptance
+        run: ${{ matrix.command }}
