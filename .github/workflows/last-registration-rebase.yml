@@ -7,6 +7,7 @@ on:
       - 'src/**'
       - 'scripts/build-browser-bundle-plugins.mjs'
       - 'tests/last-registration-activity-rebase.test.js'
+      - '.github/workflows/last-registration-rebase.yml'
 permissions:
   contents: write
 jobs:
