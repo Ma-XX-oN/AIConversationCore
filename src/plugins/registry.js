@@ -1,4 +1,5 @@
 import { deriveTurns } from '../derive/turns.js';
+import { RetainedActivityObserver } from './activity.js';
 import { PluginCanonicalSession } from '../session/plugin-canonical-session.js';
 
 /** Public provider-neutral methods every registered agent instance must expose. */
@@ -90,7 +91,7 @@ function validateAgentInstance(instance, descriptor, apiVersion) {
  * @param {PluginCanonicalSession} session - Core-owned canonical session.
  * @returns {Object<string, *>} Creation context passed to the provider factory.
  */
-function creationContext(context, session) {
+function creationContext(context, session, activity) {
   if (!context || typeof context !== 'object') {
     throw new TypeError('agent plugin creation context must be an object');
   }
@@ -99,7 +100,8 @@ function creationContext(context, session) {
     core: Object.freeze({
       ...(context.core ?? {}),
       deriveTurns,
-      publishEvents: events => session.replace(events)
+      publishEvents: events => session.replace(events),
+      publishActivityTimestamp: timestampMs => activity.publish(timestampMs)
     })
   };
 }
@@ -110,6 +112,7 @@ export class AgentPluginRegistry {
   #requireMetadata;
   #descriptors = new Map();
   #sessions = new WeakMap();
+  #activities = new WeakMap();
 
   /**
    * Creates a registry for one Core plugin API version.
@@ -203,15 +206,18 @@ export class AgentPluginRegistry {
     const descriptor = this.#descriptors.get(id);
     if (!descriptor) throw new Error(`agent plugin ${id} is not registered`);
     const session = new PluginCanonicalSession();
+    const activity = new RetainedActivityObserver();
     const instance = validateAgentInstance(
-      descriptor.create(creationContext(context, session)),
+      descriptor.create(creationContext(context, session, activity)),
       descriptor,
       this.#apiVersion
     );
     if (this.#sessions.has(instance)) {
+      activity.dispose();
       throw new Error(`agent plugin ${id} reused an existing agent instance`);
     }
     this.#sessions.set(instance, session);
+    this.#activities.set(instance, activity);
     return instance;
   }
 
@@ -223,6 +229,25 @@ export class AgentPluginRegistry {
    */
   session(instance) {
     return this.#sessions.get(instance) ?? null;
+  }
+
+  /** @returns {Object<string, *>|null} Core retained activity snapshot. */
+  activityState(agent) { return this.#activities.get(agent)?.snapshot() ?? null; }
+
+  /** @returns {function(): void} Independent activity unsubscribe. */
+  observeActivity(agent, listener) {
+    const activity = this.#activities.get(agent);
+    if (!activity) throw new Error('unknown agent activity observer');
+    return activity.subscribe(listener);
+  }
+
+  /** @returns {boolean} Whether retained activity was retired. */
+  disposeActivity(agent) {
+    const activity = this.#activities.get(agent);
+    if (!activity) return false;
+    activity.dispose();
+    this.#activities.delete(agent);
+    return true;
   }
 
   /**
