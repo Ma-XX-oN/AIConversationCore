@@ -121,6 +121,11 @@ function registryBody(source) {
     "import { PluginCanonicalSession } from '../session/plugin-canonical-session.js';",
     'PluginCanonicalSession'
   );
+  result = removeImport(
+    result,
+    "import { RetainedActivityObserver } from './activity.js';",
+    'RetainedActivityObserver'
+  );
   result = replaceOnce(
     result,
     'export function validateAgentPluginDescriptor',
@@ -181,6 +186,7 @@ export async function buildBrowserBundle() {
     structuredVisibilitySource,
     sessionSource,
     registrySource,
+    activitySource,
     loadingSource,
     registrationSource
   ] = await Promise.all([
@@ -188,6 +194,7 @@ export async function buildBrowserBundle() {
     readFile(resolve(ROOT, 'src/projections/structured-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/session/plugin-canonical-session.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/plugins/activity.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/loading.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/registration.js'), 'utf8')
   ]);
@@ -208,6 +215,9 @@ export async function buildBrowserBundle() {
   const structuredVisibility = structuredVisibilityBody(structuredVisibilitySource);
   const session = pluginSessionBody(sessionSource);
   const registry = registryBody(registrySource);
+  const activity = activitySource
+    .replace('export const RETAINED_ACTIVITY_API_VERSION', 'const RETAINED_ACTIVITY_API_VERSION')
+    .replace('export class RetainedActivityObserver', 'class RetainedActivityObserver').trim();
   const loading = loadingBody(loadingSource);
   const registration = removeImport(
     registrationSource,
@@ -218,13 +228,13 @@ export async function buildBrowserBundle() {
   let result = replaceOnce(
     base,
     objectMarker,
-    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${loading}\n\n${registration}\n\n${objectMarker}`,
+    `${structuredVisibility}\n\n${session}\n\n${activity}\n\n${registry}\n\n${loading}\n\n${registration}\n\n${objectMarker}`,
     'AIConversationCore browser export object'
   );
   result = replaceOnce(
     result,
     '    getVersion,\n',
-    '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n    PluginRegistration,\n    registerAgentPlugin,\n    getAgentPlugin,\n    listAgentPlugins,\n    recognizeAgentPlugin,\n    createAgent,\n    getPluginRegistrationState,\n    observePluginRegistrationDiagnostics,\n',
+    '    getVersion,\n    RetainedActivityObserver,\n    RETAINED_ACTIVITY_API_VERSION,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n    PluginRegistration,\n    registerAgentPlugin,\n    getAgentPlugin,\n    listAgentPlugins,\n    recognizeAgentPlugin,\n    createAgent,\n    getPluginRegistrationState,\n    observePluginRegistrationDiagnostics,\n    activityState,\n    observeActivity,\n    disposeActivity,\n',
     'browser getVersion export'
   );
   result = replaceOnce(

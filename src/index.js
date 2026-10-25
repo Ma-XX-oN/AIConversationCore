@@ -12,6 +12,7 @@ export function getVersion() {
   return packageMetadata.version;
 }
 
+export { RetainedActivityObserver, RETAINED_ACTIVITY_API_VERSION } from './plugins/activity.js';
 export {
   AgentPluginRegistry,
   PUBLIC_PI,
@@ -76,5 +77,8 @@ export {
   recognizeAgentPlugin,
   createAgent,
   getPluginRegistrationState,
-  observePluginRegistrationDiagnostics
+  observePluginRegistrationDiagnostics,
+  activityState,
+  observeActivity,
+  disposeActivity
 } from './plugins/registration.js';

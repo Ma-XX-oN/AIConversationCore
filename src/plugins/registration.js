@@ -114,6 +114,15 @@ export class PluginRegistration {
     return Object.freeze({ agent, session: this.#registry.session(agent), descriptor: this.get(id) });
   }
 
+  /** Returns retained activity for a registered agent. */
+  activityState(agent) { return this.#registry.activityState(agent); }
+
+  /** Observes activity through the retained Core registry. */
+  observeActivity(agent, listener) { return this.#registry.observeActivity(agent, listener); }
+
+  /** Retires a registered agent's activity observer. */
+  disposeActivity(agent) { return this.#registry.disposeActivity(agent); }
+
   /**
    * Returns the registration inventory and current missing-plugin diagnostic state.
    * @returns {Object<string, *>} Immutable consistent registration snapshot.
@@ -192,3 +201,14 @@ export function getPluginRegistrationState() { return pluginRegistration.state()
 export function observePluginRegistrationDiagnostics(listener) {
   return pluginRegistration.observeDiagnostics(listener);
 }
+
+/** Reads a registered agent's incoming-activity snapshot. */
+export function activityState(agent) { return pluginRegistration.activityState(agent); }
+
+/** Subscribes to registered-agent incoming activity. */
+export function observeActivity(agent, callback) {
+  return pluginRegistration.observeActivity(agent, callback);
+}
+
+/** Retires registered-agent incoming activity. */
+export function disposeActivity(agent) { return pluginRegistration.disposeActivity(agent); }
