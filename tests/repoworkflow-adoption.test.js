@@ -68,9 +68,7 @@ test('Core uses only the canonical RepoWorkflow GitHub adapter', async () => {
   const actual = await readText('.github/workflows/ci.yml');
   const canonical = await readText('RepoWorkflow/templates/github/ci.yml');
   assert.equal(actual, canonical);
-  // Temporary release-prepare escape hatch; remove when RWF owns stable release preparation.
-  assert.deepEqual((await readdir(path.join(root, '.github', 'workflows'))).sort(),
-    ['aicc-release-prepare.yml', 'ci.yml']);
+  assert.deepEqual((await readdir(path.join(root, '.github', 'workflows'))).sort(), ['ci.yml']);
   assert.deepEqual(await readJson('.ci/github.json'), {
     schema: 1,
     prepareRunner: 'ubuntu-latest',
