@@ -141,6 +141,7 @@ chat history or assistant memory to reconstruct decisions.
 - [`SOURCE_PROVENANCE.md`](SOURCE_PROVENANCE.md) — original JSONL record identity/index/timestamp preservation contract
 - [`EXISTING_IMPLEMENTATIONS.md`](EXISTING_IMPLEMENTATIONS.md) — reviewed codebase baselines, commonalities, differences, ownership boundaries, and migration risks
 - [`TESTING.md`](TESTING.md) — mandatory regression/parity/integration test contract
+- [`docs/TEMPORARY-RELEASE-PREPARATION.md`](docs/TEMPORARY-RELEASE-PREPARATION.md) — three version-bearing files, the `.ci/aicc-release-prepare` request format, and the temporary GitHub Actions workflow
 - [`ROADMAP.md`](ROADMAP.md) — migration phases and current work state
 - [`DECISIONS.md`](DECISIONS.md) — durable architectural decisions and reversals
 - [`AI_AGENT_RULES.md`](AI_AGENT_RULES.md) — mandatory change/verification discipline
