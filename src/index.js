@@ -13,6 +13,10 @@ export function getVersion() {
 }
 
 export {
+  RETAINED_ACTIVITY_API_VERSION,
+  RetainedActivityObserver
+} from './plugins/activity.js';
+export {
   AgentPluginRegistry,
   PUBLIC_PI,
   validateAgentPluginDescriptor

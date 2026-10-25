@@ -104,6 +104,28 @@ function pluginSessionBody(source) {
 }
 
 /**
+ * Rewrites the retained observer module for the classic browser bundle.
+ *
+ * @param {string} source - Retained activity observer ESM source.
+ * @returns {string} Browser-local activity observer source.
+ */
+function activityBody(source) {
+  let result = replaceOnce(
+    source,
+    'export const RETAINED_ACTIVITY_API_VERSION',
+    'const RETAINED_ACTIVITY_API_VERSION',
+    'retained activity version export'
+  );
+  result = replaceOnce(
+    result,
+    'export class RetainedActivityObserver',
+    'class RetainedActivityObserver',
+    'retained activity observer export'
+  );
+  return result.trim();
+}
+
+/**
  * Rewrites the provider-neutral plugin registry for classic-script use.
  *
  * @param {string} source - ESM registry source.
@@ -115,6 +137,11 @@ function registryBody(source) {
     result,
     "import { deriveTurns } from '../derive/turns.js';",
     'deriveTurns'
+  );
+  result = removeImport(
+    result,
+    "import { RetainedActivityObserver } from './activity.js';",
+    'RetainedActivityObserver'
   );
   result = removeImport(
     result,
@@ -181,12 +208,14 @@ export async function buildBrowserBundle() {
     structuredVisibilitySource,
     sessionSource,
     registrySource,
+    activitySource,
     loadingSource
   ] = await Promise.all([
     buildBaseBrowserBundle(),
     readFile(resolve(ROOT, 'src/projections/structured-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/session/plugin-canonical-session.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/plugins/activity.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/loading.js'), 'utf8')
   ]);
 
@@ -205,19 +234,20 @@ export async function buildBrowserBundle() {
 
   const structuredVisibility = structuredVisibilityBody(structuredVisibilitySource);
   const session = pluginSessionBody(sessionSource);
+  const activity = activityBody(activitySource);
   const registry = registryBody(registrySource);
   const loading = loadingBody(loadingSource);
   const objectMarker = '  global.AIConversationCore = Object.freeze({\n';
   let result = replaceOnce(
     base,
     objectMarker,
-    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${loading}\n\n${objectMarker}`,
+    `${structuredVisibility}\n\n${session}\n\n${activity}\n\n${registry}\n\n${loading}\n\n${objectMarker}`,
     'AIConversationCore browser export object'
   );
   result = replaceOnce(
     result,
     '    getVersion,\n',
-    '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n',
+    '    getVersion,\n    RETAINED_ACTIVITY_API_VERSION,\n    RetainedActivityObserver,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n',
     'browser getVersion export'
   );
   result = replaceOnce(

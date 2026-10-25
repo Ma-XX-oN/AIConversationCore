@@ -256,6 +256,76 @@ The symbolic ref is human-readable and may be mutable.  The implementation versi
 and API version identify what was actually loaded and whether it is compatible
 with Core.
 
+## Core retained incoming activity (API version 1)
+
+Core exposes a separate provider-neutral **retained activity** observer.
+This does not change the required Agent PI (plugin `apiVersion: 1`) or
+the semantics of `currentState()` / `observeState(callback)`.  Older agents
+continue to register and load unchanged.  Core's creation context supplies
+the optional service `context.core.publishActivityTimestamp(timestampMs)`.
+The provider publishes a **number** in Unix epoch milliseconds, or does not
+publish anything when there is no known incoming receipt.  Core does not
+intercept network or DOM traffic or discover event timestamps.
+
+A provider selects the timestamp of **each observed incoming datum** at
+actual receipt observation: a valid timestamp accompanying the datum takes
+precedence; when none is usable, the provider immediately captures the
+**local current wall-clock time at receipt**.  The producer publishes that
+already-selected value through Core, even when a consumer or queued publish
+happens later.  Core never generates a receipt timestamp, falls back to
+delivery time, accesses payloads, or infers activity from outbound traffic.
+
+Each instance has an independent `RetainedActivityObserver`.  Its immutable
+snapshot is:
+
+```js
+{
+  apiVersion: 1,
+  clockDomain: 'unix-epoch-ms',
+  latestIncomingAtMs: null // or a nonnegative safe integer
+}
+```
+
+`RETAINED_ACTIVITY_API_VERSION` is 1.  The wall-clock domain is UTC Unix
+epoch **milliseconds** (not monotonic time, ISO text, seconds or relative
+time).  `null` means **no valid incoming timestamp has been received**;
+it never means zero or the consumer's start time.  This API retains the
+newest *event timestamp*, not an event count or last callback time.
+
+The provider/Core boundary applies strict validation: Core accepts only
+nonnegative safe integer epoch milliseconds no later than the current local
+clock at publication; `NaN`, infinity, negative, future, fractional, string,
+objects and missing values are rejected.  Older or equal timestamps
+(including duplicate receipt chunks or out-of-order queued publications) do
+not notify and cannot regress retained state.  A future value invalidated
+by local clock skew must be handled by the provider; Core does not modify it.
+
+A consumer with a registry/agent pair uses:
+
+```js
+const state = registry.activityState(agent);
+const unsubscribe = registry.observeActivity(agent, snapshot => {
+  // Render snapshot.latestIncomingAtMs, or unavailable for null.
+});
+unsubscribe();
+registry.disposeActivity(agent);
+```
+
+Subscription immediately replays one current snapshot synchronously and then
+sends change notifications.  Exceptions in one callback do not break other
+subscribers or producer delivery.  Every registration has an independent
+idempotent unsubscribe function.  Retiring an agent unsubscribes all listeners,
+rejects stale producer publishing, and makes `activityState(agent)` return
+`null` (unknown/retired **agent**, distinct from a valid unavailable snapshot).
+For replacement/reload, unsubscribe/dispose the old agent and subscribe to the
+new registry/agent pair.  New agents do not inherit stale timestamps.
+
+Core never clones canonical event arrays or unrelated provider lifecycle
+state on activity publication.  High-rate streams update only one small frozen
+snapshot per accepted monotonically increasing timestamp.  A real browser
+producer, provider transport coverage, and UI timer correctness are tested
+by their respective downstream owners, not by these mocked Core tests.
+
 ## State and response authority
 
 The public state/response APIs project one authoritative provider-owned reducer:
