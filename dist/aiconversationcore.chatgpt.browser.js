@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.1";
+const VERSION = "1.1.2-issue.132.2";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -6073,6 +6073,136 @@ class PluginCanonicalSession {
   }
 }
 
+/**
+ * Provider-neutral, Core-owned retained incoming activity contract revision.
+ * Provider plugins select the event timestamp at receipt; Core never invents it.
+ */
+const RETAINED_ACTIVITY_API_VERSION = 1;
+
+/**
+ * Retains the newest incoming timestamp for one agent, independently of
+ * canonical events and provider lifecycle state.
+ */
+class RetainedActivityObserver {
+  /** @type {function(): number} Clock for validation, never for stamping. */
+  #now;
+  /** @type {Object<string, *>} Immutable latest activity snapshot. */
+  #state = Object.freeze({
+    apiVersion: RETAINED_ACTIVITY_API_VERSION,
+    clockDomain: 'unix-epoch-ms',
+    latestIncomingAtMs: null
+  });
+  /** @type {Set<{callback: function(Object<string, *>): void}>} Active subscriptions. */
+  #listeners = new Set();
+  /** @type {boolean} Whether this per-agent observer was retired. */
+  #disposed = false;
+  /** @type {boolean} Prevent recursive notification from reversing delivery. */
+  #dispatching = false;
+  /** @type {boolean} An update occurred during a notification pass. */
+  #pending = false;
+
+  /**
+   * Creates a retained activity observer for a single agent lifetime.
+   *
+   * @param {{now?: function(): number}} [options={}] - Wall clock used only
+   *   for rejecting invalid or future provider-supplied timestamps.
+   */
+  constructor({ now = Date.now } = {}) {
+    if (typeof now !== 'function') throw new TypeError('now must be a function');
+    this.#now = now;
+  }
+
+  /**
+   * Returns the immutable most recent retained activity snapshot.
+   *
+   * @returns {{apiVersion: number, clockDomain: string, latestIncomingAtMs: number|null}}
+   *   The last accepted epoch-millisecond timestamp, or null if unavailable.
+   */
+  snapshot() {
+    return this.#state;
+  }
+
+  /**
+   * Retains a timestamp chosen by the producer at actual incoming receipt.
+   * This method never substitutes the callback/publication time.
+   *
+   * @param {*} timestampMs - Provider-selected Unix epoch milliseconds.
+   * @returns {boolean} Whether this call advanced the retained timestamp.
+   */
+  publish(timestampMs) {
+    if (this.#disposed) return false;
+    if (!Number.isSafeInteger(timestampMs) || timestampMs < 0) return false;
+    // This is a validation bound only, not a receipt-time fallback.
+    const validationTime = this.#now();
+    if (!Number.isFinite(validationTime) || timestampMs > validationTime) return false;
+    const prior = this.#state.latestIncomingAtMs;
+    if (prior !== null && timestampMs <= prior) return false;
+    this.#state = Object.freeze({
+      apiVersion: RETAINED_ACTIVITY_API_VERSION,
+      clockDomain: 'unix-epoch-ms',
+      latestIncomingAtMs: timestampMs
+    });
+    this.#pending = true;
+    if (this.#dispatching) return true;
+
+    this.#dispatching = true;
+    try {
+      while (this.#pending && !this.#disposed) {
+        this.#pending = false;
+        const current = this.#state;
+        for (const subscription of [...this.#listeners]) {
+          if (this.#disposed) break;
+          if (!this.#listeners.has(subscription)) continue;
+          try {
+            subscription.callback(current);
+          } catch {
+            // One consumer cannot break delivery or provider receipt handling.
+          }
+        }
+      }
+    } finally {
+      this.#dispatching = false;
+    }
+    return true;
+  }
+
+  /**
+   * Registers a consumer, replaying the current snapshot synchronously once.
+   *
+   * @param {function(Object<string, *>): void} callback - Activity consumer.
+   * @returns {function(): void} Idempotent subscription cancellation.
+   */
+  subscribe(callback) {
+    if (this.#disposed) throw new Error('activity observer disposed');
+    if (typeof callback !== 'function') {
+      throw new TypeError('activity listener must be a function');
+    }
+    // Identity belongs to the subscription, not to a possibly reused callback.
+    const subscription = { callback };
+    this.#listeners.add(subscription);
+    const snapshot = this.#state;
+    try {
+      callback(snapshot);
+    } catch {
+      // Initial replay has the same listener isolation as live publication.
+    }
+    return () => {
+      this.#listeners.delete(subscription);
+    };
+  }
+
+  /**
+   * Retires the old agent on teardown or replacement without notifying again.
+   *
+   * @returns {void} The listener and publication channel are closed.
+   */
+  dispose() {
+    this.#disposed = true;
+    this.#listeners.clear();
+    this.#pending = false;
+  }
+}
+
 /** Public provider-neutral methods every registered agent instance must expose. */
 const PUBLIC_PI = Object.freeze([
   'sendMessage',
@@ -6162,7 +6292,7 @@ function validateAgentInstance(instance, descriptor, apiVersion) {
  * @param {PluginCanonicalSession} session - Core-owned canonical session.
  * @returns {Object<string, *>} Creation context passed to the provider factory.
  */
-function creationContext(context, session) {
+function creationContext(context, session, activity) {
   if (!context || typeof context !== 'object') {
     throw new TypeError('agent plugin creation context must be an object');
   }
@@ -6171,7 +6301,8 @@ function creationContext(context, session) {
     core: Object.freeze({
       ...(context.core ?? {}),
       deriveTurns,
-      publishEvents: events => session.replace(events)
+      publishEvents: events => session.replace(events),
+      publishActivityTimestamp: timestampMs => activity.publish(timestampMs)
     })
   };
 }
@@ -6182,6 +6313,7 @@ class AgentPluginRegistry {
   #requireMetadata;
   #descriptors = new Map();
   #sessions = new WeakMap();
+  #activities = new WeakMap();
 
   /**
    * Creates a registry for one Core plugin API version.
@@ -6275,15 +6407,18 @@ class AgentPluginRegistry {
     const descriptor = this.#descriptors.get(id);
     if (!descriptor) throw new Error(`agent plugin ${id} is not registered`);
     const session = new PluginCanonicalSession();
+    const activity = new RetainedActivityObserver();
     const instance = validateAgentInstance(
-      descriptor.create(creationContext(context, session)),
+      descriptor.create(creationContext(context, session, activity)),
       descriptor,
       this.#apiVersion
     );
     if (this.#sessions.has(instance)) {
+      activity.dispose();
       throw new Error(`agent plugin ${id} reused an existing agent instance`);
     }
     this.#sessions.set(instance, session);
+    this.#activities.set(instance, activity);
     return instance;
   }
 
@@ -6295,6 +6430,25 @@ class AgentPluginRegistry {
    */
   session(instance) {
     return this.#sessions.get(instance) ?? null;
+  }
+
+  /** @returns {Object<string, *>|null} Core retained activity snapshot. */
+  activityState(agent) { return this.#activities.get(agent)?.snapshot() ?? null; }
+
+  /** @returns {function(): void} Independent activity unsubscribe. */
+  observeActivity(agent, listener) {
+    const activity = this.#activities.get(agent);
+    if (!activity) throw new Error('unknown agent activity observer');
+    return activity.subscribe(listener);
+  }
+
+  /** @returns {boolean} Whether retained activity was retired. */
+  disposeActivity(agent) {
+    const activity = this.#activities.get(agent);
+    if (!activity) return false;
+    activity.dispose();
+    this.#activities.delete(agent);
+    return true;
   }
 
   /**
@@ -6501,6 +6655,15 @@ class PluginRegistration {
     return Object.freeze({ agent, session: this.#registry.session(agent), descriptor: this.get(id) });
   }
 
+  /** @returns {Object<string, *>|null} Retained incoming activity. */
+  activityState(agent) { return this.#registry.activityState(agent); }
+
+  /** @returns {function(): void} Independent activity observer unsubscribe. */
+  observeActivity(agent, listener) { return this.#registry.observeActivity(agent, listener); }
+
+  /** @returns {boolean} Whether retained activity was disposed. */
+  disposeActivity(agent) { return this.#registry.disposeActivity(agent); }
+
   /**
    * Returns the registration inventory and current missing-plugin diagnostic state.
    * @returns {Object<string, *>} Immutable consistent registration snapshot.
@@ -6580,9 +6743,22 @@ function observePluginRegistrationDiagnostics(listener) {
   return pluginRegistration.observeDiagnostics(listener);
 }
 
+/** @returns {Object<string, *>|null} Core-retained activity snapshot. */
+function activityState(agent) { return pluginRegistration.activityState(agent); }
+
+/** @returns {function(): void} Independent activity observer unsubscribe. */
+function observeActivity(agent, listener) {
+  return pluginRegistration.observeActivity(agent, listener);
+}
+
+/** @returns {boolean} Whether activity was disposed. */
+function disposeActivity(agent) { return pluginRegistration.disposeActivity(agent); }
+
 
   global.AIConversationCore = Object.freeze({
     getVersion,
+    RETAINED_ACTIVITY_API_VERSION,
+    RetainedActivityObserver,
     AgentPluginRegistry,
     PUBLIC_PI,
     validateAgentPluginDescriptor,
@@ -6596,6 +6772,9 @@ function observePluginRegistrationDiagnostics(listener) {
     createAgent,
     getPluginRegistrationState,
     observePluginRegistrationDiagnostics,
+    activityState,
+    observeActivity,
+    disposeActivity,
     adaptChatGPTRecords,
     renderCanonicalMarkdown,
     renderCanonicalHtml,
