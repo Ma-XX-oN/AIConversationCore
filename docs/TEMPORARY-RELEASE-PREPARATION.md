@@ -30,8 +30,15 @@ The file contains exactly one request on its first line:
 - Text **before** `#` is the target plain semantic version, `MAJOR.MINOR.PATCH`.
 - The `#` and **everything after it** are ignored by the workflow parser.
   Conventionally that suffix is the retry count.
-- Change the retry count and commit/push the file to request another run for
-  the same version. The contents are not executable code.
+- When requesting a **new release version**, set the retry count to `0`
+  (for example, `1.1.2 # 0`) and commit/push that change.
+- Increment the retry count to `1`, `2`, and so on **only if GitHub Actions did
+  not invoke the workflow** and a fresh push is needed to trigger it. Do not
+  increment merely because a run is still pending or is executing.
+- After a successful invocation, leave the file unchanged until the next
+  version request. The suffix is a trigger/retry counter, **not part of the
+  release version** and has no effect on the generated artifact.
+- The contents are not executable code.
 - The workflow rejects empty or malformed versions.
 - Preparation is restricted to `issue-*` branches, not `main`.
 
