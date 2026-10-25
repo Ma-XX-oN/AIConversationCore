@@ -6290,6 +6290,7 @@ function validateAgentInstance(instance, descriptor, apiVersion) {
  *
  * @param {Object<string, *>} context - Caller/provider creation context.
  * @param {PluginCanonicalSession} session - Core-owned canonical session.
+ * @param {RetainedActivityObserver} activity - Core-owned retained activity observer.
  * @returns {Object<string, *>} Creation context passed to the provider factory.
  */
 function creationContext(context, session, activity) {
@@ -6672,13 +6673,26 @@ class PluginRegistration {
     return Object.freeze({ agent, session: this.#registry.session(agent), descriptor: this.get(id) });
   }
 
-  /** Returns retained activity for a registered agent. */
+  /**
+   * Reads one created agent's Core-owned retained activity snapshot.
+   * @param {Object<string, *>} agent - Registered agent instance.
+   * @returns {Object<string, *>|null} Snapshot or null for a retired agent.
+   */
   activityState(agent) { return this.#registry.activityState(agent); }
 
-  /** Observes activity through the retained Core registry. */
+  /**
+   * Observes incoming activity of a Core-registered agent.
+   * @param {Object<string, *>} agent - Registered agent instance.
+   * @param {function(Object<string, *>): void} listener - Activity listener.
+   * @returns {function(): void} Idempotent unsubscribe function.
+   */
   observeActivity(agent, listener) { return this.#registry.observeActivity(agent, listener); }
 
-  /** Retires a registered agent's activity observer. */
+  /**
+   * Retires one agent's activity observer without touching its session.
+   * @param {Object<string, *>} agent - Registered agent instance.
+   * @returns {boolean} Whether the activity observer was disposed.
+   */
   disposeActivity(agent) { return this.#registry.disposeActivity(agent); }
 
   /**
@@ -6760,15 +6774,28 @@ function observePluginRegistrationDiagnostics(listener) {
   return pluginRegistration.observeDiagnostics(listener);
 }
 
-/** Reads a registered agent's incoming-activity snapshot. */
+/**
+ * Reads retained incoming activity via the public registration system.
+ * @param {Object<string, *>} agent - Registered agent instance.
+ * @returns {Object<string, *>|null} Current snapshot or null after teardown.
+ */
 function activityState(agent) { return pluginRegistration.activityState(agent); }
 
-/** Subscribes to registered-agent incoming activity. */
+/**
+ * Subscribes to incoming activity through the public Core registry.
+ * @param {Object<string, *>} agent - Registered agent instance.
+ * @param {function(Object<string, *>): void} callback - Subscriber callback.
+ * @returns {function(): void} Idempotent unsubscription function.
+ */
 function observeActivity(agent, callback) {
   return pluginRegistration.observeActivity(agent, callback);
 }
 
-/** Retires registered-agent incoming activity. */
+/**
+ * Disposes the retained activity of a registered agent.
+ * @param {Object<string, *>} agent - Registered agent instance.
+ * @returns {boolean} Whether the retained activity was disposed.
+ */
 function disposeActivity(agent) { return pluginRegistration.disposeActivity(agent); }
 
 

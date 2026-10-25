@@ -89,6 +89,7 @@ function validateAgentInstance(instance, descriptor, apiVersion) {
  *
  * @param {Object<string, *>} context - Caller/provider creation context.
  * @param {PluginCanonicalSession} session - Core-owned canonical session.
+ * @param {RetainedActivityObserver} activity - Core-owned retained activity observer.
  * @returns {Object<string, *>} Creation context passed to the provider factory.
  */
 function creationContext(context, session, activity) {
