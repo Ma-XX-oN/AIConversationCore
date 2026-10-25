@@ -35,7 +35,7 @@ test('committed browser artifact exactly matches the deterministic generator', {
 
 test('generated classic browser bundle exposes the required DownloadConversation API', async () => {
   const bundle = await buildBrowserBundle();
-  const context = vm.createContext({ URL });
+  const context = vm.createContext({ URL, setTimeout, clearTimeout });
   vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
   const packageMetadata = JSON.parse(await readFile(packageUrl, 'utf8'));
 
@@ -58,7 +58,7 @@ test('generated classic browser bundle exposes the required DownloadConversation
 test('generated browser bundle matches ESM ChatGPT normalization and Markdown rendering', async () => {
   const records = await loadJsonl(fixtureUrl);
   const bundle = await buildBrowserBundle();
-  const context = vm.createContext({ URL });
+  const context = vm.createContext({ URL, setTimeout, clearTimeout });
   vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
 
   const esmEvents = adaptChatGPTRecords(records);
@@ -76,7 +76,7 @@ test('browser structured projection preserves ESM revision visibility semantics'
     ? { ...event, projection: { ...(event.projection ?? {}), visible: false } }
     : event);
   const bundle = await buildBrowserBundle();
-  const context = vm.createContext({ URL });
+  const context = vm.createContext({ URL, setTimeout, clearTimeout });
   vm.runInContext(bundle, context, { filename: 'aiconversationcore.chatgpt.browser.js' });
 
   const browser = context.AIConversationCore.projectCanonicalConversation(plain(events));

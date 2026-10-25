@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.0-issue.104.11";
+const VERSION = "1.1.1";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -6179,6 +6179,7 @@ function creationContext(context, session) {
 /** Registry for provider-neutral agent plugin descriptors and instances. */
 class AgentPluginRegistry {
   #apiVersion;
+  #requireMetadata;
   #descriptors = new Map();
   #sessions = new WeakMap();
 
@@ -6187,12 +6188,14 @@ class AgentPluginRegistry {
    *
    * @param {Object<string, *>} [options={}] - Registry configuration.
    * @param {number} [options.apiVersion=1] - Supported plugin API version.
+   * @param {boolean} [options.requireMetadata=false] - Require public name/icon metadata.
    */
-  constructor({ apiVersion = 1 } = {}) {
+  constructor({ apiVersion = 1, requireMetadata = false } = {}) {
     if (!Number.isInteger(apiVersion) || apiVersion < 1) {
       throw new TypeError('apiVersion must be a positive integer');
     }
     this.#apiVersion = apiVersion;
+    this.#requireMetadata = requireMetadata;
   }
 
   /** @returns {number} Core plugin API version accepted by this registry. */
@@ -6207,7 +6210,30 @@ class AgentPluginRegistry {
    * @returns {Object<string, *>} The registered descriptor.
    */
   register(descriptor) {
-    const validated = validateAgentPluginDescriptor(descriptor, this.#apiVersion);
+    // Capture data properties before validation so accessors cannot mutate registry state.
+    if (!descriptor || typeof descriptor !== 'object') {
+      throw new TypeError('agent plugin descriptor must be an object');
+    }
+    const properties = Object.getOwnPropertyDescriptors(descriptor);
+    const captured = {};
+    for (const key of ['id', 'name', 'iconUrl', 'apiVersion', 'create', 'recognize']) {
+      const property = properties[key];
+      if (!property) continue;
+      if (!Object.hasOwn(property, 'value')) {
+        throw new TypeError(`agent plugin descriptor ${key} must be a data property`);
+      }
+      captured[key] = property.value;
+    }
+    if (this.#requireMetadata) {
+      for (const key of ['name', 'iconUrl']) {
+        if (typeof captured[key] !== 'string' || !captured[key].trim()) {
+          throw new TypeError(`agent plugin descriptor ${key} must be a non-empty string`);
+        }
+      }
+    }
+    const validated = Object.freeze(
+      validateAgentPluginDescriptor(captured, this.#apiVersion)
+    );
     if (this.#descriptors.has(validated.id)) {
       throw new Error(`agent plugin ${validated.id} is already registered`);
     }
@@ -6254,6 +6280,9 @@ class AgentPluginRegistry {
       descriptor,
       this.#apiVersion
     );
+    if (this.#sessions.has(instance)) {
+      throw new Error(`agent plugin ${id} reused an existing agent instance`);
+    }
     this.#sessions.set(instance, session);
     return instance;
   }
@@ -6357,6 +6386,201 @@ async function loadAgent(id, { loadModule, context = {} } = {}) {
   return Object.freeze({ agent, session, registry, artifact });
 }
 
+
+/**
+ * Reports registration diagnostics visibly through the host console.
+ * @param {Object<string, *>} event - Immutable registration diagnostic.
+ * @returns {void} Reports the diagnostic without modifying registry state.
+ */
+function reportRegistrationDiagnostic(event) {
+  const method = event.level === 'error' ? 'error' : 'info';
+  console[method](`[AIConversationCore] ${event.message}`, event);
+}
+
+/** Provider-neutral public registration subsystem and startup diagnostic. */
+class PluginRegistration {
+  #registry = new AgentPluginRegistry({ requireMetadata: true });
+  #missing = false;
+  #timer;
+  #cancel;
+  #report;
+  #listeners = new Set();
+
+  /**
+   * Starts the one-shot diagnostic when the subsystem is constructed.
+   * @param {Object<string, *>} [options={}] - Host timers and diagnostic reporter.
+   * @returns {PluginRegistration} Registration subsystem with an empty inventory.
+   */
+  constructor({
+    schedule = globalThis.setTimeout?.bind(globalThis),
+    cancel = globalThis.clearTimeout?.bind(globalThis),
+    report = reportRegistrationDiagnostic
+  } = {}) {
+    if (typeof schedule !== 'function' || typeof cancel !== 'function'
+        || typeof report !== 'function') {
+      throw new TypeError('registration requires schedule, cancel and report functions');
+    }
+    this.#cancel = cancel;
+    this.#report = report;
+    this.#timer = schedule(() => {
+      if (this.#registry.list().length !== 0) return;
+      this.#missing = true;
+      this.#emit('no-plugins', 'error', 'No agent plugins registered after 15 seconds.');
+    }, 15000);
+    // A Node import must not retain the process solely for a browser diagnostic.
+    this.#timer?.unref?.();
+  }
+
+  /**
+   * Emits an immutable diagnostic after the associated state transition.
+   * @param {string} code - Machine-readable diagnostic identity.
+   * @param {string} level - Console severity for the event.
+   * @param {string} message - Human-readable error or recovery explanation.
+   * @returns {void} Reports and delivers the diagnostic to current listeners.
+   */
+  #emit(code, level, message) {
+    const event = Object.freeze({ code, level, message });
+    try { this.#report(event); } catch (error) { console.error(error, event); }
+    for (const listener of [...this.#listeners]) {
+      try { listener(event); } catch (error) {
+        const failure = Object.freeze({
+          code: 'diagnostic-listener-error', level: 'error', message: String(error)
+        });
+        try { this.#report(failure); } catch (reportError) { console.error(reportError, failure); }
+      }
+    }
+  }
+
+  /**
+   * Captures and atomically registers one provider's public descriptor.
+   * @param {Object<string, *>} descriptor - Provider metadata and factory.
+   * @returns {Object<string, *>} Immutable descriptor retained by Core.
+   */
+  register(descriptor) {
+    let captured;
+    try { captured = this.#registry.register(descriptor); } catch (error) {
+      this.#emit('registration-error', 'error', String(error));
+      throw error;
+    }
+    this.#cancel(this.#timer);
+    if (this.#missing) {
+      this.#missing = false;
+      this.#emit('registration-recovered', 'info', 'Agent plugin registration recovered.');
+    }
+    return captured;
+  }
+
+  /**
+   * Retrieves one registered provider without consulting any catalogue.
+   * @param {string} id - Registered provider identifier.
+   * @returns {Object<string, *>|null} Immutable descriptor or null.
+   */
+  get(id) { return this.#registry.get(id); }
+
+  /**
+   * Captures the current inventory in registration order.
+   * @returns {Array<Object<string, *>>} Frozen snapshot of immutable descriptors.
+   */
+  list() { return Object.freeze(this.#registry.list()); }
+
+  /**
+   * Finds the first registered provider recognizing the source.
+   * @param {*} input - Source identification supplied by the consumer.
+   * @returns {Object<string, *>|null} Recognizing descriptor or null.
+   */
+  recognize(input) { return this.#registry.recognize(input); }
+
+  /**
+   * Constructs a validated agent and its Core-owned canonical session.
+   * @param {string} id - Registered provider identifier.
+   * @param {Object<string, *>} [context={}] - Host/provider creation services.
+   * @returns {Object<string, *>} Frozen agent, session and descriptor association.
+   */
+  create(id, context = {}) {
+    const agent = this.#registry.create(id, context);
+    return Object.freeze({ agent, session: this.#registry.session(agent), descriptor: this.get(id) });
+  }
+
+  /**
+   * Returns the registration inventory and current missing-plugin diagnostic state.
+   * @returns {Object<string, *>} Immutable consistent registration snapshot.
+   */
+  state() {
+    return Object.freeze({ apiVersion: 1, plugins: this.list(), missingPluginError: this.#missing });
+  }
+
+  /**
+   * Subscribes to future registration diagnostic events.
+   * @param {function(Object<string, *>): void} listener - Diagnostic receiver.
+   * @returns {function(): void} Idempotent unsubscription function.
+   */
+  observeDiagnostics(listener) {
+    if (typeof listener !== 'function') throw new TypeError('diagnostic listener must be a function');
+    /**
+     * Gives each subscription an independent lifetime, including repeated callbacks.
+     * @param {Object<string, *>} event - Immutable diagnostic being delivered.
+     * @returns {void} Delivers this event to the subscribed receiver.
+     */
+    const subscription = event => { listener(event); };
+    this.#listeners.add(subscription);
+    return () => { this.#listeners.delete(subscription); };
+  }
+}
+
+/** Authoritative registration inventory for this loaded Core instance/realm. */
+const pluginRegistration = new PluginRegistration();
+
+/**
+ * Registers an independently loaded provider on the authoritative Core inventory.
+ * @param {Object<string, *>} descriptor - Provider metadata and factory.
+ * @returns {Object<string, *>} Immutable registered descriptor.
+ */
+function registerAgentPlugin(descriptor) { return pluginRegistration.register(descriptor); }
+
+/**
+ * Retrieves a provider from the authoritative inventory.
+ * @param {string} id - Registered provider identifier.
+ * @returns {Object<string, *>|null} Immutable descriptor or null.
+ */
+function getAgentPlugin(id) { return pluginRegistration.get(id); }
+
+/**
+ * Returns the authoritative provider inventory in registration order.
+ * @returns {Array<Object<string, *>>} Frozen descriptor snapshot.
+ */
+function listAgentPlugins() { return pluginRegistration.list(); }
+
+/**
+ * Recognizes a source through registered providers only.
+ * @param {*} input - Source identification supplied by the consumer.
+ * @returns {Object<string, *>|null} Recognizing descriptor or null.
+ */
+function recognizeAgentPlugin(input) { return pluginRegistration.recognize(input); }
+
+/**
+ * Creates an agent and canonical session from the authoritative registry.
+ * @param {string} id - Registered provider identifier.
+ * @param {Object<string, *>} [context={}] - Host/provider creation services.
+ * @returns {Object<string, *>} Frozen agent, session and descriptor association.
+ */
+function createAgent(id, context = {}) { return pluginRegistration.create(id, context); }
+
+/**
+ * Returns the authoritative registration diagnostic state.
+ * @returns {Object<string, *>} Immutable inventory and diagnostic snapshot.
+ */
+function getPluginRegistrationState() { return pluginRegistration.state(); }
+
+/**
+ * Subscribes to authoritative registration errors and recovery diagnostics.
+ * @param {function(Object<string, *>): void} listener - Diagnostic receiver.
+ * @returns {function(): void} Idempotent unsubscription function.
+ */
+function observePluginRegistrationDiagnostics(listener) {
+  return pluginRegistration.observeDiagnostics(listener);
+}
+
+
   global.AIConversationCore = Object.freeze({
     getVersion,
     AgentPluginRegistry,
@@ -6364,6 +6588,14 @@ async function loadAgent(id, { loadModule, context = {} } = {}) {
     validateAgentPluginDescriptor,
     getAgentPluginArtifact,
     loadAgent,
+    PluginRegistration,
+    registerAgentPlugin,
+    getAgentPlugin,
+    listAgentPlugins,
+    recognizeAgentPlugin,
+    createAgent,
+    getPluginRegistrationState,
+    observePluginRegistrationDiagnostics,
     adaptChatGPTRecords,
     renderCanonicalMarkdown,
     renderCanonicalHtml,

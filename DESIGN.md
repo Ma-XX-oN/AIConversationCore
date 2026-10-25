@@ -375,3 +375,11 @@ core in a way that prevents Claude, Codex, or future providers from using the sa
 canonical event/block/turn and renderer architecture.
 
 Architectural cleanup must not be bundled with unrelated behaviour changes.
+
+## Public provider registration
+
+AICC #134 exposes one authoritative provider-neutral registration inventory per
+loaded Core instance.  Immutable captured metadata and factories produce agents
+with Core-owned canonical sessions.  Registration starts a one-shot 15-second
+zero-provider diagnostic and permits late recovery.  See
+`docs/PLUGIN-REGISTRATION.md` for signatures, validation and migration boundaries.

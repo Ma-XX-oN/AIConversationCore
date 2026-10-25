@@ -33,7 +33,7 @@ test('checked-in browser bundle is generated from current source modules', {
 
 test('browser bundle exposes the shared structural presentation contract', async () => {
   const bundle = await buildBrowserBundle();
-  const context = {};
+  const context = { setTimeout, clearTimeout };
   context.globalThis = context;
   vm.runInNewContext(bundle, context, {
     filename: 'aiconversationcore.chatgpt.browser.js'

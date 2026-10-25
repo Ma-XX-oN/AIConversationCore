@@ -181,13 +181,15 @@ export async function buildBrowserBundle() {
     structuredVisibilitySource,
     sessionSource,
     registrySource,
-    loadingSource
+    loadingSource,
+    registrationSource
   ] = await Promise.all([
     buildBaseBrowserBundle(),
     readFile(resolve(ROOT, 'src/projections/structured-visibility.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/session/plugin-canonical-session.js'), 'utf8'),
     readFile(resolve(ROOT, 'src/plugins/registry.js'), 'utf8'),
-    readFile(resolve(ROOT, 'src/plugins/loading.js'), 'utf8')
+    readFile(resolve(ROOT, 'src/plugins/loading.js'), 'utf8'),
+    readFile(resolve(ROOT, 'src/plugins/registration.js'), 'utf8')
   ]);
 
   let base = replaceOnce(
@@ -207,17 +209,22 @@ export async function buildBrowserBundle() {
   const session = pluginSessionBody(sessionSource);
   const registry = registryBody(registrySource);
   const loading = loadingBody(loadingSource);
+  const registration = removeImport(
+    registrationSource,
+    "import { AgentPluginRegistry } from './registry.js';",
+    'registration AgentPluginRegistry'
+  ).replaceAll('export class ', 'class ').replaceAll('export function ', 'function ');
   const objectMarker = '  global.AIConversationCore = Object.freeze({\n';
   let result = replaceOnce(
     base,
     objectMarker,
-    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${loading}\n\n${objectMarker}`,
+    `${structuredVisibility}\n\n${session}\n\n${registry}\n\n${loading}\n\n${registration}\n\n${objectMarker}`,
     'AIConversationCore browser export object'
   );
   result = replaceOnce(
     result,
     '    getVersion,\n',
-    '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n',
+    '    getVersion,\n    AgentPluginRegistry,\n    PUBLIC_PI,\n    validateAgentPluginDescriptor,\n    getAgentPluginArtifact,\n    loadAgent,\n    PluginRegistration,\n    registerAgentPlugin,\n    getAgentPlugin,\n    listAgentPlugins,\n    recognizeAgentPlugin,\n    createAgent,\n    getPluginRegistrationState,\n    observePluginRegistrationDiagnostics,\n',
     'browser getVersion export'
   );
   result = replaceOnce(

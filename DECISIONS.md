@@ -338,3 +338,17 @@ separate values.
 letting duplicated version strings drift. Keeping one writable version source and
 verifying all public packaging paths against it makes divergence an automated test
 failure rather than a maintenance convention.
+
+## D018 — Independently loaded providers register with Core
+
+**Status:** Accepted for AICC #134 under DC #364.
+
+**Decision:** Use public provider-neutral self-registration rather than a
+provider-specific catalogue as the new runtime loading boundary.  Core captures
+immutable descriptors, owns the registry and canonical sessions, and diagnoses
+zero registrations after 15 seconds with explicit late-registration recovery.
+Legacy catalogue exports are isolated for staged consumer migration; the new
+active path never consults them.  `docs/PLUGIN-REGISTRATION.md` defines the API.
+
+**Reason:** Independently installed classic providers and consumers need one
+shared-world contract without provider implementation knowledge in Core.

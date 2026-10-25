@@ -67,3 +67,14 @@ export {
 } from './adapters/codex-retained.js';
 export { adaptInteractiveSessionRecords } from './adapters/interactive.js';
 export { adaptSpeechSessionRecords } from './adapters/speech-session-normalized.js';
+
+export {
+  PluginRegistration,
+  registerAgentPlugin,
+  getAgentPlugin,
+  listAgentPlugins,
+  recognizeAgentPlugin,
+  createAgent,
+  getPluginRegistrationState,
+  observePluginRegistrationDiagnostics
+} from './plugins/registration.js';
