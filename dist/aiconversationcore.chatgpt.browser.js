@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.2-issue.132.3";
+const VERSION = "1.1.2-issue.132.4";
 
 /**
  * Returns the authoritative AIConversationCore version.
