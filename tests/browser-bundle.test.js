@@ -83,3 +83,29 @@ test('browser structured projection preserves ESM revision visibility semantics'
   const esm = projectCanonicalConversation(events);
   assert.deepEqual(plain(browser), plain(esm));
 });
+
+
+test('classic registered provider retains Last through public V1 API', async () => {
+  const bundle = await buildBrowserBundle();
+  const context = vm.createContext({ URL, setTimeout, clearTimeout });
+  vm.runInContext(bundle, context, { filename: 'activity-registration.js' });
+  const core = context.AIConversationCore;
+  assert.equal(core.RETAINED_ACTIVITY_API_VERSION, 1);
+  let publisher;
+  core.registerAgentPlugin({ id: 'last', name: 'Last', iconUrl: 'https://example.org/p.png',
+    apiVersion: 1, create(ctx) {
+      publisher = ctx.core;
+      return { sendMessage: async () => ({}), getResponse: async () => ({}),
+        getTurns: () => [], currentState: () => ({}), observeState: () => () => {},
+        commTraffic: () => {}, version: () => ({ plugin: 'last', apiVersion: 1 }) };
+    } });
+  const { agent } = core.createAgent('last');
+  const seen = [];
+  const stop = core.observeActivity(agent, s => seen.push(s.latestIncomingAtMs));
+  const stamp = Date.now() - 1000;
+  assert.equal(publisher.publishActivityTimestamp(stamp), true);
+  assert.deepEqual(seen, [null, stamp]);
+  assert.equal(core.activityState(agent).latestIncomingAtMs, stamp);
+  stop();
+  assert.equal(core.disposeActivity(agent), true);
+});

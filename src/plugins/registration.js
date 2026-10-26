@@ -18,6 +18,7 @@ export class PluginRegistration {
   #cancel;
   #report;
   #listeners = new Set();
+  #inventoryListeners = new Set();
 
   /**
    * Starts the one-shot diagnostic when the subsystem is constructed.
@@ -80,7 +81,54 @@ export class PluginRegistration {
       this.#missing = false;
       this.#emit('registration-recovered', 'info', 'Agent plugin registration recovered.');
     }
+    this.#publishInventory();
     return captured;
+  }
+
+  /**
+   * Publishes a frozen provider inventory without allowing listeners to block registration.
+   * @returns {void} Registered-provider observation is independent of diagnostics.
+   */
+  #publishInventory() {
+    const snapshot = this.list();
+    for (const listener of [...this.#inventoryListeners]) {
+      try { listener(snapshot); } catch (error) {
+        try {
+          this.#report(Object.freeze({
+            code: 'registration-observer-error', level: 'error', message: String(error)
+          }));
+        } catch (reportError) { console.error(reportError); }
+      }
+    }
+  }
+
+  /**
+   * Observes current and future provider registration without timers or polling.
+   * Each successful registration publishes a frozen inventory immediately; an
+   * invalid or duplicate descriptor leaves the previous inventory unchanged.
+   * @param {function(Array<Object<string, *>>): void} listener - Inventory observer.
+   * @returns {function(): void} Independent idempotent unsubscribe.
+   */
+  observeRegistrations(listener) {
+    if (typeof listener !== 'function') {
+      throw new TypeError('registration observer must be a function');
+    }
+    /**
+     * Wraps one observer for independent cancellation.
+     * @param {Array<Object<string, *>>} snapshot - Current frozen inventory.
+     * @returns {void} Delivers this provider list to its observer.
+     */
+    const subscription = snapshot => listener(snapshot);
+    this.#inventoryListeners.add(subscription);
+    const snapshot = this.list();
+    try { subscription(snapshot); } catch (error) {
+      try {
+        this.#report(Object.freeze({
+          code: 'registration-observer-error', level: 'error', message: String(error)
+        }));
+      } catch (reportError) { console.error(reportError); }
+    }
+    return () => { this.#inventoryListeners.delete(subscription); };
   }
 
   /**
@@ -113,6 +161,28 @@ export class PluginRegistration {
     const agent = this.#registry.create(id, context);
     return Object.freeze({ agent, session: this.#registry.session(agent), descriptor: this.get(id) });
   }
+
+  /**
+   * Reads one created agent's Core-owned retained activity snapshot.
+   * @param {Object<string, *>} agent - Registered agent instance.
+   * @returns {Object<string, *>|null} Snapshot or null for a retired agent.
+   */
+  activityState(agent) { return this.#registry.activityState(agent); }
+
+  /**
+   * Observes incoming activity of a Core-registered agent.
+   * @param {Object<string, *>} agent - Registered agent instance.
+   * @param {function(Object<string, *>): void} listener - Activity listener.
+   * @returns {function(): void} Idempotent unsubscribe function.
+   */
+  observeActivity(agent, listener) { return this.#registry.observeActivity(agent, listener); }
+
+  /**
+   * Retires one agent's activity observer without touching its session.
+   * @param {Object<string, *>} agent - Registered agent instance.
+   * @returns {boolean} Whether the activity observer was disposed.
+   */
+  disposeActivity(agent) { return this.#registry.disposeActivity(agent); }
 
   /**
    * Returns the registration inventory and current missing-plugin diagnostic state.
@@ -191,4 +261,38 @@ export function getPluginRegistrationState() { return pluginRegistration.state()
  */
 export function observePluginRegistrationDiagnostics(listener) {
   return pluginRegistration.observeDiagnostics(listener);
+}
+
+/**
+ * Reads retained incoming activity via the public registration system.
+ * @param {Object<string, *>} agent - Registered agent instance.
+ * @returns {Object<string, *>|null} Current snapshot or null after teardown.
+ */
+export function activityState(agent) { return pluginRegistration.activityState(agent); }
+
+/**
+ * Subscribes to incoming activity through the public Core registry.
+ * @param {Object<string, *>} agent - Registered agent instance.
+ * @param {function(Object<string, *>): void} callback - Subscriber callback.
+ * @returns {function(): void} Idempotent unsubscription function.
+ */
+export function observeActivity(agent, callback) {
+  return pluginRegistration.observeActivity(agent, callback);
+}
+
+/**
+ * Disposes the retained activity of a registered agent.
+ * @param {Object<string, *>} agent - Registered agent instance.
+ * @returns {boolean} Whether the retained activity was disposed.
+ */
+export function disposeActivity(agent) { return pluginRegistration.disposeActivity(agent); }
+
+/**
+ * Observes the current provider inventory and every successful registration.
+ * This public provider-neutral hook permits late agent attachment without polling.
+ * @param {function(Array<Object<string, *>>): void} listener - Inventory observer.
+ * @returns {function(): void} Idempotent cancellation for this subscription.
+ */
+export function observeAgentPluginRegistrations(listener) {
+  return pluginRegistration.observeRegistrations(listener);
 }

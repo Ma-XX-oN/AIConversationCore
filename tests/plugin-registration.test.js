@@ -201,3 +201,48 @@ test('shared public startup diagnostic logs visibly, recovers and never reschedu
   assert.deepEqual(events.map(x => x.code), ['no-plugins', 'registration-recovered']);
   assert.equal(callbacks.length, 1);
 });
+
+test('provider-neutral registration observer replays and delivers late providers', () => {
+  const { service, timers, logs } = harness();
+  const snapshots = [];
+  const duplicate = list => snapshots.push(list.map(x => x.id));
+  const first = service.observeRegistrations(duplicate);
+  const second = service.observeRegistrations(duplicate);
+  assert.deepEqual(snapshots, [[], []]);
+  service.register(fixture('alpha'));
+  assert.deepEqual(snapshots, [[], [], ['alpha'], ['alpha']]);
+  assert.equal(timers.length, 1, 'observations must not add polling');
+  assert.throws(() => service.register(fixture('alpha')), /already registered/);
+  assert.equal(snapshots.length, 4, 'rejected registration must not notify');
+  first(); first();
+  service.register(fixture('beta'));
+  assert.deepEqual(snapshots.at(-1), ['alpha', 'beta']);
+  second();
+  service.register(fixture('gamma'));
+  assert.equal(snapshots.length, 5, 'disposed observers must not notify');
+  assert.equal(logs.filter(x => x.code === 'registration-observer-error').length, 0);
+});
+
+test('late registration subscriber failure does not affect other consumers', () => {
+  const { service, logs } = harness();
+  service.observeRegistrations(() => { throw new Error('observer fault'); });
+  const seen = [];
+  service.observeRegistrations(inventory => seen.push(inventory.map(x => x.id)));
+  assert.equal(service.register(fixture('alpha')).id, 'alpha');
+  assert.deepEqual(seen, [[], ['alpha']]);
+  assert.ok(logs.some(x => x.code === 'registration-observer-error'));
+});
+
+test('classic browser exposes provider-neutral inventory subscription', async () => {
+  const coreContext = vm.createContext({URL, setTimeout, clearTimeout});
+  vm.runInContext(await buildBrowserBundle(), coreContext);
+  const core = coreContext.AIConversationCore;
+  const seen = [];
+  const unsubscribe = core.observeAgentPluginRegistrations(
+    inventory => seen.push(inventory.map(x => x.id))
+  );
+  core.registerAgentPlugin(fixture('alpha'));
+  unsubscribe();
+  core.registerAgentPlugin(fixture('beta'));
+  assert.deepEqual(seen.map(items => Array.from(items)), [[], ['alpha']]);
+});
