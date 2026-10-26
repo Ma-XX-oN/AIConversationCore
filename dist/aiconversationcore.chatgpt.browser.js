@@ -101,7 +101,7 @@ if(__exports != exports)module.exports = exports;return module.exports}));
 (function bootstrapAIConversationCore(global) {
   'use strict';
 
-const VERSION = "1.1.2-issue.132.2";
+const VERSION = "1.1.2-issue.132.3";
 
 /**
  * Returns the authoritative AIConversationCore version.
@@ -6577,6 +6577,7 @@ class PluginRegistration {
   #cancel;
   #report;
   #listeners = new Set();
+  #inventoryListeners = new Set();
 
   /**
    * Starts the one-shot diagnostic when the subsystem is constructed.
@@ -6639,7 +6640,49 @@ class PluginRegistration {
       this.#missing = false;
       this.#emit('registration-recovered', 'info', 'Agent plugin registration recovered.');
     }
+    this.#publishInventory();
     return captured;
+  }
+
+  /**
+   * Publishes a frozen provider inventory without allowing listeners to block registration.
+   * @returns {void} Registered-provider observation is independent of diagnostics.
+   */
+  #publishInventory() {
+    const snapshot = this.list();
+    for (const listener of [...this.#inventoryListeners]) {
+      try { listener(snapshot); } catch (error) {
+        try {
+          this.#report(Object.freeze({
+            code: 'registration-observer-error', level: 'error', message: String(error)
+          }));
+        } catch (reportError) { console.error(reportError); }
+      }
+    }
+  }
+
+  /**
+   * Observes current and future provider registration without timers or polling.
+   * Each successful registration publishes a frozen inventory immediately; an
+   * invalid or duplicate descriptor leaves the previous inventory unchanged.
+   * @param {function(Array<Object<string, *>>): void} listener - Inventory observer.
+   * @returns {function(): void} Independent idempotent unsubscribe.
+   */
+  observeRegistrations(listener) {
+    if (typeof listener !== 'function') {
+      throw new TypeError('registration observer must be a function');
+    }
+    const subscription = snapshot => listener(snapshot);
+    this.#inventoryListeners.add(subscription);
+    const snapshot = this.list();
+    try { subscription(snapshot); } catch (error) {
+      try {
+        this.#report(Object.freeze({
+          code: 'registration-observer-error', level: 'error', message: String(error)
+        }));
+      } catch (reportError) { console.error(reportError); }
+    }
+    return () => { this.#inventoryListeners.delete(subscription); };
   }
 
   /**
@@ -6798,6 +6841,16 @@ function observeActivity(agent, callback) {
  */
 function disposeActivity(agent) { return pluginRegistration.disposeActivity(agent); }
 
+/**
+ * Observes the current provider inventory and every successful registration.
+ * This public provider-neutral hook permits late agent attachment without polling.
+ * @param {function(Array<Object<string, *>>): void} listener - Inventory observer.
+ * @returns {function(): void} Idempotent cancellation for this subscription.
+ */
+function observeAgentPluginRegistrations(listener) {
+  return pluginRegistration.observeRegistrations(listener);
+}
+
 
   global.AIConversationCore = Object.freeze({
     getVersion,
@@ -6816,6 +6869,7 @@ function disposeActivity(agent) { return pluginRegistration.disposeActivity(agen
     createAgent,
     getPluginRegistrationState,
     observePluginRegistrationDiagnostics,
+    observeAgentPluginRegistrations,
     activityState,
     observeActivity,
     disposeActivity,
