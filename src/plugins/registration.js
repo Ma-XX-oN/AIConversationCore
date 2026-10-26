@@ -113,6 +113,11 @@ export class PluginRegistration {
     if (typeof listener !== 'function') {
       throw new TypeError('registration observer must be a function');
     }
+    /**
+     * Wraps one observer for independent cancellation.
+     * @param {Array<Object<string, *>>} snapshot - Current frozen inventory.
+     * @returns {void} Delivers this provider list to its observer.
+     */
     const subscription = snapshot => listener(snapshot);
     this.#inventoryListeners.add(subscription);
     const snapshot = this.list();

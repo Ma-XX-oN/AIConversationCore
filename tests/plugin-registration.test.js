@@ -244,5 +244,5 @@ test('classic browser exposes provider-neutral inventory subscription', async ()
   core.registerAgentPlugin(fixture('alpha'));
   unsubscribe();
   core.registerAgentPlugin(fixture('beta'));
-  assert.deepEqual(seen, [[], ['alpha']]);
+  assert.deepEqual(seen.map(items => Array.from(items)), [[], ['alpha']]);
 });
