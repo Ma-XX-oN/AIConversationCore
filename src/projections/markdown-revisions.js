@@ -42,24 +42,25 @@ function headingLabel(event) {
 }
 
 /**
- * Removes one already-rendered copy of a status suffix from immediately after
- * the actor label.
+ * Removes one already-rendered copy of a status suffix from a heading.
  *
- * Base Markdown can already contain `projection.heading_suffix` before consumer
- * metadata such as `<!-- record_index=... -->`.  Removing only a trailing suffix
- * therefore misses that case and duplicates the status when this canonical
- * post-pass positions it next to the actor label.
+ * Base Markdown may render `projection.heading_suffix` immediately after the
+ * actor label or after consumer heading metadata. The canonical revision pass
+ * must remove that pre-rendered copy before positioning the status next to the
+ * actor label, otherwise the same status is emitted twice.
  *
  * @param {string} line - One rendered Markdown heading line.
  * @param {number} insertionIndex - Index immediately after label/ANSI reset.
  * @param {string} suffix - Canonical revision/execution suffix.
- * @returns {string} Heading with the pre-existing adjacent suffix removed.
+ * @returns {string} Heading with one pre-existing status suffix removed.
  */
-function removeAdjacentSuffix(line, insertionIndex, suffix) {
+function removeExistingSuffix(line, insertionIndex, suffix) {
   const before = line.slice(0, insertionIndex);
   let after = line.slice(insertionIndex);
   if (after.startsWith(suffix)) {
     after = after.slice(suffix.length);
+  } else if (after.endsWith(suffix)) {
+    after = after.slice(0, -suffix.length);
   }
   return before + after;
 }
@@ -67,11 +68,12 @@ function removeAdjacentSuffix(line, insertionIndex, suffix) {
 /**
  * Positions revision status immediately after User/Assistant labels.
  *
- * Base rendering may append `projection.heading_suffix` before consumer heading
- * metadata, and an Assistant section may be headed by reasoning/commentary that
- * precedes its final message. This canonical post-pass therefore pairs visible
- * message generations with their rendered actor headings and places the status
- * next to the actor label without depending on which event opened the section.
+ * Base rendering may append `projection.heading_suffix` before or after consumer
+ * heading metadata, and an Assistant section may be headed by reasoning/commentary
+ * that precedes its final message. This canonical post-pass therefore pairs
+ * visible message generations with their rendered actor headings and places the
+ * status next to the actor label without depending on which event opened the
+ * section.
  *
  * @param {string} markdown - Base canonical Markdown.
  * @param {Array<Object<string, *>>} events - Ordered canonical events.
@@ -100,7 +102,7 @@ function positionTurnStatuses(markdown, events) {
     const resetMatch = line.slice(afterLabel).match(/^(\x1b\[[0-9;]*m)/);
     if (resetMatch) insertionIndex += resetMatch[1].length;
 
-    const withoutExistingSuffix = removeAdjacentSuffix(
+    const withoutExistingSuffix = removeExistingSuffix(
       line,
       insertionIndex,
       item.suffix);
